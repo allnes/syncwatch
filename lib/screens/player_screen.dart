@@ -459,12 +459,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           : null,
                       icon: const Icon(Icons.skip_previous_rounded),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 28),
                     _roundControl(
                       icon: Icons.fast_rewind_rounded,
                       onPressed: () => _skip(-widget.controller.skipSeconds),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 14),
                     _roundControl(
                       icon: playing
                           ? Icons.pause_rounded
@@ -472,12 +472,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       onPressed: _togglePlayback,
                       prominent: true,
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 14),
                     _roundControl(
                       icon: Icons.fast_forward_rounded,
                       onPressed: () => _skip(widget.controller.skipSeconds),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 28),
                     IconButton(
                       tooltip: widget.controller.t('nextFile'),
                       onPressed: currentIndex < widget.playlist.length - 1
