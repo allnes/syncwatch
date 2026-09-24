@@ -1005,6 +1005,7 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
           initialIndex: movies.indexWhere(
             (item) => item.fullPath == movie.fullPath,
           ),
+          onShowCall: callActive ? _focusCallWindow : null,
         ),
       ),
     );
