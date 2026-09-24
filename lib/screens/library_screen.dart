@@ -429,9 +429,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ? [widget.controller.t('subtitlesOff')]
         : movie.subtitleTrackNames;
 
-    selectedAudioIndex = selectedAudioIndex.clamp(0, audioNames.length - 1);
+    selectedAudioIndex = selectedAudioIndex.clamp(0, audioNames.length - 1).toInt();
     selectedSubtitleIndex =
-        selectedSubtitleIndex.clamp(0, subtitleNames.length - 1);
+        selectedSubtitleIndex.clamp(0, subtitleNames.length - 1).toInt();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
