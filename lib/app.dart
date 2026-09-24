@@ -23,6 +23,7 @@ class AppController extends ChangeNotifier {
 
   String activeMoviePath = '';
   double activeMoviePositionSeconds = 0;
+  bool activeMovieSessionStarted = false;
 
   SharedPreferences? _prefs;
 
@@ -48,6 +49,8 @@ class AppController extends ChangeNotifier {
     activeMoviePath = _prefs?.getString('activeMoviePath') ?? '';
     activeMoviePositionSeconds =
         _prefs?.getDouble('activeMoviePositionSeconds') ?? 0;
+    activeMovieSessionStarted =
+        _prefs?.getBool('activeMovieSessionStarted') ?? false;
   }
 
   Future<void> _setString(String key, String value) async {
@@ -121,7 +124,9 @@ class AppController extends ChangeNotifier {
   }
 
   bool hasPlaybackSessionFor(String moviePath) {
-    return activeMoviePath == moviePath && moviePath.isNotEmpty;
+    return activeMovieSessionStarted &&
+        activeMoviePath == moviePath &&
+        moviePath.isNotEmpty;
   }
 
   double playbackPositionFor(String moviePath) {
@@ -136,8 +141,10 @@ class AppController extends ChangeNotifier {
     if (changed) {
       activeMoviePositionSeconds = 0;
     }
+    activeMovieSessionStarted = true;
     _setString('activeMoviePath', activeMoviePath);
     _setDouble('activeMoviePositionSeconds', activeMoviePositionSeconds);
+    _setBool('activeMovieSessionStarted', true);
     notifyListeners();
   }
 
