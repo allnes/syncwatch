@@ -184,11 +184,9 @@ class AppController extends ChangeNotifier {
 class SyncWatchApp extends StatelessWidget {
   const SyncWatchApp({
     super.key,
-    required this.mockMode,
     required this.controller,
   });
 
-  final bool mockMode;
   final AppController controller;
 
   @override
@@ -203,10 +201,7 @@ class SyncWatchApp extends StatelessWidget {
           supportedLocales: const [Locale('en'), Locale('ru')],
           localizationsDelegates: GlobalMaterialLocalizations.delegates,
           theme: buildSyncWatchTheme(),
-          home: LibraryScreen(
-            controller: controller,
-            mockMode: mockMode,
-          ),
+          home: LibraryScreen(controller: controller),
         );
       },
     );
