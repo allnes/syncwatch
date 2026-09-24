@@ -49,6 +49,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   int selectedAudioIndex = 0;
   int selectedSubtitleIndex = 0;
   String? expandedTrackMenu;
+  final ScrollController trackMenuScrollController = ScrollController();
 
   @override
   void initState() {
@@ -58,6 +59,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   @override
   void dispose() {
+    trackMenuScrollController.dispose();
     callProcess?.kill();
     if (callActive) {
       callEngine.leave();
@@ -830,22 +832,24 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
         isAudio ? selectedAudioIndex : selectedSubtitleIndex;
 
     return Positioned(
-      top: 142,
-      right: isAudio ? 178 : 18,
-      width: 215,
+      top: 136,
+      right: isAudio ? 250 : 18,
+      width: 300,
       child: Material(
         elevation: 12,
         borderRadius: BorderRadius.circular(12),
         color: syncBackgroundDeep,
         child: Container(
-          constraints: const BoxConstraints(maxHeight: 120),
+          constraints: const BoxConstraints(maxHeight: 170),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: syncBorder),
           ),
           child: Scrollbar(
-            thumbVisibility: items.length > 3,
+            controller: trackMenuScrollController,
+            thumbVisibility: items.length > 4,
             child: ListView.builder(
+              controller: trackMenuScrollController,
               shrinkWrap: true,
               padding: const EdgeInsets.symmetric(vertical: 2),
               itemCount: items.length,
@@ -948,7 +952,7 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
 
   Widget _roomCard() {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(14),
       decoration: _panelDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -957,7 +961,7 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
             widget.controller.t('roomStatus'),
             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 7),
           Row(
             children: [
               const Icon(Icons.groups_2_rounded, color: syncAccentSoft),
@@ -973,14 +977,18 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
               Text(widget.controller.t('bothReady')),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _memberRow(widget.controller.t('you')),
-          const SizedBox(height: 7),
+          const SizedBox(height: 5),
           _memberRow(widget.controller.t('friend')),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(40),
+                padding: const EdgeInsets.symmetric(vertical: 9),
+              ),
               onPressed: callActive ? _focusCallWindow : _startCall,
               icon: Icon(
                 callActive
@@ -1003,9 +1011,9 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
     return Row(
       children: [
         const CircleAvatar(
-          radius: 14,
+          radius: 12,
           backgroundColor: syncSurfaceRaised,
-          child: Icon(Icons.person_rounded, size: 16),
+          child: Icon(Icons.person_rounded, size: 14),
         ),
         const SizedBox(width: 9),
         Text(name),
