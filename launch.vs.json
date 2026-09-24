@@ -6,21 +6,6 @@
       "type": "default",
       "project": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
       "projectTarget": "",
-      "name": "SyncWatch Mock",
-      "workingDirectory": "${workspaceRoot}",
-      "args": [
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        "${workspaceRoot}\\scripts\\bootstrap_and_run.ps1",
-        "-Mock"
-      ]
-    },
-    {
-      "type": "default",
-      "project": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-      "projectTarget": "",
       "name": "SyncWatch Dev",
       "workingDirectory": "${workspaceRoot}",
       "args": [
