@@ -629,11 +629,8 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final baseSelectedHeight =
-            (constraints.maxHeight * 0.52).clamp(300.0, 370.0);
-        final selectedHeight = expandedTrackMenu == null
-            ? baseSelectedHeight
-            : (baseSelectedHeight + 92).clamp(360.0, 440.0);
+        final selectedHeight =
+            (constraints.maxHeight * 0.54).clamp(345.0, 375.0);
 
         return Column(
           children: [
@@ -642,6 +639,7 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
               child: Container(
                 width: double.infinity,
                 decoration: _panelDecoration(),
+                clipBehavior: Clip.antiAlias,
                 child: movie == null
                     ? Center(
                         child: Text(
@@ -649,9 +647,17 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
                           style: const TextStyle(color: Colors.white54),
                         ),
                       )
-                    : SingleChildScrollView(
-                        padding: const EdgeInsets.all(24),
-                        child: _movieDetails(movie),
+                    : Stack(
+                        children: [
+                          Positioned.fill(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.all(24),
+                              child: _movieDetails(movie),
+                            ),
+                          ),
+                          if (expandedTrackMenu != null)
+                            _trackMenuOverlay(movie),
+                        ],
                       ),
               ),
             ),
@@ -758,44 +764,6 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
             ),
           ],
         ),
-        if (expandedTrackMenu != null) ...[
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Expanded(child: SizedBox()),
-              const Expanded(child: SizedBox()),
-              Expanded(
-                child: expandedTrackMenu == 'audio'
-                    ? _expandedTrackList(
-                        items: audioNames,
-                        selectedIndex: selectedAudioIndex,
-                        onSelected: (index) {
-                          setState(() {
-                            selectedAudioIndex = index;
-                            expandedTrackMenu = null;
-                          });
-                        },
-                      )
-                    : const SizedBox(),
-              ),
-              Expanded(
-                child: expandedTrackMenu == 'subtitles'
-                    ? _expandedTrackList(
-                        items: subtitleNames,
-                        selectedIndex: selectedSubtitleIndex,
-                        onSelected: (index) {
-                          setState(() {
-                            selectedSubtitleIndex = index;
-                            expandedTrackMenu = null;
-                          });
-                        },
-                      )
-                    : const SizedBox(),
-              ),
-            ],
-          ),
-        ],
         const SizedBox(height: 16),
         Row(
           children: [
@@ -812,8 +780,10 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
           ],
         ),
         const SizedBox(height: 14),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        SizedBox(
+          height: 62,
+          child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: syncBackgroundDeep.withValues(alpha: 0.38),
             borderRadius: BorderRadius.circular(13),
@@ -841,7 +811,74 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
             ],
           ),
         ),
+        ),
       ],
+    );
+  }
+
+  Widget _trackMenuOverlay(MovieItem movie) {
+    final audioNames = movie.audioTrackNames.isEmpty
+        ? [widget.controller.t('noAudioTracks')]
+        : movie.audioTrackNames;
+    final subtitleNames = movie.subtitleTrackNames.isEmpty
+        ? [widget.controller.t('noSubtitles')]
+        : movie.subtitleTrackNames;
+
+    final isAudio = expandedTrackMenu == 'audio';
+    final items = isAudio ? audioNames : subtitleNames;
+    final selectedIndex =
+        isAudio ? selectedAudioIndex : selectedSubtitleIndex;
+
+    return Positioned(
+      top: 142,
+      right: isAudio ? 178 : 18,
+      width: 215,
+      child: Material(
+        elevation: 12,
+        borderRadius: BorderRadius.circular(12),
+        color: syncBackgroundDeep,
+        child: Container(
+          constraints: const BoxConstraints(maxHeight: 120),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: syncBorder),
+          ),
+          child: Scrollbar(
+            thumbVisibility: items.length > 3,
+            child: ListView.builder(
+              shrinkWrap: true,
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              itemCount: items.length,
+              itemBuilder: (context, index) {
+                final selected = index == selectedIndex;
+                return ListTile(
+                  dense: true,
+                  visualDensity: const VisualDensity(vertical: -3),
+                  selected: selected,
+                  leading: selected
+                      ? const Icon(Icons.check_rounded, size: 18)
+                      : const SizedBox(width: 18),
+                  title: Text(
+                    items[index],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () {
+                    setState(() {
+                      if (isAudio) {
+                        selectedAudioIndex = index;
+                      } else {
+                        selectedSubtitleIndex = index;
+                      }
+                      expandedTrackMenu = null;
+                    });
+                  },
+                );
+              },
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -905,50 +942,6 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _expandedTrackList({
-    required List<String> items,
-    required int selectedIndex,
-    required ValueChanged<int> onSelected,
-  }) {
-    return Container(
-      width: double.infinity,
-      constraints: const BoxConstraints(maxHeight: 118),
-      decoration: BoxDecoration(
-        color: syncBackgroundDeep.withValues(alpha: 0.78),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: syncBorder),
-      ),
-      child: Scrollbar(
-        thumbVisibility: items.length > 4,
-        child: ListView.builder(
-          shrinkWrap: true,
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          itemCount: items.length,
-          itemBuilder: (context, index) {
-            final selected = index == selectedIndex;
-            return Material(
-              color: Colors.transparent,
-              child: ListTile(
-                dense: true,
-                visualDensity: const VisualDensity(vertical: -3),
-                selected: selected,
-                leading: selected
-                    ? const Icon(Icons.check_rounded, size: 18)
-                    : const SizedBox(width: 18),
-                title: Text(
-                  items[index],
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                onTap: () => onSelected(index),
-              ),
-            );
-          },
-        ),
       ),
     );
   }
