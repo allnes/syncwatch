@@ -133,7 +133,7 @@ public static class SyncWatchWindow {
 "@
 
 $targetPid = [uint32]PID_PLACEHOLDER
-$found = [IntPtr]::Zero
+$script:found = [IntPtr]::Zero
 
 $callback = [SyncWatchWindow+EnumWindowsProc]{
   param([IntPtr]$hWnd, [IntPtr]$lParam)
