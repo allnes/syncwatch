@@ -73,6 +73,8 @@ class AppStrings {
       'callInactive': 'Call not started',
       'cameraOn': 'Camera on',
       'microphoneOn': 'Microphone on',
+      'microphone': 'Microphone',
+      'partnerVideo': 'Partner',
     },
     'ru': {
       'movies': 'Фильмы',
@@ -127,7 +129,7 @@ class AppStrings {
       'appearanceHint': 'Внешний вид SyncWatch и язык интерфейса.',
       'playbackHint': 'Поведение плеера и параметры синхронизации.',
       'callHint': 'Камера, микрофон и параметры звука звонка.',
-      'syncHint': 'Сервер, комната и имя для подключения.'
+      'syncHint': 'Сервер, комната и имя для подключения.',
       'files': 'файлов',
       'recentActivity': 'Последняя активность',
       'friendJoined': 'Собеседник подключился к комнате',
@@ -147,6 +149,8 @@ class AppStrings {
       'callInactive': 'Звонок не начат',
       'cameraOn': 'Камера включена',
       'microphoneOn': 'Микрофон включён',
+      'microphone': 'Микрофон',
+      'partnerVideo': 'Собеседник',
     },
   };
 
