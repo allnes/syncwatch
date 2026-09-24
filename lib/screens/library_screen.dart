@@ -629,8 +629,11 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final selectedHeight =
+        final baseSelectedHeight =
             (constraints.maxHeight * 0.52).clamp(300.0, 370.0);
+        final selectedHeight = expandedTrackMenu == null
+            ? baseSelectedHeight
+            : (baseSelectedHeight + 92).clamp(360.0, 440.0);
 
         return Column(
           children: [
@@ -756,24 +759,41 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
           ],
         ),
         if (expandedTrackMenu != null) ...[
-          const SizedBox(height: 10),
-          _expandedTrackList(
-            items: expandedTrackMenu == 'audio'
-                ? audioNames
-                : subtitleNames,
-            selectedIndex: expandedTrackMenu == 'audio'
-                ? selectedAudioIndex
-                : selectedSubtitleIndex,
-            onSelected: (index) {
-              setState(() {
-                if (expandedTrackMenu == 'audio') {
-                  selectedAudioIndex = index;
-                } else {
-                  selectedSubtitleIndex = index;
-                }
-                expandedTrackMenu = null;
-              });
-            },
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Expanded(child: SizedBox()),
+              const Expanded(child: SizedBox()),
+              Expanded(
+                child: expandedTrackMenu == 'audio'
+                    ? _expandedTrackList(
+                        items: audioNames,
+                        selectedIndex: selectedAudioIndex,
+                        onSelected: (index) {
+                          setState(() {
+                            selectedAudioIndex = index;
+                            expandedTrackMenu = null;
+                          });
+                        },
+                      )
+                    : const SizedBox(),
+              ),
+              Expanded(
+                child: expandedTrackMenu == 'subtitles'
+                    ? _expandedTrackList(
+                        items: subtitleNames,
+                        selectedIndex: selectedSubtitleIndex,
+                        onSelected: (index) {
+                          setState(() {
+                            selectedSubtitleIndex = index;
+                            expandedTrackMenu = null;
+                          });
+                        },
+                      )
+                    : const SizedBox(),
+              ),
+            ],
           ),
         ],
         const SizedBox(height: 16),
@@ -896,7 +916,7 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
   }) {
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(maxHeight: 170),
+      constraints: const BoxConstraints(maxHeight: 118),
       decoration: BoxDecoration(
         color: syncBackgroundDeep.withValues(alpha: 0.78),
         borderRadius: BorderRadius.circular(12),
@@ -906,7 +926,7 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
         thumbVisibility: items.length > 4,
         child: ListView.builder(
           shrinkWrap: true,
-          padding: const EdgeInsets.symmetric(vertical: 6),
+          padding: const EdgeInsets.symmetric(vertical: 2),
           itemCount: items.length,
           itemBuilder: (context, index) {
             final selected = index == selectedIndex;
@@ -914,6 +934,7 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
               color: Colors.transparent,
               child: ListTile(
                 dense: true,
+                visualDensity: const VisualDensity(vertical: -3),
                 selected: selected,
                 leading: selected
                     ? const Icon(Icons.check_rounded, size: 18)
