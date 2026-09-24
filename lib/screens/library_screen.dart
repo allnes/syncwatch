@@ -288,7 +288,7 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
       final width = probe.state.width;
       final height = probe.state.height;
       final resolution = width != null && height != null
-          ? '${width}×${height}'
+          ? '$width×$height'
           : movie.resolution;
 
       final updated = MovieItem(
