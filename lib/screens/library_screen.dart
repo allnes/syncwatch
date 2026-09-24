@@ -911,18 +911,21 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
           itemCount: items.length,
           itemBuilder: (context, index) {
             final selected = index == selectedIndex;
-            return ListTile(
-              dense: true,
-              selected: selected,
-              leading: selected
-                  ? const Icon(Icons.check_rounded, size: 18)
-                  : const SizedBox(width: 18),
-              title: Text(
-                items[index],
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+            return Material(
+              color: Colors.transparent,
+              child: ListTile(
+                dense: true,
+                selected: selected,
+                leading: selected
+                    ? const Icon(Icons.check_rounded, size: 18)
+                    : const SizedBox(width: 18),
+                title: Text(
+                  items[index],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                onTap: () => onSelected(index),
               ),
-              onTap: () => onSelected(index),
             );
           },
         ),
