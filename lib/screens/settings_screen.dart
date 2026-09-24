@@ -42,7 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Expanded(
                 child: Row(
                   children: [
-                    SizedBox(width: 205, child: _sidebar()),
+                    SizedBox(width: 245, child: _sidebar()),
                     const VerticalDivider(width: 1),
                     Expanded(child: _content()),
                   ],
@@ -108,18 +108,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           const Spacer(),
-          const Divider(),
-          DropdownButtonFormField<String>(
-            value: controller.locale.languageCode,
-            decoration: InputDecoration(labelText: controller.t('language')),
-            items: const [
-              DropdownMenuItem(value: 'en', child: Text('English')),
-              DropdownMenuItem(value: 'ru', child: Text('Русский')),
-            ],
-            onChanged: (value) {
-              if (value != null) controller.setLanguage(value);
-            },
-          ),
         ],
       ),
     );
