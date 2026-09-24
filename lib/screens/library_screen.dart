@@ -793,7 +793,7 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
         ),
         const SizedBox(height: 14),
         Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: syncBackgroundDeep.withValues(alpha: 0.38),
             borderRadius: BorderRadius.circular(13),
@@ -811,6 +811,7 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
                     const SizedBox(height: 3),
                     Text(
                       movie.fullPath,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(color: Colors.white54),
                     ),
@@ -942,26 +943,27 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
             widget.controller.t('roomStatus'),
             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 13),
+          const SizedBox(height: 10),
           Row(
             children: [
               const Icon(Icons.groups_2_rounded, color: syncAccentSoft),
               const SizedBox(width: 10),
-              Text(
-                widget.controller.roomName,
-                style: const TextStyle(fontWeight: FontWeight.w700),
+              Expanded(
+                child: Text(
+                  widget.controller.roomName,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
               ),
-              const Spacer(),
               const Icon(Icons.circle, size: 9, color: syncSuccess),
               const SizedBox(width: 6),
               Text(widget.controller.t('bothReady')),
             ],
           ),
-          const Spacer(),
-          _memberRow(widget.controller.t('you')),
-          const SizedBox(height: 8),
-          _memberRow(widget.controller.t('friend')),
           const SizedBox(height: 12),
+          _memberRow(widget.controller.t('you')),
+          const SizedBox(height: 7),
+          _memberRow(widget.controller.t('friend')),
+          const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
