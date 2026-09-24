@@ -185,8 +185,8 @@ class _RemoteVideoOverlayState extends State<RemoteVideoOverlay> {
                 onPanUpdate: (details) {
                   setState(() {
                     size = Size(
-                      (size.width + details.delta.dx).clamp(180.0, 720.0),
-                      (size.height + details.delta.dy).clamp(120.0, 480.0),
+                      (size.width + details.delta.dx).clamp(180.0, 720.0).toDouble(),
+                      (size.height + details.delta.dy).clamp(120.0, 480.0).toDouble(),
                     );
                   });
                 },

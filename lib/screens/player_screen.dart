@@ -168,7 +168,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
               Text(_formatSeconds(positionSeconds)),
               Expanded(
                 child: Slider(
-                  value: positionSeconds.clamp(0, durationSeconds),
+                  value: positionSeconds.clamp(0.0, durationSeconds).toDouble(),
                   max: durationSeconds,
                   onChanged: (value) => setState(() => positionSeconds = value),
                   onChangeEnd: _seekAbsolute,

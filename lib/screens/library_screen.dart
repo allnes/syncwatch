@@ -143,7 +143,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     '${_formatDuration(movie.duration)}  •  ${movie.resolution}',
                   ),
                   onTap: () => setState(() => selected = movie),
-                  onDoubleTap: () => _openPlayer(context, movie),
                   trailing: IconButton(
                     icon: const Icon(Icons.play_arrow_rounded),
                     onPressed: () => _openPlayer(context, movie),

@@ -46,12 +46,12 @@ class AppController extends ChangeNotifier {
   }
 
   void setMovieVolume(double value) {
-    movieVolume = value.clamp(0.0, 1.0);
+    movieVolume = value.clamp(0.0, 1.0).toDouble();
     notifyListeners();
   }
 
   void setCallVolume(double value) {
-    callVolume = value.clamp(0.0, 1.0);
+    callVolume = value.clamp(0.0, 1.0).toDouble();
     notifyListeners();
   }
 
