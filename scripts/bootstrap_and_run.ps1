@@ -35,5 +35,9 @@ if (-not (Test-Path "windows\CMakeLists.txt")) {
 }
 
 flutter pub get
+if ($LASTEXITCODE -ne 0) {
+  exit $LASTEXITCODE
+}
 
 flutter run -d windows
+exit $LASTEXITCODE
