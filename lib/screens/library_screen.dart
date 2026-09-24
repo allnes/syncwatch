@@ -190,13 +190,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
           fullPath: file.path,
           duration: Duration.zero,
           resolution: _inferResolution(fileName),
-          audioTracks: 1,
+          audioTracks: 0,
           subtitleTracks: matchingSubs.length,
-          audioTrackNames: [widget.controller.t('defaultAudio')],
-          subtitleTrackNames: [
-            widget.controller.t('subtitlesOff'),
-            ...matchingSubs,
-          ],
+          audioTrackNames: const [],
+          subtitleTrackNames: matchingSubs,
         );
       }).toList();
 
@@ -207,9 +204,149 @@ class _LibraryScreenState extends State<LibraryScreen> {
         selectedAudioIndex = 0;
         selectedSubtitleIndex = 0;
       });
+
+      if (scanned.isNotEmpty) {
+        await _probeMovie(scanned.first);
+      }
     } finally {
       if (mounted) setState(() => scanning = false);
     }
+  }
+
+  Future<void> _probeMovie(MovieItem movie) async {
+    if (metadataLoading && metadataPath == movie.fullPath) return;
+    if (movie.duration > Duration.zero && movie.audioTrackNames.isNotEmpty) {
+      return;
+    }
+
+    setState(() {
+      metadataLoading = true;
+      metadataPath = movie.fullPath;
+    });
+
+    final probe = Player();
+    try {
+      await probe.open(
+        Media(Uri.file(movie.fullPath).toString()),
+        play: false,
+      );
+
+      Duration duration = probe.state.duration;
+      if (duration == Duration.zero) {
+        try {
+          duration = await probe.stream.duration
+              .firstWhere((value) => value > Duration.zero)
+              .timeout(const Duration(seconds: 2));
+        } catch (_) {}
+      }
+
+      var tracks = probe.state.tracks;
+      if (tracks.audio.isEmpty && tracks.subtitle.isEmpty) {
+        try {
+          tracks = await probe.stream.tracks
+              .firstWhere(
+                (value) =>
+                    value.audio.isNotEmpty || value.subtitle.isNotEmpty,
+              )
+              .timeout(const Duration(seconds: 2));
+        } catch (_) {}
+      }
+
+      final audio = tracks.audio
+          .where((track) => track.id != 'auto' && track.id != 'no')
+          .toList();
+      final embeddedSubtitles = tracks.subtitle
+          .where((track) => track.id != 'auto' && track.id != 'no')
+          .toList();
+
+      final externalSubtitles = movie.subtitleTrackNames
+          .where(
+            (name) =>
+                name != widget.controller.t('noSubtitles') &&
+                name != widget.controller.t('subtitlesOff'),
+          )
+          .toList();
+
+      final width = probe.state.width;
+      final height = probe.state.height;
+      final resolution = width != null && height != null
+          ? '${width}×${height}'
+          : movie.resolution;
+
+      final updated = MovieItem(
+        fileName: movie.fileName,
+        fullPath: movie.fullPath,
+        duration: duration,
+        resolution: resolution,
+        audioTracks: audio.length,
+        subtitleTracks: embeddedSubtitles.length + externalSubtitles.length,
+        audioTrackNames: [
+          for (final track in audio) _audioTrackLabel(track),
+        ],
+        subtitleTrackNames: [
+          widget.controller.t('noSubtitles'),
+          for (final track in embeddedSubtitles) _subtitleTrackLabel(track),
+          ...externalSubtitles,
+        ],
+      );
+
+      if (!mounted) return;
+      setState(() {
+        final index = movies.indexWhere(
+          (item) => item.fullPath == updated.fullPath,
+        );
+        if (index >= 0) {
+          movies[index] = updated;
+        }
+        if (selected?.fullPath == updated.fullPath) {
+          selected = updated;
+          selectedAudioIndex = 0;
+          selectedSubtitleIndex = 0;
+        }
+      });
+    } finally {
+      await probe.dispose();
+      if (mounted && metadataPath == movie.fullPath) {
+        setState(() => metadataLoading = false);
+      }
+    }
+  }
+
+  String _audioTrackLabel(AudioTrack track) {
+    final parts = <String>[];
+    if (track.title != null && track.title!.trim().isNotEmpty) {
+      parts.add(track.title!.trim());
+    }
+    if (track.language != null && track.language!.trim().isNotEmpty) {
+      parts.add(track.language!.toUpperCase());
+    }
+    if (track.codec != null && track.codec!.trim().isNotEmpty) {
+      parts.add(track.codec!.toUpperCase());
+    }
+    if (track.channels != null && track.channels!.trim().isNotEmpty) {
+      parts.add(track.channels!);
+    }
+    if (parts.isEmpty) {
+      return '${widget.controller.t('audioTrack')} ${track.id}';
+    }
+    return parts.join(' · ');
+  }
+
+  String _subtitleTrackLabel(SubtitleTrack track) {
+    final parts = <String>[];
+    if (track.title != null && track.title!.trim().isNotEmpty) {
+      parts.add(track.title!.trim());
+    }
+    if (track.language != null && track.language!.trim().isNotEmpty) {
+      parts.add(track.language!.toUpperCase());
+    }
+    if (track.codec != null && track.codec!.trim().isNotEmpty) {
+      parts.add(track.codec!.toUpperCase());
+    }
+    if (parts.isEmpty) {
+      return '${widget.controller.t('subtitleTrack')} ${track.id}';
+    }
+    return parts.join(' · ');
   }
 
   List<MovieItem> get _visibleMovies {
@@ -446,12 +583,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                   style:
                                       const TextStyle(color: Colors.white54),
                                 ),
-                          onTap: () {
+                          onTap: () async {
                             setState(() {
                               selected = movie;
                               selectedAudioIndex = 0;
                               selectedSubtitleIndex = 0;
                             });
+                            await _probeMovie(movie);
                           },
                         ),
                       );
@@ -501,11 +639,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _movieDetails(MovieItem movie) {
+    final probingThisMovie =
+        metadataLoading && metadataPath == movie.fullPath;
     final audioNames = movie.audioTrackNames.isEmpty
-        ? [widget.controller.t('defaultAudio')]
+        ? [
+            probingThisMovie
+                ? '…'
+                : widget.controller.t('noAudioTracks'),
+          ]
         : movie.audioTrackNames;
     final subtitleNames = movie.subtitleTrackNames.isEmpty
-        ? [widget.controller.t('subtitlesOff')]
+        ? [widget.controller.t('noSubtitles')]
         : movie.subtitleTrackNames;
 
     selectedAudioIndex = selectedAudioIndex.clamp(0, audioNames.length - 1).toInt();
@@ -854,10 +998,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   void _openPlayer(MovieItem movie) {
     final audioNames = movie.audioTrackNames.isEmpty
-        ? [widget.controller.t('defaultAudio')]
+        ? [widget.controller.t('noAudioTracks')]
         : movie.audioTrackNames;
     final subtitleNames = movie.subtitleTrackNames.isEmpty
-        ? [widget.controller.t('subtitlesOff')]
+        ? [widget.controller.t('noSubtitles')]
         : movie.subtitleTrackNames;
 
     Navigator.of(context).push(
