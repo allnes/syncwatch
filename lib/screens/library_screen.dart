@@ -17,11 +17,9 @@ class LibraryScreen extends StatefulWidget {
   const LibraryScreen({
     super.key,
     required this.controller,
-    required this.mockMode,
   });
 
   final AppController controller;
-  final bool mockMode;
 
   @override
   State<LibraryScreen> createState() => _LibraryScreenState();
