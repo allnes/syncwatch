@@ -50,6 +50,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   final CallEngine callEngine = MockCallEngine();
   int selectedAudioIndex = 0;
   int selectedSubtitleIndex = 0;
+  String? expandedTrackMenu;
 
   @override
   void initState() {
@@ -611,6 +612,7 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
                               selected = movie;
                               selectedAudioIndex = 0;
                               selectedSubtitleIndex = 0;
+                              expandedTrackMenu = null;
                             });
                             await _probeMovie(movie);
                           },
@@ -627,37 +629,44 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
   Widget _mainPanel() {
     final movie = selected;
 
-    return Column(
-      children: [
-        Expanded(
-          child: Container(
-            width: double.infinity,
-            decoration: _panelDecoration(),
-            child: movie == null
-                ? Center(
-                    child: Text(
-                      widget.controller.t('noMovies'),
-                      style: const TextStyle(color: Colors.white54),
-                    ),
-                  )
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: _movieDetails(movie),
-                  ),
-          ),
-        ),
-        const SizedBox(height: 14),
-        SizedBox(
-          height: 164,
-          child: Row(
-            children: [
-              Expanded(child: _roomCard()),
-              const SizedBox(width: 14),
-              Expanded(child: _activityCard()),
-            ],
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final selectedHeight =
+            (constraints.maxHeight * 0.55).clamp(310.0, 410.0);
+
+        return Column(
+          children: [
+            SizedBox(
+              height: selectedHeight,
+              child: Container(
+                width: double.infinity,
+                decoration: _panelDecoration(),
+                child: movie == null
+                    ? Center(
+                        child: Text(
+                          widget.controller.t('noMovies'),
+                          style: const TextStyle(color: Colors.white54),
+                        ),
+                      )
+                    : SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: _movieDetails(movie),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(child: _roomCard()),
+                  const SizedBox(width: 14),
+                  Expanded(child: _activityCard()),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -722,6 +731,7 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
               child: _trackSelector(
                 icon: Icons.graphic_eq_rounded,
                 label: widget.controller.t('audioTracks'),
+                menuKey: 'audio',
                 items: audioNames,
                 value: selectedAudioIndex,
                 onChanged: (value) =>
@@ -738,6 +748,7 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
                   : _trackSelector(
                       icon: Icons.subtitles_rounded,
                       label: widget.controller.t('subtitles'),
+                      menuKey: 'subtitles',
                       items: subtitleNames,
                       value: selectedSubtitleIndex,
                       onChanged: (value) =>
@@ -746,6 +757,27 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
             ),
           ],
         ),
+        if (expandedTrackMenu != null) ...[
+          const SizedBox(height: 10),
+          _expandedTrackList(
+            items: expandedTrackMenu == 'audio'
+                ? audioNames
+                : subtitleNames,
+            selectedIndex: expandedTrackMenu == 'audio'
+                ? selectedAudioIndex
+                : selectedSubtitleIndex,
+            onSelected: (index) {
+              setState(() {
+                if (expandedTrackMenu == 'audio') {
+                  selectedAudioIndex = index;
+                } else {
+                  selectedSubtitleIndex = index;
+                }
+                expandedTrackMenu = null;
+              });
+            },
+          ),
+        ],
         const SizedBox(height: 16),
         Row(
           children: [
@@ -797,10 +829,14 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
   Widget _trackSelector({
     required IconData icon,
     required String label,
+    required String menuKey,
     required List<String> items,
     required int value,
     required ValueChanged<int> onChanged,
   }) {
+    final selectedText =
+        items.isEmpty ? widget.controller.t('unknown') : items[value];
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(
@@ -814,31 +850,82 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
               children: [
                 Text(label, style: const TextStyle(color: Colors.white54)),
                 const SizedBox(height: 5),
-                DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
-                    value: value,
-                    isExpanded: true,
-                    menuMaxHeight: 300,
-                    items: [
-                      for (var i = 0; i < items.length; i++)
-                        DropdownMenuItem(
-                          value: i,
+                InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: items.length <= 1
+                      ? null
+                      : () {
+                          setState(() {
+                            expandedTrackMenu =
+                                expandedTrackMenu == menuKey ? null : menuKey;
+                          });
+                        },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 7),
+                    child: Row(
+                      children: [
+                        Expanded(
                           child: Text(
-                            items[i],
+                            selectedText,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                         ),
-                    ],
-                    onChanged: (newValue) {
-                      if (newValue != null) onChanged(newValue);
-                    },
+                        if (items.length > 1)
+                          Icon(
+                            expandedTrackMenu == menuKey
+                                ? Icons.arrow_drop_up_rounded
+                                : Icons.arrow_drop_down_rounded,
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _expandedTrackList({
+    required List<String> items,
+    required int selectedIndex,
+    required ValueChanged<int> onSelected,
+  }) {
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(maxHeight: 170),
+      decoration: BoxDecoration(
+        color: syncBackgroundDeep.withValues(alpha: 0.78),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: syncBorder),
+      ),
+      child: Scrollbar(
+        thumbVisibility: items.length > 4,
+        child: ListView.builder(
+          shrinkWrap: true,
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          itemCount: items.length,
+          itemBuilder: (context, index) {
+            final selected = index == selectedIndex;
+            return ListTile(
+              dense: true,
+              selected: selected,
+              leading: selected
+                  ? const Icon(Icons.check_rounded, size: 18)
+                  : const SizedBox(width: 18),
+              title: Text(
+                items[index],
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onTap: () => onSelected(index),
+            );
+          },
+        ),
       ),
     );
   }
@@ -1000,8 +1087,6 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
     final subtitleNames = movie.subtitleTrackNames.isEmpty
         ? [widget.controller.t('noSubtitles')]
         : movie.subtitleTrackNames;
-
-    widget.controller.beginPlaybackSession(movie.fullPath);
 
     await Navigator.of(context).push(
       MaterialPageRoute(
