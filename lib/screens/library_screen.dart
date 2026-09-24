@@ -540,7 +540,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
             FilledButton.icon(
               onPressed: () => _openPlayer(movie),
               icon: const Icon(Icons.play_arrow_rounded),
-              label: Text(widget.controller.t('startWatching')),
+              label: Text(
+                widget.controller.hasPlaybackSessionFor(movie.fullPath)
+                    ? widget.controller.t('continueWatching')
+                    : widget.controller.t('startWatching'),
+              ),
             ),
 
           ],
