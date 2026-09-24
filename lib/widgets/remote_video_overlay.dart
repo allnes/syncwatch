@@ -58,7 +58,7 @@ class _RemoteVideoOverlayState extends State<RemoteVideoOverlay> {
                 children: [
                   const Icon(Icons.circle, size: 8, color: Color(0xFF56D38B)),
                   const SizedBox(width: 8),
-                  const Text('Friend'),
+                  Text(widget.controller.t('partnerVideo')),
                   IconButton(
                     tooltip: widget.controller.t('restore'),
                     onPressed: () => setState(() => minimized = false),
@@ -128,7 +128,7 @@ class _RemoteVideoOverlayState extends State<RemoteVideoOverlay> {
                   children: [
                     Icon(Icons.mic_rounded, size: 15),
                     SizedBox(width: 5),
-                    Text('Friend  •  480p'),
+                    Text('${widget.controller.t('partnerVideo')}  •  480p'),
                   ],
                 ),
               ),
