@@ -51,7 +51,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   bool isFullscreen = false;
   bool topControlsVisible = true;
   bool bottomControlsVisible = true;
-  bool nativeTitleBarVisibleInFullscreen = false;
   late int currentIndex;
   late MovieItem currentMovie;
 
@@ -67,6 +66,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   final GlobalKey playlistButtonKey = GlobalKey();
   final GlobalKey audioTrackButtonKey = GlobalKey();
   final GlobalKey subtitleButtonKey = GlobalKey();
+  final GlobalKey volumeButtonKey = GlobalKey();
 
   @override
   void initState() {
@@ -258,15 +258,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                 _changeMovieVolume(delta);
               }
             },
-            child: MouseRegion(
-              onHover: (event) {
-                if (isFullscreen &&
-                    nativeTitleBarVisibleInFullscreen &&
-                    event.localPosition.dy > 90) {
-                  _hideFullscreenTopChrome();
-                }
-              },
-              child: Stack(
+            child: Stack(
               children: [
                 Positioned.fill(child: _movieSurface(context)),
 
@@ -275,11 +267,26 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                     left: 0,
                     right: 0,
                     top: 0,
-                    height: 90,
+                    height: topControlsVisible ? 82 : 40,
                     child: MouseRegion(
-                      onEnter: (_) => _showFullscreenTopChrome(),
+                      onEnter: (_) {
+                        if (!topControlsVisible) {
+                          setState(() => topControlsVisible = true);
+                        }
+                      },
+                      onExit: (_) {
+                        if (topControlsVisible) {
+                          setState(() => topControlsVisible = false);
+                        }
+                      },
                       child: topControlsVisible
-                          ? _topBar(context)
+                          ? Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _fullscreenWindowBar(),
+                                _topBar(context, compact: true),
+                              ],
+                            )
                           : const SizedBox.expand(),
                     ),
                   )
@@ -296,7 +303,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    height: 140,
+                    height: 72,
                     child: MouseRegion(
                       onEnter: (_) {
                         if (!bottomControlsVisible) {
@@ -332,7 +339,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                   ),
               ],
             ),
-            ),
           ),
         ),
         );
@@ -344,7 +350,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     return Container(
       margin: EdgeInsets.only(
         top: isFullscreen ? 0 : 68,
-        bottom: isFullscreen ? 0 : 118,
+        bottom: isFullscreen ? 0 : 78,
       ),
       color: Colors.black,
       child: GestureDetector(
@@ -365,7 +371,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             if (!isFullscreen || topControlsVisible)
               Positioned(
                 left: 24,
-                top: isFullscreen ? 82 : 18,
+                top: isFullscreen ? 88 : 18,
                 right: 24,
                 child: IgnorePointer(
                   child: Text(
@@ -388,10 +394,55 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     );
   }
 
-  Widget _topBar(BuildContext context) {
+  Widget _fullscreenWindowBar() {
     return Container(
-      height: 68,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      height: 34,
+      color: const Color(0xFF7357C8),
+      child: Row(
+        children: [
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              'SyncWatch',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white70,
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: widget.controller.t('minimize'),
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints(minWidth: 38, minHeight: 34),
+            padding: EdgeInsets.zero,
+            onPressed: windowManager.minimize,
+            icon: const Icon(Icons.remove_rounded, size: 17),
+          ),
+          IconButton(
+            tooltip: widget.controller.t('fullscreen'),
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints(minWidth: 38, minHeight: 34),
+            padding: EdgeInsets.zero,
+            onPressed: _toggleFullscreen,
+            icon: const Icon(Icons.fullscreen_exit_rounded, size: 17),
+          ),
+          IconButton(
+            tooltip: widget.controller.t('hide'),
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints(minWidth: 38, minHeight: 34),
+            padding: EdgeInsets.zero,
+            onPressed: windowManager.close,
+            icon: const Icon(Icons.close_rounded, size: 17),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _topBar(BuildContext context, {bool compact = false}) {
+    return Container(
+      height: compact ? 48 : 68,
+      padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 20),
       color: syncBackgroundDeep.withValues(alpha: 0.98),
       child: Row(
         children: [
@@ -401,13 +452,16 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             icon: const Icon(Icons.arrow_back_rounded),
           ),
           const SizedBox(width: 6),
-          const Text(
+          Text(
             'SyncWatch',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            style: TextStyle(
+              fontSize: compact ? 17 : 20,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(width: 20),
           const VerticalDivider(indent: 16, endIndent: 16),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           const Icon(Icons.groups_2_rounded, color: syncAccentSoft),
           const SizedBox(width: 8),
           Text(widget.controller.roomName),
@@ -441,8 +495,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     final sliderValue = positionSeconds.clamp(0.0, sliderMax).toDouble();
 
     return Container(
-      height: 118,
-      padding: const EdgeInsets.fromLTRB(22, 8, 22, 14),
+      height: 78,
+      padding: const EdgeInsets.fromLTRB(14, 2, 14, 6),
       color: syncBackgroundDeep.withValues(alpha: 0.98),
       child: Column(
         children: [
@@ -450,7 +504,17 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             children: [
               Text(_formatSeconds(positionSeconds)),
               Expanded(
-                child: Slider(
+                child: SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 2,
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 5,
+                    ),
+                    overlayShape: const RoundSliderOverlayShape(
+                      overlayRadius: 10,
+                    ),
+                  ),
+                  child: Slider(
                   value: sliderValue,
                   max: sliderMax,
                   onChanged: durationSeconds <= 0
@@ -458,6 +522,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                       : (value) => setState(() => positionSeconds = value),
                   onChangeEnd:
                       durationSeconds <= 0 ? null : (value) => _seekAbsolute(value),
+                  ),
                 ),
               ),
               Text(_formatSeconds(durationSeconds)),
@@ -487,12 +552,12 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                           ? () => _switchToIndex(currentIndex - 1)
                           : null,
                     ),
-                    const SizedBox(width: 22),
+                    const SizedBox(width: 14),
                     _roundControl(
                       icon: Icons.fast_rewind_rounded,
                       onPressed: () => _skip(-widget.controller.skipSeconds),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     _roundControl(
                       icon: playing
                           ? Icons.pause_rounded
@@ -500,12 +565,12 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                       onPressed: _togglePlayback,
                       prominent: true,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     _roundControl(
                       icon: Icons.fast_forward_rounded,
                       onPressed: () => _skip(widget.controller.skipSeconds),
                     ),
-                    const SizedBox(width: 22),
+                    const SizedBox(width: 14),
                     _fileControl(
                       tooltip: widget.controller.t('nextFile'),
                       icon: Icons.skip_next_rounded,
@@ -546,9 +611,15 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                         ),
                         const SizedBox(width: 8),
                         IconButton(
+                          key: volumeButtonKey,
                           tooltip: widget.controller.t('audio'),
                           visualDensity: VisualDensity.compact,
-                          onPressed: () => _showAudioPopover(context),
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          padding: EdgeInsets.zero,
+                          onPressed: _showAudioPopover,
                           icon: Icon(
                             movieMuted
                                 ? Icons.volume_off_rounded
@@ -578,8 +649,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       child: IconButton(
         key: key,
         visualDensity: VisualDensity.compact,
+        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+        padding: EdgeInsets.zero,
         onPressed: onPressed,
-        icon: Icon(icon, size: 22),
+        icon: Icon(icon, size: 19),
       ),
     );
   }
@@ -592,8 +665,11 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     return Tooltip(
       message: tooltip,
       child: IconButton.filledTonal(
+        visualDensity: VisualDensity.compact,
+        constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+        padding: EdgeInsets.zero,
         onPressed: onPressed,
-        icon: Icon(icon, size: 24),
+        icon: Icon(icon, size: 20),
       ),
     );
   }
@@ -604,8 +680,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     bool prominent = false,
   }) {
     return SizedBox(
-      width: prominent ? 62 : 50,
-      height: prominent ? 62 : 50,
+      width: prominent ? 46 : 38,
+      height: prominent ? 46 : 38,
       child: FilledButton(
         onPressed: onPressed,
         style: FilledButton.styleFrom(
@@ -616,7 +692,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           side: const BorderSide(color: syncAccent),
           shape: const CircleBorder(),
         ),
-        child: Icon(icon, size: prominent ? 32 : 28),
+        child: Icon(icon, size: prominent ? 26 : 21),
       ),
     );
   }
@@ -712,10 +788,14 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                       leading: selected
                           ? const Icon(Icons.check_rounded, size: 18)
                           : const SizedBox(width: 18),
-                      title: Text(
-                        items[index],
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      title: Tooltip(
+                        message: items[index],
+                        waitDuration: const Duration(milliseconds: 350),
+                        child: Text(
+                          items[index],
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       onTap: () => Navigator.of(context).pop(index),
                     );
@@ -737,7 +817,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       anchorKey: playlistButtonKey,
       items: labels,
       selectedIndex: currentIndex,
-      width: 420,
+      width: 340,
     );
     if (selected != null) {
       await _switchToIndex(selected);
@@ -756,7 +836,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       anchorKey: audioTrackButtonKey,
       items: labels,
       selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
-      width: 400,
+      width: 300,
     );
     if (selected != null) {
       await player.setAudioTrack(audioTracks[selected]);
@@ -778,7 +858,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       anchorKey: subtitleButtonKey,
       items: labels,
       selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
-      width: 380,
+      width: 240,
     );
     if (selected != null) {
       await player.setSubtitleTrack(tracks[selected]);
@@ -872,40 +952,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     }
   }
 
-  Future<void> _showFullscreenTopChrome() async {
-    if (!isFullscreen) return;
-
-    if (!nativeTitleBarVisibleInFullscreen) {
-      await windowManager.setTitleBarStyle(
-        TitleBarStyle.normal,
-        windowButtonVisibility: true,
-      );
-    }
-
-    if (!mounted) return;
-    setState(() {
-      nativeTitleBarVisibleInFullscreen = true;
-      topControlsVisible = true;
-    });
-  }
-
-  Future<void> _hideFullscreenTopChrome() async {
-    if (!isFullscreen) return;
-
-    if (nativeTitleBarVisibleInFullscreen) {
-      await windowManager.setTitleBarStyle(
-        TitleBarStyle.hidden,
-        windowButtonVisibility: false,
-      );
-    }
-
-    if (!mounted) return;
-    setState(() {
-      nativeTitleBarVisibleInFullscreen = false;
-      topControlsVisible = false;
-    });
-  }
-
   Future<void> _enterPlayerFullscreen() async {
     await windowManager.setTitleBarStyle(
       TitleBarStyle.hidden,
@@ -915,7 +961,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     if (!mounted) return;
     setState(() {
       isFullscreen = true;
-      nativeTitleBarVisibleInFullscreen = false;
       topControlsVisible = false;
       bottomControlsVisible = false;
     });
@@ -930,7 +975,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     if (!mounted) return;
     setState(() {
       isFullscreen = false;
-      nativeTitleBarVisibleInFullscreen = false;
       topControlsVisible = true;
       bottomControlsVisible = true;
     });
@@ -1078,56 +1122,89 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     }
   }
 
-  void _showAudioPopover(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      barrierColor: Colors.black26,
-      builder: (_) {
-        return Dialog(
-          alignment: Alignment.bottomRight,
-          insetPadding: const EdgeInsets.only(right: 72, bottom: 116),
-          child: SizedBox(
-            width: 350,
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: AnimatedBuilder(
-                animation: widget.controller,
-                builder: (context, _) {
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _volumeRow(
-                        label: widget.controller.t('movieVolume'),
-                        value: widget.controller.movieVolume,
-                        muted: movieMuted,
-                        onMute: () async {
-                          setState(() => movieMuted = !movieMuted);
-                          await player.setVolume(
-                            movieMuted
-                                ? 0
-                                : widget.controller.movieVolume * 100.0,
-                          );
-                        },
-                        onChanged: (value) async {
-                          widget.controller.setMovieVolume(value);
-                          await player.setVolume(value * 100.0);
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      _volumeRow(
-                        label: widget.controller.t('callVolume'),
-                        value: widget.controller.callVolume,
-                        muted: callMuted,
-                        onMute: () => setState(() => callMuted = !callMuted),
-                        onChanged: widget.controller.setCallVolume,
-                      ),
+  Future<void> _showAudioPopover() async {
+    final anchorContext = volumeButtonKey.currentContext;
+    if (anchorContext == null) return;
 
-                    ],
-                  );
-                },
+    final anchorBox = anchorContext.findRenderObject() as RenderBox;
+    final overlayBox =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final anchorOffset =
+        anchorBox.localToGlobal(Offset.zero, ancestor: overlayBox);
+    final anchorRect = anchorOffset & anchorBox.size;
+
+    const width = 270.0;
+    const height = 116.0;
+    final maxLeft = (overlayBox.size.width - width - 8)
+        .clamp(8.0, double.infinity)
+        .toDouble();
+    final left =
+        (anchorRect.center.dx - width / 2).clamp(8.0, maxLeft).toDouble();
+    final top =
+        (anchorRect.top - height - 10).clamp(8.0, double.infinity).toDouble();
+
+    await showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'volume',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 100),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return Stack(
+          children: [
+            Positioned(
+              left: left,
+              top: top,
+              width: width,
+              child: Material(
+                elevation: 14,
+                color: syncSurfaceRaised,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  child: AnimatedBuilder(
+                    animation: widget.controller,
+                    builder: (context, _) {
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _volumeRow(
+                            label: widget.controller.t('movieVolume'),
+                            value: widget.controller.movieVolume,
+                            muted: movieMuted,
+                            onMute: () async {
+                              setState(() => movieMuted = !movieMuted);
+                              await player.setVolume(
+                                movieMuted
+                                    ? 0
+                                    : widget.controller.movieVolume * 100.0,
+                              );
+                            },
+                            onChanged: (value) async {
+                              widget.controller.setMovieVolume(value);
+                              await player.setVolume(value * 100.0);
+                            },
+                          ),
+                          const SizedBox(height: 6),
+                          _volumeRow(
+                            label: widget.controller.t('callVolume'),
+                            value: widget.controller.callVolume,
+                            muted: callMuted,
+                            onMute: () =>
+                                setState(() => callMuted = !callMuted),
+                            onChanged: widget.controller.setCallVolume,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
               ),
             ),
-          ),
+          ],
         );
       },
     );
@@ -1142,10 +1219,23 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   }) {
     return Row(
       children: [
-        SizedBox(width: 54, child: Text(label)),
+        SizedBox(
+          width: 42,
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
         IconButton(
+          visualDensity: VisualDensity.compact,
+          constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+          padding: EdgeInsets.zero,
           onPressed: () => onMute(),
-          icon: Icon(muted ? Icons.volume_off : Icons.volume_up),
+          icon: Icon(
+            muted ? Icons.volume_off : Icons.volume_up,
+            size: 18,
+          ),
         ),
         Expanded(
           child: Slider(
@@ -1154,8 +1244,11 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           ),
         ),
         SizedBox(
-          width: 44,
-          child: Text('${(value * 100).round()}%'),
+          width: 36,
+          child: Text(
+            '${(value * 100).round()}%',
+            textAlign: TextAlign.right,
+          ),
         ),
       ],
     );
