@@ -496,14 +496,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         '$readyCount/2 ${widget.controller.t('ready').toLowerCase()}';
 
     final tooltipText = [
-      '${widget.controller.t('you')} — ' +
-          (youReady
-              ? widget.controller.t('ready')
-              : widget.controller.t('notReady')),
-      '${widget.controller.t('friend')} — ' +
-          (partnerReady
-              ? widget.controller.t('ready')
-              : widget.controller.t('notReady')),
+      '${widget.controller.t('you')} — ${youReady ? widget.controller.t('ready') : widget.controller.t('notReady')}',
+      '${widget.controller.t('friend')} — ${partnerReady ? widget.controller.t('ready') : widget.controller.t('notReady')}',
     ].join('\n');
 
     return Tooltip(
