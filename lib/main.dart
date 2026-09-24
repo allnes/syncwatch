@@ -15,10 +15,11 @@ Future<void> main(List<String> args) async {
 
   if (args.contains('--call-window')) {
     const options = WindowOptions(
-      size: Size(360, 240),
+      size: Size(260, 180),
       minimumSize: Size(260, 180),
       center: true,
       alwaysOnTop: true,
+      skipTaskbar: true,
       titleBarStyle: TitleBarStyle.hidden,
       backgroundColor: Colors.transparent,
     );
