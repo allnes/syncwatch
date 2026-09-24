@@ -96,15 +96,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           for (var i = 0; i < items.length; i++)
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
-              child: ListTile(
-                selected: section == i,
-                selectedTileColor: syncAccent.withValues(alpha: 0.15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+                child: ListTile(
+                  selected: section == i,
+                  selectedTileColor: syncAccent.withValues(alpha: 0.15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  leading: Icon(items[i].$1),
+                  title: Text(items[i].$2),
+                  onTap: () => setState(() => section = i),
                 ),
-                leading: Icon(items[i].$1),
-                title: Text(items[i].$2),
-                onTap: () => setState(() => section = i),
               ),
             ),
           const Spacer(),
