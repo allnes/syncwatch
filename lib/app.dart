@@ -49,8 +49,9 @@ class AppController extends ChangeNotifier {
     activeMoviePath = _prefs?.getString('activeMoviePath') ?? '';
     activeMoviePositionSeconds =
         _prefs?.getDouble('activeMoviePositionSeconds') ?? 0;
-    activeMovieSessionStarted =
-        _prefs?.getBool('activeMovieSessionStarted') ?? false;
+    // "Continue watching" describes the active app session only.
+    // A previous application run must not make the button say Continue.
+    activeMovieSessionStarted = false;
   }
 
   Future<void> _setString(String key, String value) async {
@@ -144,7 +145,6 @@ class AppController extends ChangeNotifier {
     activeMovieSessionStarted = true;
     _setString('activeMoviePath', activeMoviePath);
     _setDouble('activeMoviePositionSeconds', activeMoviePositionSeconds);
-    _setBool('activeMovieSessionStarted', true);
     notifyListeners();
   }
 
