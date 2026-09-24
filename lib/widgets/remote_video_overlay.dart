@@ -122,12 +122,12 @@ class _RemoteVideoOverlayState extends State<RemoteVideoOverlay> {
                 color: Colors.black54,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                 child: Row(
                   children: [
-                    Icon(Icons.mic_rounded, size: 15),
-                    SizedBox(width: 5),
+                    const Icon(Icons.mic_rounded, size: 15),
+                    const SizedBox(width: 5),
                     Text('${widget.controller.t('partnerVideo')}  •  480p'),
                   ],
                 ),
