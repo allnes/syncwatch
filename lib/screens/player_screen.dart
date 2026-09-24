@@ -63,6 +63,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
   AudioTrack? currentAudioTrack;
   SubtitleTrack? currentSubtitleTrack;
 
+  final GlobalKey playlistButtonKey = GlobalKey();
+  final GlobalKey audioTrackButtonKey = GlobalKey();
+  final GlobalKey subtitleButtonKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -400,6 +404,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
               icon: const Icon(Icons.videocam_rounded),
             ),
           IconButton(
+            tooltip: widget.controller.t('fullscreen'),
+            onPressed: _toggleFullscreen,
+            icon: Icon(
+              isFullscreen
+                  ? Icons.fullscreen_exit_rounded
+                  : Icons.fullscreen_rounded,
+            ),
+          ),
+          IconButton(
             tooltip: widget.controller.t('settings'),
             onPressed: () => showDialog<void>(
               context: context,
@@ -443,7 +456,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
           Expanded(
             child: Row(
               children: [
-                const Expanded(child: SizedBox()),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: _menuIconButton(
+                      key: playlistButtonKey,
+                      icon: Icons.playlist_play_rounded,
+                      tooltip: widget.controller.t('playlist'),
+                      onPressed: _showPlaylistMenu,
+                    ),
+                  ),
+                ),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -488,45 +511,30 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        PopupMenuButton<int>(
-                          tooltip: widget.controller.t('playlist'),
-                          constraints: const BoxConstraints(
-                            minWidth: 280,
-                            maxWidth: 460,
-                            maxHeight: 360,
+                        if (currentMovie.subtitleTracks == 0 &&
+                            subtitleTracks
+                                .where((track) => track.id != 'no')
+                                .isEmpty)
+                          _menuIconButton(
+                            icon: Icons.subtitles_off_rounded,
+                            tooltip: widget.controller.t('noSubtitles'),
+                            onPressed: null,
+                          )
+                        else
+                          _menuIconButton(
+                            key: subtitleButtonKey,
+                            icon: Icons.subtitles_rounded,
+                            tooltip: widget.controller.t('subtitles'),
+                            onPressed: _showSubtitleMenu,
                           ),
-                          onSelected: _switchToIndex,
-                          itemBuilder: (context) => [
-                            for (var i = 0; i < widget.playlist.length; i++)
-                              PopupMenuItem<int>(
-                                value: i,
-                                child: Row(
-                                  children: [
-                                    if (i == currentIndex)
-                                      const Icon(
-                                        Icons.play_arrow_rounded,
-                                        size: 18,
-                                      )
-                                    else
-                                      const SizedBox(width: 18),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        widget.playlist[i].fileName,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                          ],
-                          child: _compactControlButton(
-                            icon: Icons.playlist_play_rounded,
-                            tooltip: widget.controller.t('playlist'),
-                          ),
+                        const SizedBox(width: 8),
+                        _menuIconButton(
+                          key: audioTrackButtonKey,
+                          icon: Icons.graphic_eq_rounded,
+                          tooltip: widget.controller.t('audioTracks'),
+                          onPressed: _showAudioTrackMenu,
                         ),
-                        const SizedBox(width: 5),
+                        const SizedBox(width: 8),
                         IconButton(
                           tooltip: widget.controller.t('audio'),
                           visualDensity: VisualDensity.compact,
@@ -535,117 +543,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             movieMuted
                                 ? Icons.volume_off_rounded
                                 : Icons.volume_up_rounded,
-                          ),
-                        ),
-                        const SizedBox(width: 2),
-                        PopupMenuButton<AudioTrack>(
-                          tooltip: widget.controller.t('audioTracks'),
-                          constraints: const BoxConstraints(
-                            minWidth: 260,
-                            maxWidth: 440,
-                            maxHeight: 360,
-                          ),
-                          onSelected: player.setAudioTrack,
-                          itemBuilder: (context) {
-                            if (audioTracks.isEmpty) {
-                              return [
-                                PopupMenuItem<AudioTrack>(
-                                  enabled: false,
-                                  value: AudioTrack.auto(),
-                                  child: Text(
-                                    widget.controller.t('noAudioTracks'),
-                                  ),
-                                ),
-                              ];
-                            }
-                            return [
-                              for (final track in audioTracks)
-                                PopupMenuItem<AudioTrack>(
-                                  value: track,
-                                  child: Row(
-                                    children: [
-                                      if (currentAudioTrack?.id == track.id)
-                                        const Icon(
-                                          Icons.check_rounded,
-                                          size: 18,
-                                        )
-                                      else
-                                        const SizedBox(width: 18),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(_audioLabel(track)),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                            ];
-                          },
-                          child: _compactControlButton(
-                            icon: Icons.graphic_eq_rounded,
-                            tooltip: widget.controller.t('audioTracks'),
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        if (currentMovie.subtitleTracks == 0 &&
-                            subtitleTracks
-                                .where((track) => track.id != 'no')
-                                .isEmpty)
-                          _compactControlButton(
-                            icon: Icons.subtitles_off_rounded,
-                            tooltip: widget.controller.t('noSubtitles'),
-                          )
-                        else
-                          PopupMenuButton<SubtitleTrack>(
-                            tooltip: widget.controller.t('subtitles'),
-                            constraints: const BoxConstraints(
-                              minWidth: 260,
-                              maxWidth: 440,
-                              maxHeight: 360,
-                            ),
-                            onSelected: player.setSubtitleTrack,
-                            itemBuilder: (context) {
-                              final tracks = <SubtitleTrack>[
-                                SubtitleTrack.no(),
-                                ...subtitleTracks.where(
-                                  (track) => track.id != 'no',
-                                ),
-                              ];
-                              return [
-                                for (final track in tracks)
-                                  PopupMenuItem<SubtitleTrack>(
-                                    value: track,
-                                    child: Row(
-                                      children: [
-                                        if (currentSubtitleTrack?.id == track.id)
-                                          const Icon(
-                                            Icons.check_rounded,
-                                            size: 18,
-                                          )
-                                        else
-                                          const SizedBox(width: 18),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(_subtitleLabel(track)),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                              ];
-                            },
-                            child: _compactControlButton(
-                              icon: Icons.subtitles_rounded,
-                              tooltip: widget.controller.t('subtitles'),
-                            ),
-                          ),
-                        const SizedBox(width: 2),
-                        IconButton(
-                          tooltip: widget.controller.t('fullscreen'),
-                          visualDensity: VisualDensity.compact,
-                          onPressed: _toggleFullscreen,
-                          icon: Icon(
-                            isFullscreen
-                                ? Icons.fullscreen_exit_rounded
-                                : Icons.fullscreen_rounded,
                           ),
                         ),
                       ],
@@ -660,60 +557,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
-  Widget _compactControlButton({
+  Widget _menuIconButton({
+    Key? key,
     required IconData icon,
     required String tooltip,
+    required VoidCallback? onPressed,
   }) {
     return Tooltip(
       message: tooltip,
-      child: Container(
-        width: 34,
-        height: 34,
-        alignment: Alignment.center,
-        child: Icon(icon, size: 21),
-      ),
-    );
-  }
-
-  Widget _staticTrackStatus({
-    required IconData icon,
-    required String text,
-  }) {
-    return Container(
-      height: 42,
-      padding: const EdgeInsets.symmetric(horizontal: 11),
-      decoration: BoxDecoration(
-        color: syncAccent.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: syncAccent.withValues(alpha: 0.32)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 20),
-          const SizedBox(width: 7),
-          Text(text),
-        ],
-      ),
-    );
-  }
-
-  Widget _trackButton({
-    required IconData icon,
-    required String tooltip,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: syncAccent.withValues(alpha: 0.17),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: syncAccent.withValues(alpha: 0.55)),
-        ),
-        alignment: Alignment.center,
-        child: Icon(icon, size: 22),
+      child: IconButton(
+        key: key,
+        visualDensity: VisualDensity.compact,
+        onPressed: onPressed,
+        icon: Icon(icon, size: 22),
       ),
     );
   }
@@ -787,6 +643,136 @@ class _PlayerScreenState extends State<PlayerScreen> {
         ),
       ),
     );
+  }
+
+  Future<int?> _showAnchoredSelectionMenu({
+    required GlobalKey anchorKey,
+    required List<String> items,
+    required int selectedIndex,
+    double width = 360,
+  }) async {
+    final anchorContext = anchorKey.currentContext;
+    if (anchorContext == null || items.isEmpty) return null;
+
+    final anchorBox = anchorContext.findRenderObject() as RenderBox;
+    final overlayBox =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final anchorOffset =
+        anchorBox.localToGlobal(Offset.zero, ancestor: overlayBox);
+    final anchorRect = anchorOffset & anchorBox.size;
+
+    const rowHeight = 44.0;
+    final menuHeight =
+        (items.length * rowHeight + 8).clamp(52.0, 330.0).toDouble();
+    final maxLeft = (overlayBox.size.width - width - 8)
+        .clamp(8.0, double.infinity)
+        .toDouble();
+    final left =
+        (anchorRect.center.dx - width / 2).clamp(8.0, maxLeft).toDouble();
+    final top =
+        (anchorRect.top - menuHeight - 10).clamp(8.0, double.infinity).toDouble();
+
+    return showGeneralDialog<int>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'menu',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 100),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return Stack(
+          children: [
+            Positioned(
+              left: left,
+              top: top,
+              width: width,
+              height: menuHeight,
+              child: Material(
+                elevation: 14,
+                color: syncBackgroundDeep,
+                borderRadius: BorderRadius.circular(12),
+                clipBehavior: Clip.antiAlias,
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final selected = index == selectedIndex;
+                    return ListTile(
+                      dense: true,
+                      selected: selected,
+                      leading: selected
+                          ? const Icon(Icons.check_rounded, size: 18)
+                          : const SizedBox(width: 18),
+                      title: Text(
+                        items[index],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () => Navigator.of(context).pop(index),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showPlaylistMenu() async {
+    final labels = [
+      for (final movie in widget.playlist) movie.fileName,
+    ];
+    final selected = await _showAnchoredSelectionMenu(
+      anchorKey: playlistButtonKey,
+      items: labels,
+      selectedIndex: currentIndex,
+      width: 420,
+    );
+    if (selected != null) {
+      await _switchToIndex(selected);
+    }
+  }
+
+  Future<void> _showAudioTrackMenu() async {
+    if (audioTracks.isEmpty) return;
+    final labels = [
+      for (final track in audioTracks) _audioLabel(track),
+    ];
+    final selectedIndex = audioTracks.indexWhere(
+      (track) => track.id == currentAudioTrack?.id,
+    );
+    final selected = await _showAnchoredSelectionMenu(
+      anchorKey: audioTrackButtonKey,
+      items: labels,
+      selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
+      width: 400,
+    );
+    if (selected != null) {
+      await player.setAudioTrack(audioTracks[selected]);
+    }
+  }
+
+  Future<void> _showSubtitleMenu() async {
+    final tracks = <SubtitleTrack>[
+      SubtitleTrack.no(),
+      ...subtitleTracks.where((track) => track.id != 'no'),
+    ];
+    final labels = [
+      for (final track in tracks) _subtitleLabel(track),
+    ];
+    final selectedIndex = tracks.indexWhere(
+      (track) => track.id == currentSubtitleTrack?.id,
+    );
+    final selected = await _showAnchoredSelectionMenu(
+      anchorKey: subtitleButtonKey,
+      items: labels,
+      selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
+      width: 380,
+    );
+    if (selected != null) {
+      await player.setSubtitleTrack(tracks[selected]);
+    }
   }
 
   Future<void> _switchToIndex(int index) async {
