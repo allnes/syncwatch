@@ -4,6 +4,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Always run from repository root, even when launched by Visual Studio from System32.
+$repoRoot = Split-Path -Parent $PSScriptRoot
+Set-Location $repoRoot
+
 if (-not (Get-Command flutter -ErrorAction SilentlyContinue)) {
   Write-Host ""
   Write-Host "Flutter was not found in PATH." -ForegroundColor Red
