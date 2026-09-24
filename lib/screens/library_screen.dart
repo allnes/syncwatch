@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../app.dart';
 import '../core/app_theme.dart';
 import '../models/movie_item.dart';
+import '../services/call_engine.dart';
 import '../services/sync_engine.dart';
 import 'player_screen.dart';
 import 'settings_screen.dart';
@@ -38,6 +39,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
   MovieItem? selected = demoMovies.first;
   String searchQuery = '';
   bool scanning = false;
+  bool callActive = false;
+  bool microphoneEnabled = true;
+  bool cameraEnabled = true;
+  final CallEngine callEngine = MockCallEngine();
   int selectedAudioIndex = 0;
   int selectedSubtitleIndex = 0;
 
@@ -45,6 +50,29 @@ class _LibraryScreenState extends State<LibraryScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _scanLibrary());
+  }
+
+  @override
+  void dispose() {
+    if (callActive) {
+      callEngine.leave();
+    }
+    super.dispose();
+  }
+
+  Future<void> _toggleCall() async {
+    if (callActive) {
+      await callEngine.leave();
+      if (!mounted) return;
+      setState(() => callActive = false);
+      return;
+    }
+
+    await callEngine.join();
+    await callEngine.setMicrophoneEnabled(microphoneEnabled);
+    await callEngine.setCameraEnabled(cameraEnabled);
+    if (!mounted) return;
+    setState(() => callActive = true);
   }
 
   Future<void> _browseFolder() async {
@@ -231,6 +259,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
           const Icon(Icons.circle, size: 10, color: syncSuccess),
           const SizedBox(width: 7),
           Text(widget.controller.t('friendOnline')),
+          const SizedBox(width: 22),
+          Icon(
+            callActive ? Icons.call_rounded : Icons.call_outlined,
+            color: callActive ? syncSuccess : Colors.white54,
+            size: 20,
+          ),
+          const SizedBox(width: 7),
+          Text(
+            callActive
+                ? widget.controller.t('callActive')
+                : widget.controller.t('callInactive'),
+          ),
           const SizedBox(width: 22),
           const Icon(Icons.check_circle_rounded, color: syncSuccess, size: 20),
           const SizedBox(width: 7),
@@ -621,6 +661,56 @@ class _LibraryScreenState extends State<LibraryScreen> {
           _memberRow(widget.controller.t('you')),
           const SizedBox(height: 8),
           _memberRow(widget.controller.t('friend')),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _toggleCall,
+                  icon: Icon(
+                    callActive
+                        ? Icons.call_end_rounded
+                        : Icons.video_call_rounded,
+                  ),
+                  label: Text(
+                    callActive
+                        ? widget.controller.t('endCall')
+                        : widget.controller.t('startCall'),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                tooltip: widget.controller.t('microphoneOn'),
+                onPressed: () async {
+                  setState(() => microphoneEnabled = !microphoneEnabled);
+                  if (callActive) {
+                    await callEngine.setMicrophoneEnabled(microphoneEnabled);
+                  }
+                },
+                icon: Icon(
+                  microphoneEnabled
+                      ? Icons.mic_rounded
+                      : Icons.mic_off_rounded,
+                ),
+              ),
+              const SizedBox(width: 6),
+              IconButton.filledTonal(
+                tooltip: widget.controller.t('cameraOn'),
+                onPressed: () async {
+                  setState(() => cameraEnabled = !cameraEnabled);
+                  if (callActive) {
+                    await callEngine.setCameraEnabled(cameraEnabled);
+                  }
+                },
+                icon: Icon(
+                  cameraEnabled
+                      ? Icons.videocam_rounded
+                      : Icons.videocam_off_rounded,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
