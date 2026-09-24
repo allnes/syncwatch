@@ -111,23 +111,57 @@ class _LibraryScreenState extends State<LibraryScreen> {
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
+
 public static class SyncWatchWindow {
+  public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+  [DllImport("user32.dll")]
+  public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+  [DllImport("user32.dll")]
+  public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
   [DllImport("user32.dll")]
   public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+
   [DllImport("user32.dll")]
   public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+  [DllImport("user32.dll")]
+  public static extern bool IsWindow(IntPtr hWnd);
 }
 "@
-$p = Get-Process -Id PID_PLACEHOLDER -ErrorAction SilentlyContinue
-if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
-  [SyncWatchWindow]::ShowWindowAsync($p.MainWindowHandle, 9) | Out-Null
-  [SyncWatchWindow]::SetForegroundWindow($p.MainWindowHandle) | Out-Null
+
+$targetPid = [uint32]PID_PLACEHOLDER
+$found = [IntPtr]::Zero
+
+$callback = [SyncWatchWindow+EnumWindowsProc]{
+  param([IntPtr]$hWnd, [IntPtr]$lParam)
+
+  [uint32]$windowPid = 0
+  [SyncWatchWindow]::GetWindowThreadProcessId($hWnd, [ref]$windowPid) | Out-Null
+
+  if ($windowPid -eq $targetPid -and [SyncWatchWindow]::IsWindow($hWnd)) {
+    $script:found = $hWnd
+    return $false
+  }
+
+  return $true
+}
+
+[SyncWatchWindow]::EnumWindows($callback, [IntPtr]::Zero) | Out-Null
+
+if ($script:found -ne [IntPtr]::Zero) {
+  # SW_RESTORE = 9. Works for minimized and hidden top-level windows.
+  [SyncWatchWindow]::ShowWindowAsync($script:found, 9) | Out-Null
+  Start-Sleep -Milliseconds 80
+  [SyncWatchWindow]::SetForegroundWindow($script:found) | Out-Null
 }
 '''.replaceAll('PID_PLACEHOLDER', process.pid.toString());
 
     await Process.run(
       'powershell.exe',
-      ['-NoProfile', '-Command', command],
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command],
       runInShell: true,
     );
   }
