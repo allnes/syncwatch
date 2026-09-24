@@ -49,7 +49,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool playing = false;
   bool movieMuted = false;
   bool callMuted = false;
-  bool micMuted = false;
   bool isFullscreen = false;
   bool topControlsVisible = true;
   bool bottomControlsVisible = true;
@@ -405,14 +404,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    IconButton(
+                    _fileControl(
                       tooltip: widget.controller.t('previousFile'),
+                      icon: Icons.skip_previous_rounded,
                       onPressed: currentIndex > 0
                           ? () => _switchToIndex(currentIndex - 1)
                           : null,
-                      icon: const Icon(Icons.skip_previous_rounded),
                     ),
-                    const SizedBox(width: 28),
+                    const SizedBox(width: 24),
                     _roundControl(
                       icon: Icons.fast_rewind_rounded,
                       onPressed: () => _skip(-widget.controller.skipSeconds),
@@ -430,13 +429,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       icon: Icons.fast_forward_rounded,
                       onPressed: () => _skip(widget.controller.skipSeconds),
                     ),
-                    const SizedBox(width: 28),
-                    IconButton(
+                    const SizedBox(width: 24),
+                    _fileControl(
                       tooltip: widget.controller.t('nextFile'),
+                      icon: Icons.skip_next_rounded,
                       onPressed: currentIndex < widget.playlist.length - 1
                           ? () => _switchToIndex(currentIndex + 1)
                           : null,
-                      icon: const Icon(Icons.skip_next_rounded),
                     ),
                   ],
                 ),
@@ -584,6 +583,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         ),
                       const SizedBox(width: 8),
                       IconButton(
+                        tooltip: widget.controller.t('settings'),
+                        onPressed: () => showDialog<void>(
+                          context: context,
+                          barrierColor: Colors.black.withValues(alpha: 0.56),
+                          builder: (_) => SettingsScreen(
+                            controller: widget.controller,
+                          ),
+                        ),
+                        icon: const Icon(Icons.settings_rounded),
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton(
                         tooltip: widget.controller.t('fullscreen'),
                         onPressed: _toggleFullscreen,
                         icon: Icon(
@@ -642,6 +653,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
         ),
         alignment: Alignment.center,
         child: Icon(icon, size: 22),
+      ),
+    );
+  }
+
+  Widget _fileControl({
+    required String tooltip,
+    required IconData icon,
+    required VoidCallback? onPressed,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: IconButton.filledTonal(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 24),
       ),
     );
   }
@@ -973,23 +998,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         onMute: () => setState(() => callMuted = !callMuted),
                         onChanged: widget.controller.setCallVolume,
                       ),
-                      const Divider(height: 26),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(widget.controller.t('ducking')),
-                        value: widget.controller.ducking,
-                        onChanged: widget.controller.setDucking,
-                      ),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(widget.controller.t('microphone')),
-                        secondary: Icon(
-                          micMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
-                        ),
-                        value: !micMuted,
-                        onChanged: (enabled) =>
-                            setState(() => micMuted = !enabled),
-                      ),
+
                     ],
                   );
                 },
