@@ -303,7 +303,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    height: 72,
+                    height: 70,
                     child: MouseRegion(
                       onEnter: (_) {
                         if (!bottomControlsVisible) {
@@ -495,7 +495,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     final sliderValue = positionSeconds.clamp(0.0, sliderMax).toDouble();
 
     return Container(
-      height: 78,
+      height: 70,
       padding: const EdgeInsets.fromLTRB(14, 2, 14, 6),
       color: syncBackgroundDeep.withValues(alpha: 0.98),
       child: Column(
@@ -736,6 +736,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     required List<String> items,
     required int selectedIndex,
     double width = 360,
+    double maxHeight = 280,
   }) async {
     final anchorContext = anchorKey.currentContext;
     if (anchorContext == null || items.isEmpty) return null;
@@ -747,9 +748,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         anchorBox.localToGlobal(Offset.zero, ancestor: overlayBox);
     final anchorRect = anchorOffset & anchorBox.size;
 
-    const rowHeight = 44.0;
+    const rowHeight = 40.0;
     final menuHeight =
-        (items.length * rowHeight + 8).clamp(52.0, 330.0).toDouble();
+        (items.length * rowHeight + 8).clamp(48.0, maxHeight).toDouble();
     final maxLeft = (overlayBox.size.width - width - 8)
         .clamp(8.0, double.infinity)
         .toDouble();
@@ -818,6 +819,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       items: labels,
       selectedIndex: currentIndex,
       width: 340,
+      maxHeight: 300,
     );
     if (selected != null) {
       await _switchToIndex(selected);
@@ -837,6 +839,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       items: labels,
       selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
       width: 300,
+      maxHeight: 260,
     );
     if (selected != null) {
       await player.setAudioTrack(audioTracks[selected]);
@@ -859,6 +862,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       items: labels,
       selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
       width: 240,
+      maxHeight: 220,
     );
     if (selected != null) {
       await player.setSubtitleTrack(tracks[selected]);
