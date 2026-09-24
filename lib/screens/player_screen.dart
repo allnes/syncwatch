@@ -39,12 +39,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   Timer? _volumeOsdTimer;
+  Timer? _controlsHideTimer;
 
   bool playing = false;
   bool movieMuted = false;
   bool callMuted = false;
   bool micMuted = false;
   bool isFullscreen = false;
+  bool topControlsVisible = true;
+  bool bottomControlsVisible = true;
 
   double positionSeconds = 0;
   double durationSeconds = 0;
@@ -158,6 +161,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void dispose() {
     _volumeOsdTimer?.cancel();
+    _controlsHideTimer?.cancel();
     for (final subscription in _subscriptions) {
       subscription.cancel();
     }
@@ -180,19 +184,36 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 _changeMovieVolume(delta);
               }
             },
-            child: Stack(
-              children: [
-                Positioned.fill(child: _movieSurface(context)),
-                Positioned(left: 0, right: 0, top: 0, child: _topBar(context)),
-                RemoteVideoOverlay(controller: widget.controller),
-                Positioned(left: 0, right: 0, bottom: 0, child: _controls()),
-                if (volumeOsd != null)
-                  Positioned(
-                    right: 32,
-                    top: 96,
-                    child: _volumeIndicator(),
-                  ),
-              ],
+            child: MouseRegion(
+              onHover: (event) {
+                _handlePointerHover(context, event.localPosition);
+              },
+              child: Stack(
+                children: [
+                  Positioned.fill(child: _movieSurface(context)),
+                  if (!isFullscreen || topControlsVisible)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: 0,
+                      child: _topBar(context),
+                    ),
+                  RemoteVideoOverlay(controller: widget.controller),
+                  if (!isFullscreen || bottomControlsVisible)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: _controls(),
+                    ),
+                  if (volumeOsd != null)
+                    Positioned(
+                      right: 32,
+                      top: isFullscreen && !topControlsVisible ? 28 : 96,
+                      child: _volumeIndicator(),
+                    ),
+                ],
+              ),
             ),
           ),
         );
@@ -202,7 +223,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Widget _movieSurface(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(top: 68, bottom: 118),
+      margin: EdgeInsets.only(
+        top: isFullscreen ? 0 : 68,
+        bottom: isFullscreen ? 0 : 118,
+      ),
       color: Colors.black,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -219,11 +243,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
               fit: BoxFit.contain,
               fill: Colors.black,
             ),
-            Positioned(
-              left: 24,
-              top: 20,
-              right: 24,
-              child: IgnorePointer(
+            if (!isFullscreen || topControlsVisible)
+              Positioned(
+                left: 24,
+                top: isFullscreen ? 82 : 20,
+                right: 24,
+                child: IgnorePointer(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -611,9 +636,40 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Future<void> _toggleFullscreen() async {
     final next = !await windowManager.isFullScreen();
     await windowManager.setFullScreen(next);
-    if (mounted) {
-      setState(() => isFullscreen = next);
+    _controlsHideTimer?.cancel();
+
+    if (!mounted) return;
+    setState(() {
+      isFullscreen = next;
+      topControlsVisible = !next;
+      bottomControlsVisible = !next;
+    });
+  }
+
+  void _handlePointerHover(BuildContext context, Offset position) {
+    if (!isFullscreen) return;
+
+    final size = MediaQuery.sizeOf(context);
+    final showTop = position.dy <= 90;
+    final showBottom = position.dy >= size.height - 140;
+
+    if (showTop || showBottom) {
+      _controlsHideTimer?.cancel();
+      setState(() {
+        if (showTop) topControlsVisible = true;
+        if (showBottom) bottomControlsVisible = true;
+      });
+      return;
     }
+
+    _controlsHideTimer?.cancel();
+    _controlsHideTimer = Timer(const Duration(milliseconds: 700), () {
+      if (!mounted || !isFullscreen) return;
+      setState(() {
+        topControlsVisible = false;
+        bottomControlsVisible = false;
+      });
+    });
   }
 
   Future<void> _showContextMenu(
