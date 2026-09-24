@@ -32,12 +32,7 @@ Future<void> main(List<String> args) async {
     return;
   }
 
-  const mockMode = bool.fromEnvironment('SYNCWATCH_MOCK', defaultValue: true);
-
   runApp(
-    SyncWatchApp(
-      mockMode: mockMode,
-      controller: controller,
-    ),
+    SyncWatchApp(controller: controller),
   );
 }
