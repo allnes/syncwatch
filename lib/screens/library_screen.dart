@@ -41,6 +41,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool scanning = false;
   bool callActive = false;
   Process? callProcess;
+  String? callCommandFilePath;
   bool metadataLoading = false;
   String? metadataPath;
   bool microphoneEnabled = true;
@@ -63,6 +64,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
   void dispose() {
     trackMenuScrollController.dispose();
     callProcess?.kill();
+    final commandPath = callCommandFilePath;
+    if (commandPath != null) {
+      try {
+        File(commandPath).deleteSync();
+      } catch (_) {}
+    }
     if (callActive) {
       callEngine.leave();
     }
@@ -80,9 +87,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
     await callEngine.setCameraEnabled(cameraEnabled);
 
     try {
+      final commandFile = File(
+        '${Directory.systemTemp.path}\\syncwatch_call_$pid.cmd',
+      );
+      await commandFile.writeAsString('ready:0', flush: true);
+      callCommandFilePath = commandFile.path;
+
       final process = await Process.start(
         Platform.resolvedExecutable,
-        const ['--call-window'],
+        [
+          '--call-window',
+          '--call-command-file=${commandFile.path}',
+        ],
         mode: ProcessStartMode.normal,
       );
       unawaited(process.stdout.drain<void>());
@@ -94,6 +110,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         setState(() {
           callActive = false;
           callProcess = null;
+          callCommandFilePath = null;
         });
       });
     } catch (_) {
@@ -107,65 +124,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   Future<void> _focusCallWindow() async {
     final process = callProcess;
-    if (process == null) return;
+    final commandPath = callCommandFilePath;
+    if (process == null || commandPath == null) return;
 
-    final command = r'''
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-
-public static class SyncWatchWindow {
-  public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-
-  [DllImport("user32.dll")]
-  public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
-
-  [DllImport("user32.dll")]
-  public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
-
-  [DllImport("user32.dll")]
-  public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
-
-  [DllImport("user32.dll")]
-  public static extern bool SetForegroundWindow(IntPtr hWnd);
-
-  [DllImport("user32.dll")]
-  public static extern bool IsWindow(IntPtr hWnd);
-}
-"@
-
-$targetPid = [uint32]PID_PLACEHOLDER
-$script:found = [IntPtr]::Zero
-
-$callback = [SyncWatchWindow+EnumWindowsProc]{
-  param([IntPtr]$hWnd, [IntPtr]$lParam)
-
-  [uint32]$windowPid = 0
-  [SyncWatchWindow]::GetWindowThreadProcessId($hWnd, [ref]$windowPid) | Out-Null
-
-  if ($windowPid -eq $targetPid -and [SyncWatchWindow]::IsWindow($hWnd)) {
-    $script:found = $hWnd
-    return $false
-  }
-
-  return $true
-}
-
-[SyncWatchWindow]::EnumWindows($callback, [IntPtr]::Zero) | Out-Null
-
-if ($script:found -ne [IntPtr]::Zero) {
-  # SW_RESTORE = 9. Works for minimized and hidden top-level windows.
-  [SyncWatchWindow]::ShowWindowAsync($script:found, 9) | Out-Null
-  Start-Sleep -Milliseconds 80
-  [SyncWatchWindow]::SetForegroundWindow($script:found) | Out-Null
-}
-'''.replaceAll('PID_PLACEHOLDER', process.pid.toString());
-
-    await Process.run(
-      'powershell.exe',
-      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command],
-      runInShell: true,
-    );
+    try {
+      await File(commandPath).writeAsString(
+        'restore:${DateTime.now().microsecondsSinceEpoch}',
+        flush: true,
+      );
+    } catch (_) {}
   }
 
   Future<void> _browseFolder() async {
