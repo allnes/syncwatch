@@ -68,7 +68,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _subscriptions.add(
       player.stream.position.listen((position) {
         if (!mounted) return;
-        setState(() => positionSeconds = position.inMilliseconds / 1000.0);
+        final seconds = position.inMilliseconds / 1000.0;
+        widget.controller.updatePlaybackPosition(
+          widget.movie.fullPath,
+          seconds,
+        );
+        setState(() => positionSeconds = seconds);
       }),
     );
     _subscriptions.add(
@@ -117,11 +122,21 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Future<void> _openMedia() async {
+    final resumePosition =
+        widget.controller.playbackPositionFor(widget.movie.fullPath);
+    widget.controller.beginPlaybackSession(widget.movie.fullPath);
+
     await player.setVolume(widget.controller.movieVolume * 100.0);
     await player.open(
       Media(Uri.file(widget.movie.fullPath).toString()),
       play: false,
     );
+
+    if (resumePosition > 0) {
+      await player.seek(
+        Duration(milliseconds: (resumePosition * 1000).round()),
+      );
+    }
 
     // Give libmpv a moment to expose tracks, then apply the preselected values.
     await Future<void>.delayed(const Duration(milliseconds: 150));
@@ -165,6 +180,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
     for (final subscription in _subscriptions) {
       subscription.cancel();
     }
+    widget.controller.updatePlaybackPosition(
+      widget.movie.fullPath,
+      positionSeconds,
+      persist: true,
+    );
     widget.syncEngine.dispose();
     player.dispose();
     super.dispose();
