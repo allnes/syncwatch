@@ -14,11 +14,15 @@ class PlayerScreen extends StatefulWidget {
     required this.controller,
     required this.movie,
     required this.syncEngine,
+    required this.initialAudioTrack,
+    required this.initialSubtitleTrack,
   });
 
   final AppController controller;
   final MovieItem movie;
   final SyncEngine syncEngine;
+  final String initialAudioTrack;
+  final String initialSubtitleTrack;
 
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
@@ -124,11 +128,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     const SizedBox(width: 18),
                     const Icon(Icons.graphic_eq_rounded, size: 18),
                     const SizedBox(width: 6),
-                    Text('${widget.movie.audioTracks} tracks'),
+                    Text(widget.initialAudioTrack),
                     const SizedBox(width: 18),
                     const Icon(Icons.subtitles_rounded, size: 18),
                     const SizedBox(width: 6),
-                    Text('${widget.movie.subtitleTracks} tracks'),
+                    Text(widget.initialSubtitleTrack),
                   ],
                 ),
               ],
