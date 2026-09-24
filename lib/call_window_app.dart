@@ -75,7 +75,7 @@ class _CallWindowState extends State<_CallWindow> {
               children: [
                 IconButton(
                   tooltip: widget.controller.t('minimize'),
-                  onPressed: windowManager.minimize,
+                  onPressed: windowManager.hide,
                   icon: const Icon(Icons.remove_rounded),
                 ),
                 IconButton(
