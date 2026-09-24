@@ -242,7 +242,14 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     return AnimatedBuilder(
       animation: widget.controller,
       builder: (context, _) {
-        return Scaffold(
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (!didPop) {
+              await _returnToHome();
+            }
+          },
+          child: Scaffold(
           backgroundColor: syncBackgroundDeep,
           body: Listener(
             onPointerSignal: (event) {
@@ -327,6 +334,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             ),
             ),
           ),
+        ),
         );
       },
     );
@@ -389,7 +397,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         children: [
           IconButton(
             tooltip: widget.controller.t('back'),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: _returnToHome,
             icon: const Icon(Icons.arrow_back_rounded),
           ),
           const SizedBox(width: 6),
@@ -841,6 +849,18 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       if (!mounted) return;
       setState(() => volumeOsd = null);
     });
+  }
+
+  Future<void> _returnToHome() async {
+    if (isFullscreen) {
+      await windowManager.setTitleBarStyle(
+        TitleBarStyle.normal,
+        windowButtonVisibility: true,
+      );
+    }
+
+    if (!mounted) return;
+    Navigator.of(context).pop();
   }
 
   Future<void> _toggleFullscreen() async {
