@@ -398,9 +398,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
             ],
           ),
           Expanded(
-            child: Stack(
-              alignment: Alignment.center,
+            child: Row(
               children: [
+                const Expanded(child: SizedBox()),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -411,12 +411,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           ? () => _switchToIndex(currentIndex - 1)
                           : null,
                     ),
-                    const SizedBox(width: 24),
+                    const SizedBox(width: 22),
                     _roundControl(
                       icon: Icons.fast_rewind_rounded,
                       onPressed: () => _skip(-widget.controller.skipSeconds),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     _roundControl(
                       icon: playing
                           ? Icons.pause_rounded
@@ -424,12 +424,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       onPressed: _togglePlayback,
                       prominent: true,
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     _roundControl(
                       icon: Icons.fast_forward_rounded,
                       onPressed: () => _skip(widget.controller.skipSeconds),
                     ),
-                    const SizedBox(width: 24),
+                    const SizedBox(width: 22),
                     _fileControl(
                       tooltip: widget.controller.t('nextFile'),
                       icon: Icons.skip_next_rounded,
@@ -439,128 +439,89 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     ),
                   ],
                 ),
-                Positioned(
-                  right: 0,
-                  child: Row(
-                    children: [
-                      PopupMenuButton<int>(
-                        tooltip: widget.controller.t('playlist'),
-                        constraints: const BoxConstraints(
-                          minWidth: 280,
-                          maxWidth: 460,
-                          maxHeight: 360,
-                        ),
-                        onSelected: _switchToIndex,
-                        itemBuilder: (context) => [
-                          for (var i = 0; i < widget.playlist.length; i++)
-                            PopupMenuItem<int>(
-                              value: i,
-                              child: Row(
-                                children: [
-                                  if (i == currentIndex)
-                                    const Icon(Icons.play_arrow_rounded, size: 18)
-                                  else
-                                    const SizedBox(width: 18),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      widget.playlist[i].fileName,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                        child: _trackButton(
-                          icon: Icons.playlist_play_rounded,
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        PopupMenuButton<int>(
                           tooltip: widget.controller.t('playlist'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton.filledTonal(
-                        tooltip: widget.controller.t('audio'),
-                        onPressed: () => _showAudioPopover(context),
-                        icon: Icon(
-                          movieMuted
-                              ? Icons.volume_off_rounded
-                              : Icons.volume_up_rounded,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      PopupMenuButton<AudioTrack>(
-                        tooltip: widget.controller.t('audioTracks'),
-                        constraints: const BoxConstraints(
-                          minWidth: 260,
-                          maxWidth: 440,
-                          maxHeight: 360,
-                        ),
-                        onSelected: player.setAudioTrack,
-                        itemBuilder: (context) {
-                          if (audioTracks.isEmpty) {
-                            return [
-                              PopupMenuItem<AudioTrack>(
-                                enabled: false,
-                                value: AudioTrack.auto(),
-                                child: Text(widget.controller.t('noAudioTracks')),
-                              ),
-                            ];
-                          }
-                          return [
-                            for (final track in audioTracks)
-                              PopupMenuItem<AudioTrack>(
-                                value: track,
+                          constraints: const BoxConstraints(
+                            minWidth: 280,
+                            maxWidth: 460,
+                            maxHeight: 360,
+                          ),
+                          onSelected: _switchToIndex,
+                          itemBuilder: (context) => [
+                            for (var i = 0; i < widget.playlist.length; i++)
+                              PopupMenuItem<int>(
+                                value: i,
                                 child: Row(
                                   children: [
-                                    if (currentAudioTrack?.id == track.id)
-                                      const Icon(Icons.check_rounded, size: 18)
+                                    if (i == currentIndex)
+                                      const Icon(
+                                        Icons.play_arrow_rounded,
+                                        size: 18,
+                                      )
                                     else
                                       const SizedBox(width: 18),
                                     const SizedBox(width: 8),
-                                    Expanded(child: Text(_audioLabel(track))),
+                                    Expanded(
+                                      child: Text(
+                                        widget.playlist[i].fileName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
-                          ];
-                        },
-                        child: _trackButton(
-                          icon: Icons.graphic_eq_rounded,
-                          tooltip: widget.controller.t('audioTracks'),
+                          ],
+                          child: _compactControlButton(
+                            icon: Icons.playlist_play_rounded,
+                            tooltip: widget.controller.t('playlist'),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      if (currentMovie.subtitleTracks == 0 &&
-                          subtitleTracks
-                              .where((track) => track.id != 'no')
-                              .isEmpty)
-                        _staticTrackStatus(
-                          icon: Icons.subtitles_rounded,
-                          text: widget.controller.t('noSubtitles'),
-                        )
-                      else
-                        PopupMenuButton<SubtitleTrack>(
-                          tooltip: widget.controller.t('subtitles'),
+                        const SizedBox(width: 5),
+                        IconButton(
+                          tooltip: widget.controller.t('audio'),
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () => _showAudioPopover(context),
+                          icon: Icon(
+                            movieMuted
+                                ? Icons.volume_off_rounded
+                                : Icons.volume_up_rounded,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        PopupMenuButton<AudioTrack>(
+                          tooltip: widget.controller.t('audioTracks'),
                           constraints: const BoxConstraints(
                             minWidth: 260,
                             maxWidth: 440,
                             maxHeight: 360,
                           ),
-                          onSelected: player.setSubtitleTrack,
+                          onSelected: player.setAudioTrack,
                           itemBuilder: (context) {
-                            final tracks = <SubtitleTrack>[
-                              SubtitleTrack.no(),
-                              ...subtitleTracks.where(
-                                (track) => track.id != 'no',
-                              ),
-                            ];
+                            if (audioTracks.isEmpty) {
+                              return [
+                                PopupMenuItem<AudioTrack>(
+                                  enabled: false,
+                                  value: AudioTrack.auto(),
+                                  child: Text(
+                                    widget.controller.t('noAudioTracks'),
+                                  ),
+                                ),
+                              ];
+                            }
                             return [
-                              for (final track in tracks)
-                                PopupMenuItem<SubtitleTrack>(
+                              for (final track in audioTracks)
+                                PopupMenuItem<AudioTrack>(
                                   value: track,
                                   child: Row(
                                     children: [
-                                      if (currentSubtitleTrack?.id == track.id)
+                                      if (currentAudioTrack?.id == track.id)
                                         const Icon(
                                           Icons.check_rounded,
                                           size: 18,
@@ -569,47 +530,116 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                         const SizedBox(width: 18),
                                       const SizedBox(width: 8),
                                       Expanded(
-                                        child: Text(_subtitleLabel(track)),
+                                        child: Text(_audioLabel(track)),
                                       ),
                                     ],
                                   ),
                                 ),
                             ];
                           },
-                          child: _trackButton(
-                            icon: Icons.subtitles_rounded,
+                          child: _compactControlButton(
+                            icon: Icons.graphic_eq_rounded,
+                            tooltip: widget.controller.t('audioTracks'),
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        if (currentMovie.subtitleTracks == 0 &&
+                            subtitleTracks
+                                .where((track) => track.id != 'no')
+                                .isEmpty)
+                          _compactControlButton(
+                            icon: Icons.subtitles_off_rounded,
+                            tooltip: widget.controller.t('noSubtitles'),
+                          )
+                        else
+                          PopupMenuButton<SubtitleTrack>(
                             tooltip: widget.controller.t('subtitles'),
+                            constraints: const BoxConstraints(
+                              minWidth: 260,
+                              maxWidth: 440,
+                              maxHeight: 360,
+                            ),
+                            onSelected: player.setSubtitleTrack,
+                            itemBuilder: (context) {
+                              final tracks = <SubtitleTrack>[
+                                SubtitleTrack.no(),
+                                ...subtitleTracks.where(
+                                  (track) => track.id != 'no',
+                                ),
+                              ];
+                              return [
+                                for (final track in tracks)
+                                  PopupMenuItem<SubtitleTrack>(
+                                    value: track,
+                                    child: Row(
+                                      children: [
+                                        if (currentSubtitleTrack?.id == track.id)
+                                          const Icon(
+                                            Icons.check_rounded,
+                                            size: 18,
+                                          )
+                                        else
+                                          const SizedBox(width: 18),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(_subtitleLabel(track)),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ];
+                            },
+                            child: _compactControlButton(
+                              icon: Icons.subtitles_rounded,
+                              tooltip: widget.controller.t('subtitles'),
+                            ),
+                          ),
+                        const SizedBox(width: 2),
+                        IconButton(
+                          tooltip: widget.controller.t('settings'),
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () => showDialog<void>(
+                            context: context,
+                            barrierColor: Colors.black.withValues(alpha: 0.56),
+                            builder: (_) => SettingsScreen(
+                              controller: widget.controller,
+                            ),
+                          ),
+                          icon: const Icon(Icons.settings_rounded),
+                        ),
+                        IconButton(
+                          tooltip: widget.controller.t('fullscreen'),
+                          visualDensity: VisualDensity.compact,
+                          onPressed: _toggleFullscreen,
+                          icon: Icon(
+                            isFullscreen
+                                ? Icons.fullscreen_exit_rounded
+                                : Icons.fullscreen_rounded,
                           ),
                         ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        tooltip: widget.controller.t('settings'),
-                        onPressed: () => showDialog<void>(
-                          context: context,
-                          barrierColor: Colors.black.withValues(alpha: 0.56),
-                          builder: (_) => SettingsScreen(
-                            controller: widget.controller,
-                          ),
-                        ),
-                        icon: const Icon(Icons.settings_rounded),
-                      ),
-                      const SizedBox(width: 4),
-                      IconButton(
-                        tooltip: widget.controller.t('fullscreen'),
-                        onPressed: _toggleFullscreen,
-                        icon: Icon(
-                          isFullscreen
-                              ? Icons.fullscreen_exit_rounded
-                              : Icons.fullscreen_rounded,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _compactControlButton({
+    required IconData icon,
+    required String tooltip,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        width: 34,
+        height: 34,
+        alignment: Alignment.center,
+        child: Icon(icon, size: 21),
       ),
     );
   }
