@@ -1,5 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../app.dart';
 import '../core/app_theme.dart';
@@ -29,31 +34,135 @@ class PlayerScreen extends StatefulWidget {
 }
 
 class _PlayerScreenState extends State<PlayerScreen> {
+  late final Player player;
+  late final VideoController videoController;
+
+  final List<StreamSubscription<dynamic>> _subscriptions = [];
+  Timer? _volumeOsdTimer;
+
   bool playing = false;
   bool movieMuted = false;
   bool callMuted = false;
   bool micMuted = false;
-  late String currentAudioTrack;
-  late String currentSubtitleTrack;
-  late double positionSeconds;
-  late final double durationSeconds;
+  bool isFullscreen = false;
+
+  double positionSeconds = 0;
+  double durationSeconds = 0;
+  double? volumeOsd;
+
+  List<AudioTrack> audioTracks = const [];
+  List<SubtitleTrack> subtitleTracks = const [];
+  AudioTrack? currentAudioTrack;
+  SubtitleTrack? currentSubtitleTrack;
 
   @override
   void initState() {
     super.initState();
-    durationSeconds = widget.movie.duration.inSeconds.toDouble();
-    currentAudioTrack = widget.initialAudioTrack;
-    currentSubtitleTrack = widget.initialSubtitleTrack;
-    positionSeconds = durationSeconds * 0.31;
+
+    player = Player();
+    videoController = VideoController(player);
+
+    _subscriptions.add(
+      player.stream.position.listen((position) {
+        if (!mounted) return;
+        setState(() => positionSeconds = position.inMilliseconds / 1000.0);
+      }),
+    );
+    _subscriptions.add(
+      player.stream.duration.listen((duration) {
+        if (!mounted) return;
+        setState(() => durationSeconds = duration.inMilliseconds / 1000.0);
+      }),
+    );
+    _subscriptions.add(
+      player.stream.playing.listen((value) {
+        if (!mounted) return;
+        setState(() => playing = value);
+      }),
+    );
+    _subscriptions.add(
+      player.stream.tracks.listen((tracks) {
+        final realAudio = tracks.audio
+            .where((track) => track.id != 'auto' && track.id != 'no')
+            .toList();
+        final realSubtitles = tracks.subtitle
+            .where((track) => track.id != 'auto')
+            .toList();
+
+        if (!mounted) return;
+        setState(() {
+          audioTracks = realAudio;
+          subtitleTracks = realSubtitles;
+        });
+      }),
+    );
+    _subscriptions.add(
+      player.stream.track.listen((track) {
+        if (!mounted) return;
+        setState(() {
+          currentAudioTrack = track.audio;
+          currentSubtitleTrack = track.subtitle;
+        });
+      }),
+    );
+
+    _openMedia();
     widget.syncEngine.connect();
     if (widget.controller.autoReady) {
       widget.syncEngine.setReady(true);
     }
   }
 
+  Future<void> _openMedia() async {
+    await player.setVolume(widget.controller.movieVolume * 100.0);
+    await player.open(
+      Media(Uri.file(widget.movie.fullPath).toString()),
+      play: false,
+    );
+
+    // Give libmpv a moment to expose tracks, then apply the preselected values.
+    await Future<void>.delayed(const Duration(milliseconds: 150));
+    await _applyInitialTracks();
+  }
+
+  Future<void> _applyInitialTracks() async {
+    final tracks = player.state.tracks;
+
+    final audio = tracks.audio
+        .where((track) => track.id != 'auto' && track.id != 'no')
+        .cast<AudioTrack>()
+        .toList();
+    if (audio.isNotEmpty) {
+      final match = audio.where(
+        (track) => _audioLabel(track) == widget.initialAudioTrack,
+      );
+      await player.setAudioTrack(match.isNotEmpty ? match.first : audio.first);
+    }
+
+    final subtitles = tracks.subtitle
+        .where((track) => track.id != 'auto')
+        .cast<SubtitleTrack>()
+        .toList();
+
+    final selected = subtitles.where(
+      (track) => _subtitleLabel(track) == widget.initialSubtitleTrack,
+    );
+    if (selected.isNotEmpty) {
+      await player.setSubtitleTrack(selected.first);
+    } else if (widget.initialSubtitleTrack == widget.controller.t('subtitlesOff') ||
+        widget.initialSubtitleTrack == widget.controller.t('noSubtitles')) {
+      await player.setSubtitleTrack(SubtitleTrack.no());
+    }
+  }
+
   @override
   void dispose() {
+    _volumeOsdTimer?.cancel();
+    for (final subscription in _subscriptions) {
+      subscription.cancel();
+    }
     widget.syncEngine.dispose();
+    player.dispose();
     super.dispose();
   }
 
@@ -68,17 +177,21 @@ class _PlayerScreenState extends State<PlayerScreen> {
             onPointerSignal: (event) {
               if (event is PointerScrollEvent) {
                 final delta = event.scrollDelta.dy < 0 ? 0.05 : -0.05;
-                widget.controller.setMovieVolume(
-                  widget.controller.movieVolume + delta,
-                );
+                _changeMovieVolume(delta);
               }
             },
             child: Stack(
               children: [
-                Positioned.fill(child: _movieSurface()),
+                Positioned.fill(child: _movieSurface(context)),
                 Positioned(left: 0, right: 0, top: 0, child: _topBar(context)),
                 RemoteVideoOverlay(controller: widget.controller),
                 Positioned(left: 0, right: 0, bottom: 0, child: _controls()),
+                if (volumeOsd != null)
+                  Positioned(
+                    right: 32,
+                    top: 96,
+                    child: _volumeIndicator(),
+                  ),
               ],
             ),
           ),
@@ -87,69 +200,100 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
-  Widget _movieSurface() {
+  Widget _movieSurface(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(top: 68, bottom: 118),
-      decoration: const BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment(0.15, -0.15),
-          radius: 1.1,
-          colors: [
-            Color(0xFF183B59),
-            Color(0xFF0A2236),
-            Color(0xFF06121D),
+      color: Colors.black,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onDoubleTap: _toggleFullscreen,
+        onSecondaryTapDown: (details) {
+          _showContextMenu(context, details.globalPosition);
+        },
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Video(
+              controller: videoController,
+              controls: NoVideoControls,
+              fit: BoxFit.contain,
+              fill: Colors.black,
+            ),
+            Positioned(
+              left: 24,
+              top: 20,
+              right: 24,
+              child: IgnorePointer(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.movie.fileName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 23,
+                        fontWeight: FontWeight.w800,
+                        shadows: [
+                          Shadow(color: Colors.black87, blurRadius: 8),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 6,
+                      children: [
+                        _surfaceInfo(
+                          Icons.schedule_rounded,
+                          _formatSeconds(durationSeconds),
+                        ),
+                        _surfaceInfo(
+                          Icons.monitor_rounded,
+                          player.state.width != null && player.state.height != null
+                              ? '${player.state.width}×${player.state.height}'
+                              : widget.movie.resolution,
+                        ),
+                        _surfaceInfo(
+                          Icons.graphic_eq_rounded,
+                          currentAudioTrack == null
+                              ? widget.initialAudioTrack
+                              : _audioLabel(currentAudioTrack!),
+                        ),
+                        _surfaceInfo(
+                          Icons.subtitles_rounded,
+                          currentSubtitleTrack == null
+                              ? widget.initialSubtitleTrack
+                              : _subtitleLabel(currentSubtitleTrack!),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
-      child: Stack(
-        children: [
-          Positioned(
-            left: 32,
-            top: 28,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.movie.fileName,
-                  style: const TextStyle(
-                    fontSize: 27,
-                    fontWeight: FontWeight.w800,
-                    shadows: [
-                      Shadow(color: Colors.black54, blurRadius: 8),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    const Icon(Icons.schedule_rounded, size: 18),
-                    const SizedBox(width: 6),
-                    Text(_formatSeconds(durationSeconds)),
-                    const SizedBox(width: 18),
-                    const Icon(Icons.monitor_rounded, size: 18),
-                    const SizedBox(width: 6),
-                    Text(widget.movie.resolution),
-                    const SizedBox(width: 18),
-                    const Icon(Icons.graphic_eq_rounded, size: 18),
-                    const SizedBox(width: 6),
-                    Text(currentAudioTrack),
-                    const SizedBox(width: 18),
-                    const Icon(Icons.subtitles_rounded, size: 18),
-                    const SizedBox(width: 6),
-                    Text(currentSubtitleTrack),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Center(
-            child: Icon(
-              Icons.movie_creation_outlined,
-              size: 94,
-              color: Colors.white.withValues(alpha: 0.08),
-            ),
-          ),
-        ],
+    );
+  }
+
+  Widget _surfaceInfo(IconData icon, String text) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.42),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16),
+            const SizedBox(width: 6),
+            Text(text),
+          ],
+        ),
       ),
     );
   }
@@ -197,6 +341,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Widget _controls() {
+    final sliderMax = durationSeconds > 0 ? durationSeconds : 1.0;
+    final sliderValue = positionSeconds.clamp(0.0, sliderMax).toDouble();
+
     return Container(
       height: 118,
       padding: const EdgeInsets.fromLTRB(22, 8, 22, 14),
@@ -208,10 +355,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
               Text(_formatSeconds(positionSeconds)),
               Expanded(
                 child: Slider(
-                  value: positionSeconds.clamp(0.0, durationSeconds).toDouble(),
-                  max: durationSeconds,
-                  onChanged: (value) => setState(() => positionSeconds = value),
-                  onChangeEnd: _seekAbsolute,
+                  value: sliderValue,
+                  max: sliderMax,
+                  onChanged: durationSeconds <= 0
+                      ? null
+                      : (value) => setState(() => positionSeconds = value),
+                  onChangeEnd:
+                      durationSeconds <= 0 ? null : (value) => _seekAbsolute(value),
                 ),
               ),
               Text(_formatSeconds(durationSeconds)),
@@ -257,21 +407,33 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      PopupMenuButton<String>(
+                      PopupMenuButton<AudioTrack>(
                         tooltip: widget.controller.t('audioTracks'),
-                        initialValue: currentAudioTrack,
-                        onSelected: (value) {
-                          setState(() => currentAudioTrack = value);
-                        },
+                        onSelected: player.setAudioTrack,
                         itemBuilder: (context) {
-                          final items = widget.movie.audioTrackNames.isEmpty
-                              ? <String>[widget.controller.t('defaultAudio')]
-                              : widget.movie.audioTrackNames;
+                          if (audioTracks.isEmpty) {
+                            return [
+                              PopupMenuItem<AudioTrack>(
+                                enabled: false,
+                                value: AudioTrack.auto(),
+                                child: Text(widget.controller.t('noAudioTracks')),
+                              ),
+                            ];
+                          }
                           return [
-                            for (final item in items)
-                              PopupMenuItem<String>(
-                                value: item,
-                                child: Text(item),
+                            for (final track in audioTracks)
+                              PopupMenuItem<AudioTrack>(
+                                value: track,
+                                child: Row(
+                                  children: [
+                                    if (currentAudioTrack?.id == track.id)
+                                      const Icon(Icons.check_rounded, size: 18)
+                                    else
+                                      const SizedBox(width: 18),
+                                    const SizedBox(width: 8),
+                                    Expanded(child: Text(_audioLabel(track))),
+                                  ],
+                                ),
                               ),
                           ];
                         },
@@ -281,21 +443,28 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      PopupMenuButton<String>(
+                      PopupMenuButton<SubtitleTrack>(
                         tooltip: widget.controller.t('subtitles'),
-                        initialValue: currentSubtitleTrack,
-                        onSelected: (value) {
-                          setState(() => currentSubtitleTrack = value);
-                        },
+                        onSelected: player.setSubtitleTrack,
                         itemBuilder: (context) {
-                          final items = widget.movie.subtitleTrackNames.isEmpty
-                              ? <String>[widget.controller.t('subtitlesOff')]
-                              : widget.movie.subtitleTrackNames;
+                          final tracks = <SubtitleTrack>[
+                            SubtitleTrack.no(),
+                            ...subtitleTracks.where((track) => track.id != 'no'),
+                          ];
                           return [
-                            for (final item in items)
-                              PopupMenuItem<String>(
-                                value: item,
-                                child: Text(item),
+                            for (final track in tracks)
+                              PopupMenuItem<SubtitleTrack>(
+                                value: track,
+                                child: Row(
+                                  children: [
+                                    if (currentSubtitleTrack?.id == track.id)
+                                      const Icon(Icons.check_rounded, size: 18)
+                                    else
+                                      const SizedBox(width: 18),
+                                    const SizedBox(width: 8),
+                                    Expanded(child: Text(_subtitleLabel(track))),
+                                  ],
+                                ),
                               ),
                           ];
                         },
@@ -307,8 +476,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       const SizedBox(width: 8),
                       IconButton(
                         tooltip: widget.controller.t('fullscreen'),
-                        onPressed: () {},
-                        icon: const Icon(Icons.fullscreen_rounded),
+                        onPressed: _toggleFullscreen,
+                        icon: Icon(
+                          isFullscreen
+                              ? Icons.fullscreen_exit_rounded
+                              : Icons.fullscreen_rounded,
+                        ),
                       ),
                     ],
                   ),
@@ -364,25 +537,205 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
-  void _togglePlayback() {
-    setState(() => playing = !playing);
-    if (playing) {
-      widget.syncEngine.play();
+  Widget _volumeIndicator() {
+    final percent = ((volumeOsd ?? 0) * 100).round();
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xE6122538),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: syncBorder),
+        boxShadow: const [
+          BoxShadow(color: Colors.black38, blurRadius: 16),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.volume_up_rounded),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 120,
+              child: LinearProgressIndicator(
+                value: volumeOsd,
+                minHeight: 5,
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text('$percent%'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _togglePlayback() async {
+    await player.playOrPause();
+    if (player.state.playing) {
+      await widget.syncEngine.play();
     } else {
-      widget.syncEngine.pause();
+      await widget.syncEngine.pause();
     }
   }
 
-  void _skip(int deltaSeconds) {
-    _seekAbsolute(positionSeconds + deltaSeconds);
+  Future<void> _skip(int deltaSeconds) async {
+    await _seekAbsolute(positionSeconds + deltaSeconds);
   }
 
-  void _seekAbsolute(double targetSeconds) {
-    final target = targetSeconds.clamp(0.0, durationSeconds).toDouble();
-    setState(() => positionSeconds = target);
-    widget.syncEngine.seekTo(
-      Duration(milliseconds: (target * 1000).round()),
+  Future<void> _seekAbsolute(double targetSeconds) async {
+    final max = durationSeconds > 0 ? durationSeconds : 0.0;
+    final target = targetSeconds.clamp(0.0, max).toDouble();
+    final duration = Duration(milliseconds: (target * 1000).round());
+
+    await player.seek(duration);
+    await widget.syncEngine.seekTo(duration);
+  }
+
+  Future<void> _changeMovieVolume(double delta) async {
+    final value = (widget.controller.movieVolume + delta).clamp(0.0, 1.0);
+    widget.controller.setMovieVolume(value);
+    await player.setVolume(value * 100.0);
+
+    _volumeOsdTimer?.cancel();
+    if (mounted) {
+      setState(() => volumeOsd = value);
+    }
+    _volumeOsdTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (!mounted) return;
+      setState(() => volumeOsd = null);
+    });
+  }
+
+  Future<void> _toggleFullscreen() async {
+    final next = !await windowManager.isFullScreen();
+    await windowManager.setFullScreen(next);
+    if (mounted) {
+      setState(() => isFullscreen = next);
+    }
+  }
+
+  Future<void> _showContextMenu(
+    BuildContext context,
+    Offset globalPosition,
+  ) async {
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final audio = player.state.tracks.audio
+        .where((track) => track.id != 'auto' && track.id != 'no')
+        .toList();
+    final subtitles = player.state.tracks.subtitle
+        .where((track) => track.id != 'auto')
+        .toList();
+
+    final result = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(
+        Rect.fromLTWH(globalPosition.dx, globalPosition.dy, 0, 0),
+        Offset.zero & overlay.size,
+      ),
+      items: [
+        PopupMenuItem(
+          value: 'play',
+          child: ListTile(
+            dense: true,
+            leading: Icon(
+              playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+            ),
+            title: Text(
+              playing
+                  ? widget.controller.t('pause')
+                  : widget.controller.t('play'),
+            ),
+          ),
+        ),
+        PopupMenuItem(
+          value: 'mute',
+          child: ListTile(
+            dense: true,
+            leading: Icon(
+              movieMuted ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+            ),
+            title: Text(
+              movieMuted
+                  ? widget.controller.t('unmuteMovie')
+                  : widget.controller.t('muteMovie'),
+            ),
+          ),
+        ),
+        PopupMenuItem(
+          value: 'fullscreen',
+          child: ListTile(
+            dense: true,
+            leading: const Icon(Icons.fullscreen_rounded),
+            title: Text(widget.controller.t('fullscreen')),
+          ),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          enabled: false,
+          child: Text(widget.controller.t('audioTracks')),
+        ),
+        for (final track in audio)
+          PopupMenuItem(
+            value: 'audio:${track.id}',
+            child: Text(
+              '${currentAudioTrack?.id == track.id ? '✓ ' : ''}${_audioLabel(track)}',
+            ),
+          ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          enabled: false,
+          child: Text(widget.controller.t('subtitles')),
+        ),
+        PopupMenuItem(
+          value: 'subtitle:no',
+          child: Text(
+            '${currentSubtitleTrack?.id == 'no' ? '✓ ' : ''}${widget.controller.t('noSubtitles')}',
+          ),
+        ),
+        for (final track in subtitles.where((track) => track.id != 'no'))
+          PopupMenuItem(
+            value: 'subtitle:${track.id}',
+            child: Text(
+              '${currentSubtitleTrack?.id == track.id ? '✓ ' : ''}${_subtitleLabel(track)}',
+            ),
+          ),
+      ],
     );
+
+    if (result == null) return;
+    if (result == 'play') {
+      await _togglePlayback();
+      return;
+    }
+    if (result == 'mute') {
+      movieMuted = !movieMuted;
+      await player.setVolume(
+        movieMuted ? 0 : widget.controller.movieVolume * 100.0,
+      );
+      if (mounted) setState(() {});
+      return;
+    }
+    if (result == 'fullscreen') {
+      await _toggleFullscreen();
+      return;
+    }
+    if (result.startsWith('audio:')) {
+      final id = result.substring('audio:'.length);
+      final match = audio.where((track) => track.id == id);
+      if (match.isNotEmpty) await player.setAudioTrack(match.first);
+      return;
+    }
+    if (result.startsWith('subtitle:')) {
+      final id = result.substring('subtitle:'.length);
+      if (id == 'no') {
+        await player.setSubtitleTrack(SubtitleTrack.no());
+        return;
+      }
+      final match = subtitles.where((track) => track.id == id);
+      if (match.isNotEmpty) await player.setSubtitleTrack(match.first);
+    }
   }
 
   void _showAudioPopover(BuildContext context) {
@@ -407,8 +760,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         label: widget.controller.t('movieVolume'),
                         value: widget.controller.movieVolume,
                         muted: movieMuted,
-                        onMute: () => setState(() => movieMuted = !movieMuted),
-                        onChanged: widget.controller.setMovieVolume,
+                        onMute: () async {
+                          setState(() => movieMuted = !movieMuted);
+                          await player.setVolume(
+                            movieMuted
+                                ? 0
+                                : widget.controller.movieVolume * 100.0,
+                          );
+                        },
+                        onChanged: (value) async {
+                          widget.controller.setMovieVolume(value);
+                          await player.setVolume(value * 100.0);
+                        },
                       ),
                       const SizedBox(height: 16),
                       _volumeRow(
@@ -450,23 +813,67 @@ class _PlayerScreenState extends State<PlayerScreen> {
     required String label,
     required double value,
     required bool muted,
-    required VoidCallback onMute,
-    required ValueChanged<double> onChanged,
+    required FutureOr<void> Function() onMute,
+    required FutureOr<void> Function(double) onChanged,
   }) {
     return Row(
       children: [
         SizedBox(width: 54, child: Text(label)),
         IconButton(
-          onPressed: onMute,
+          onPressed: () => onMute(),
           icon: Icon(muted ? Icons.volume_off : Icons.volume_up),
         ),
-        Expanded(child: Slider(value: value, onChanged: onChanged)),
+        Expanded(
+          child: Slider(
+            value: value,
+            onChanged: (newValue) => onChanged(newValue),
+          ),
+        ),
         SizedBox(
           width: 44,
           child: Text('${(value * 100).round()}%'),
         ),
       ],
     );
+  }
+
+  String _audioLabel(AudioTrack track) {
+    final parts = <String>[];
+    if (track.title != null && track.title!.trim().isNotEmpty) {
+      parts.add(track.title!.trim());
+    }
+    if (track.language != null && track.language!.trim().isNotEmpty) {
+      parts.add(track.language!.toUpperCase());
+    }
+    if (track.codec != null && track.codec!.trim().isNotEmpty) {
+      parts.add(track.codec!.toUpperCase());
+    }
+    if (track.channels != null && track.channels!.trim().isNotEmpty) {
+      parts.add(track.channels!);
+    }
+    if (parts.isEmpty) {
+      return '${widget.controller.t('audioTrack')} ${track.id}';
+    }
+    return parts.join(' · ');
+  }
+
+  String _subtitleLabel(SubtitleTrack track) {
+    if (track.id == 'no') return widget.controller.t('noSubtitles');
+
+    final parts = <String>[];
+    if (track.title != null && track.title!.trim().isNotEmpty) {
+      parts.add(track.title!.trim());
+    }
+    if (track.language != null && track.language!.trim().isNotEmpty) {
+      parts.add(track.language!.toUpperCase());
+    }
+    if (track.codec != null && track.codec!.trim().isNotEmpty) {
+      parts.add(track.codec!.toUpperCase());
+    }
+    if (parts.isEmpty) {
+      return '${widget.controller.t('subtitleTrack')} ${track.id}';
+    }
+    return parts.join(' · ');
   }
 
   String _formatSeconds(double value) {
