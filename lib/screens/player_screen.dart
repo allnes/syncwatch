@@ -44,7 +44,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   Timer? _volumeOsdTimer;
-  Timer? _controlsHideTimer;
 
   bool playing = false;
   bool movieMuted = false;
@@ -210,7 +209,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void dispose() {
     _volumeOsdTimer?.cancel();
-    _controlsHideTimer?.cancel();
     for (final subscription in _subscriptions) {
       subscription.cancel();
     }
@@ -238,35 +236,80 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 _changeMovieVolume(delta);
               }
             },
-            child: MouseRegion(
-              onHover: (event) {
-                _handlePointerHover(context, event.localPosition);
-              },
-              child: Stack(
-                children: [
-                  Positioned.fill(child: _movieSurface(context)),
-                  if (!isFullscreen || topControlsVisible)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      top: 0,
-                      child: _topBar(context),
+            child: Stack(
+              children: [
+                Positioned.fill(child: _movieSurface(context)),
+
+                if (isFullscreen)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    height: 90,
+                    child: MouseRegion(
+                      onEnter: (_) {
+                        if (!topControlsVisible) {
+                          setState(() => topControlsVisible = true);
+                        }
+                      },
+                      onExit: (_) {
+                        if (topControlsVisible) {
+                          setState(() => topControlsVisible = false);
+                        }
+                      },
+                      child: topControlsVisible
+                          ? _topBar(context)
+                          : const SizedBox.expand(),
                     ),
-                  if (!isFullscreen || bottomControlsVisible)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: _controls(),
+                  )
+                else
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    child: _topBar(context),
+                  ),
+
+                if (isFullscreen)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: 140,
+                    child: MouseRegion(
+                      onEnter: (_) {
+                        if (!bottomControlsVisible) {
+                          setState(() => bottomControlsVisible = true);
+                        }
+                      },
+                      onExit: (_) {
+                        if (bottomControlsVisible) {
+                          setState(() => bottomControlsVisible = false);
+                        }
+                      },
+                      child: bottomControlsVisible
+                          ? Align(
+                              alignment: Alignment.bottomCenter,
+                              child: _controls(),
+                            )
+                          : const SizedBox.expand(),
                     ),
-                  if (volumeOsd != null)
-                    Positioned(
-                      right: 32,
-                      top: isFullscreen && !topControlsVisible ? 28 : 96,
-                      child: _volumeIndicator(),
-                    ),
-                ],
-              ),
+                  )
+                else
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: _controls(),
+                  ),
+
+                if (volumeOsd != null)
+                  Positioned(
+                    right: 32,
+                    top: isFullscreen && !topControlsVisible ? 28 : 96,
+                    child: _volumeIndicator(),
+                  ),
+              ],
             ),
           ),
         );
@@ -815,39 +858,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Future<void> _toggleFullscreen() async {
     final next = !await windowManager.isFullScreen();
     await windowManager.setFullScreen(next);
-    _controlsHideTimer?.cancel();
-
     if (!mounted) return;
     setState(() {
       isFullscreen = next;
       topControlsVisible = !next;
       bottomControlsVisible = !next;
-    });
-  }
-
-  void _handlePointerHover(BuildContext context, Offset position) {
-    if (!isFullscreen) return;
-
-    final size = MediaQuery.sizeOf(context);
-    final showTop = position.dy <= 90;
-    final showBottom = position.dy >= size.height - 140;
-
-    if (showTop || showBottom) {
-      _controlsHideTimer?.cancel();
-      setState(() {
-        if (showTop) topControlsVisible = true;
-        if (showBottom) bottomControlsVisible = true;
-      });
-      return;
-    }
-
-    _controlsHideTimer?.cancel();
-    _controlsHideTimer = Timer(const Duration(milliseconds: 700), () {
-      if (!mounted || !isFullscreen) return;
-      setState(() {
-        topControlsVisible = false;
-        bottomControlsVisible = false;
-      });
     });
   }
 
