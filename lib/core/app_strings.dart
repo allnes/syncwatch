@@ -87,6 +87,9 @@ class AppStrings {
       'noSubtitles': 'None',
       'audioTrack': 'Audio track',
       'subtitleTrack': 'Subtitle track',
+      'playlist': 'Playlist',
+      'previousFile': 'Previous file',
+      'nextFile': 'Next file',
     },
     'ru': {
       'movies': 'Фильмы',
@@ -175,6 +178,9 @@ class AppStrings {
       'noSubtitles': 'Нет',
       'audioTrack': 'Аудиодорожка',
       'subtitleTrack': 'Субтитры',
+      'playlist': 'Плейлист',
+      'previousFile': 'Предыдущий файл',
+      'nextFile': 'Следующий файл',
     },
   };
 
