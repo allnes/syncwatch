@@ -715,15 +715,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           style: const TextStyle(color: Colors.white54),
         ),
         const SizedBox(height: 10),
-        Text(
-          movie.fileName,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 31,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
+        _adaptiveMovieTitle(movie.fileName),
         const SizedBox(height: 16),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -825,6 +817,51 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ),
         ),
       ],
+    );
+  }
+
+  Widget _adaptiveMovieTitle(String text) {
+    return Tooltip(
+      message: text,
+      waitDuration: const Duration(milliseconds: 350),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          const maxFontSize = 31.0;
+          const minFontSize = 20.0;
+
+          double fontSize = maxFontSize;
+          while (fontSize > minFontSize) {
+            final painter = TextPainter(
+              text: TextSpan(
+                text: text,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              maxLines: 1,
+              textDirection: TextDirection.ltr,
+            )..layout(maxWidth: constraints.maxWidth);
+
+            if (!painter.didExceedMaxLines &&
+                painter.width <= constraints.maxWidth) {
+              break;
+            }
+            fontSize -= 1;
+          }
+
+          return Text(
+            text,
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: FontWeight.w800,
+            ),
+          );
+        },
+      ),
     );
   }
 
