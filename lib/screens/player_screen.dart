@@ -21,6 +21,8 @@ class PlayerScreen extends StatefulWidget {
     required this.syncEngine,
     required this.initialAudioTrack,
     required this.initialSubtitleTrack,
+    required this.playlist,
+    required this.initialIndex,
   });
 
   final AppController controller;
@@ -28,6 +30,8 @@ class PlayerScreen extends StatefulWidget {
   final SyncEngine syncEngine;
   final String initialAudioTrack;
   final String initialSubtitleTrack;
+  final List<MovieItem> playlist;
+  final int initialIndex;
 
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
@@ -48,6 +52,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool isFullscreen = false;
   bool topControlsVisible = true;
   bool bottomControlsVisible = true;
+  late int currentIndex;
+  late MovieItem currentMovie;
 
   double positionSeconds = 0;
   double durationSeconds = 0;
@@ -62,6 +68,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void initState() {
     super.initState();
 
+    currentIndex = widget.initialIndex < 0 ? 0 : widget.initialIndex;
+    currentMovie = widget.playlist.isEmpty
+        ? widget.movie
+        : widget.playlist[currentIndex.clamp(0, widget.playlist.length - 1)];
+
     player = Player();
     videoController = VideoController(player);
 
@@ -70,7 +81,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         if (!mounted) return;
         final seconds = position.inMilliseconds / 1000.0;
         widget.controller.updatePlaybackPosition(
-          widget.movie.fullPath,
+          currentMovie.fullPath,
           seconds,
         );
         setState(() => positionSeconds = seconds);
@@ -121,14 +132,34 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
   }
 
+  String get _initialAudioForCurrent {
+    if (currentMovie.fullPath == widget.movie.fullPath) {
+      return _initialAudioForCurrent;
+    }
+    if (currentMovie.audioTrackNames.isNotEmpty) {
+      return currentMovie.audioTrackNames.first;
+    }
+    return widget.controller.t('defaultAudio');
+  }
+
+  String get _initialSubtitleForCurrent {
+    if (currentMovie.fullPath == widget.movie.fullPath) {
+      return _initialSubtitleForCurrent;
+    }
+    if (currentMovie.subtitleTrackNames.isNotEmpty) {
+      return currentMovie.subtitleTrackNames.first;
+    }
+    return widget.controller.t('noSubtitles');
+  }
+
   Future<void> _openMedia() async {
     final resumePosition =
-        widget.controller.playbackPositionFor(widget.movie.fullPath);
-    widget.controller.beginPlaybackSession(widget.movie.fullPath);
+        widget.controller.playbackPositionFor(currentMovie.fullPath);
+    widget.controller.beginPlaybackSession(currentMovie.fullPath);
 
     await player.setVolume(widget.controller.movieVolume * 100.0);
     await player.open(
-      Media(Uri.file(widget.movie.fullPath).toString()),
+      Media(Uri.file(currentMovie.fullPath).toString()),
       play: false,
     );
 
@@ -152,7 +183,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         .toList();
     if (audio.isNotEmpty) {
       final match = audio.where(
-        (track) => _audioLabel(track) == widget.initialAudioTrack,
+        (track) => _audioLabel(track) == _initialAudioForCurrent,
       );
       await player.setAudioTrack(match.isNotEmpty ? match.first : audio.first);
     }
@@ -163,12 +194,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
         .toList();
 
     final selected = subtitles.where(
-      (track) => _subtitleLabel(track) == widget.initialSubtitleTrack,
+      (track) => _subtitleLabel(track) == _initialSubtitleForCurrent,
     );
     if (selected.isNotEmpty) {
       await player.setSubtitleTrack(selected.first);
-    } else if (widget.initialSubtitleTrack == widget.controller.t('subtitlesOff') ||
-        widget.initialSubtitleTrack == widget.controller.t('noSubtitles')) {
+    } else if (_initialSubtitleForCurrent == widget.controller.t('subtitlesOff') ||
+        _initialSubtitleForCurrent == widget.controller.t('noSubtitles')) {
       await player.setSubtitleTrack(SubtitleTrack.no());
     }
   }
@@ -181,7 +212,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       subscription.cancel();
     }
     widget.controller.updatePlaybackPosition(
-      widget.movie.fullPath,
+      currentMovie.fullPath,
       positionSeconds,
       persist: true,
     );
@@ -273,7 +304,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.movie.fileName,
+                      currentMovie.fileName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -297,18 +328,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           Icons.monitor_rounded,
                           player.state.width != null && player.state.height != null
                               ? '${player.state.width}×${player.state.height}'
-                              : widget.movie.resolution,
+                              : currentMovie.resolution,
                         ),
                         _surfaceInfo(
                           Icons.graphic_eq_rounded,
                           currentAudioTrack == null
-                              ? widget.initialAudioTrack
+                              ? _initialAudioForCurrent
                               : _audioLabel(currentAudioTrack!),
                         ),
                         _surfaceInfo(
                           Icons.subtitles_rounded,
                           currentSubtitleTrack == null
-                              ? widget.initialSubtitleTrack
+                              ? _initialSubtitleForCurrent
                               : _subtitleLabel(currentSubtitleTrack!),
                         ),
                       ],
@@ -419,6 +450,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    IconButton(
+                      tooltip: widget.controller.t('previousFile'),
+                      onPressed: currentIndex > 0
+                          ? () => _switchToIndex(currentIndex - 1)
+                          : null,
+                      icon: const Icon(Icons.skip_previous_rounded),
+                    ),
+                    const SizedBox(width: 8),
                     _roundControl(
                       icon: Icons.fast_rewind_rounded,
                       onPressed: () => _skip(-widget.controller.skipSeconds),
@@ -436,12 +475,51 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       icon: Icons.fast_forward_rounded,
                       onPressed: () => _skip(widget.controller.skipSeconds),
                     ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: widget.controller.t('nextFile'),
+                      onPressed: currentIndex < widget.playlist.length - 1
+                          ? () => _switchToIndex(currentIndex + 1)
+                          : null,
+                      icon: const Icon(Icons.skip_next_rounded),
+                    ),
                   ],
                 ),
                 Positioned(
                   right: 0,
                   child: Row(
                     children: [
+                      PopupMenuButton<int>(
+                        tooltip: widget.controller.t('playlist'),
+                        onSelected: _switchToIndex,
+                        itemBuilder: (context) => [
+                          for (var i = 0; i < widget.playlist.length; i++)
+                            PopupMenuItem<int>(
+                              value: i,
+                              child: Row(
+                                children: [
+                                  if (i == currentIndex)
+                                    const Icon(Icons.play_arrow_rounded, size: 18)
+                                  else
+                                    const SizedBox(width: 18),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      widget.playlist[i].fileName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                        child: _trackButton(
+                          icon: Icons.playlist_play_rounded,
+                          tooltip: widget.controller.t('playlist'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       IconButton.filledTonal(
                         tooltip: widget.controller.t('audio'),
                         onPressed: () => _showAudioPopover(context),
@@ -614,6 +692,35 @@ class _PlayerScreenState extends State<PlayerScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _switchToIndex(int index) async {
+    if (widget.playlist.isEmpty ||
+        index < 0 ||
+        index >= widget.playlist.length ||
+        index == currentIndex) {
+      return;
+    }
+
+    widget.controller.updatePlaybackPosition(
+      currentMovie.fullPath,
+      positionSeconds,
+      persist: true,
+    );
+
+    final nextMovie = widget.playlist[index];
+    setState(() {
+      currentIndex = index;
+      currentMovie = nextMovie;
+      positionSeconds = 0;
+      durationSeconds = 0;
+      audioTracks = const [];
+      subtitleTracks = const [];
+      currentAudioTrack = null;
+      currentSubtitleTrack = null;
+    });
+
+    await _openMedia();
   }
 
   Future<void> _togglePlayback() async {
