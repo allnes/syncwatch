@@ -22,6 +22,7 @@ class PlayerScreen extends StatefulWidget {
     required this.initialSubtitleTrack,
     required this.playlist,
     required this.initialIndex,
+    this.onShowCall,
   });
 
   final AppController controller;
@@ -31,6 +32,7 @@ class PlayerScreen extends StatefulWidget {
   final String initialSubtitleTrack;
   final List<MovieItem> playlist;
   final int initialIndex;
+  final Future<void> Function()? onShowCall;
 
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
@@ -348,6 +350,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
           const SizedBox(width: 6),
           Text('2/2 ${widget.controller.t('ready')}'),
           const SizedBox(width: 16),
+          if (widget.onShowCall != null)
+            IconButton(
+              tooltip: widget.controller.t('goToCall'),
+              onPressed: () => widget.onShowCall?.call(),
+              icon: const Icon(Icons.videocam_rounded),
+            ),
           IconButton(
             tooltip: widget.controller.t('settings'),
             onPressed: () => showDialog<void>(
