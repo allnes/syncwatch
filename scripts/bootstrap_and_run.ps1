@@ -1,7 +1,3 @@
-param(
-  [switch]$Mock
-)
-
 $ErrorActionPreference = "Stop"
 
 # Always run from repository root, even when launched by Visual Studio from System32.
@@ -40,9 +36,4 @@ if (-not (Test-Path "windows\CMakeLists.txt")) {
 
 flutter pub get
 
-$defines = @()
-if ($Mock) {
-  $defines += "--dart-define=SYNCWATCH_MOCK=true"
-}
-
-flutter run -d windows @defines
+flutter run -d windows
