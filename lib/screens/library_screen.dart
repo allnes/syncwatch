@@ -692,6 +692,15 @@ if ($script:found -ne [IntPtr]::Zero) {
                             ),
                           ),
                           if (expandedTrackMenu != null)
+                            Positioned.fill(
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.translucent,
+                                onTap: () {
+                                  setState(() => expandedTrackMenu = null);
+                                },
+                              ),
+                            ),
+                          if (expandedTrackMenu != null)
                             _trackMenuOverlay(movie),
                         ],
                       ),
@@ -867,14 +876,14 @@ if ($script:found -ne [IntPtr]::Zero) {
 
     return Positioned(
       top: 136,
-      right: isAudio ? 250 : 18,
-      width: 300,
+      right: isAudio ? 220 : 18,
+      width: isAudio ? 250 : 220,
       child: Material(
         elevation: 12,
         borderRadius: BorderRadius.circular(12),
         color: syncBackgroundDeep,
         child: Container(
-          constraints: const BoxConstraints(maxHeight: 170),
+          constraints: const BoxConstraints(maxHeight: 155),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: syncBorder),
@@ -891,15 +900,26 @@ if ($script:found -ne [IntPtr]::Zero) {
                 final selected = index == selectedIndex;
                 return ListTile(
                   dense: true,
-                  visualDensity: const VisualDensity(vertical: -3),
+                  minLeadingWidth: 18,
+                  horizontalTitleGap: 6,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 0,
+                  ),
+                  visualDensity: const VisualDensity(vertical: -4),
                   selected: selected,
                   leading: selected
-                      ? const Icon(Icons.check_rounded, size: 18)
-                      : const SizedBox(width: 18),
-                  title: Text(
-                    items[index],
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                      ? const Icon(Icons.check_rounded, size: 16)
+                      : const SizedBox(width: 16),
+                  title: Tooltip(
+                    message: items[index],
+                    waitDuration: const Duration(milliseconds: 350),
+                    child: Text(
+                      items[index],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13),
+                    ),
                   ),
                   onTap: () {
                     setState(() {
@@ -963,7 +983,10 @@ if ($script:found -ne [IntPtr]::Zero) {
                             selectedText,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                         if (items.length > 1)
