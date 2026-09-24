@@ -17,6 +17,8 @@ class _RemoteVideoOverlayState extends State<RemoteVideoOverlay> {
   bool minimized = false;
   bool hidden = false;
   bool fullscreen = false;
+  bool microphoneEnabled = true;
+  bool cameraEnabled = true;
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +61,36 @@ class _RemoteVideoOverlayState extends State<RemoteVideoOverlay> {
                   const Icon(Icons.circle, size: 8, color: Color(0xFF56D38B)),
                   const SizedBox(width: 8),
                   Text(widget.controller.t('partnerVideo')),
+                  IconButton(
+                    tooltip: microphoneEnabled
+                        ? widget.controller.t('microphoneOn')
+                        : widget.controller.t('microphoneOff'),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () {
+                      setState(() => microphoneEnabled = !microphoneEnabled);
+                    },
+                    icon: Icon(
+                      microphoneEnabled
+                          ? Icons.mic_rounded
+                          : Icons.mic_off_rounded,
+                      size: 17,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: cameraEnabled
+                        ? widget.controller.t('cameraOn')
+                        : widget.controller.t('cameraOff'),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () {
+                      setState(() => cameraEnabled = !cameraEnabled);
+                    },
+                    icon: Icon(
+                      cameraEnabled
+                          ? Icons.videocam_rounded
+                          : Icons.videocam_off_rounded,
+                      size: 17,
+                    ),
+                  ),
                   IconButton(
                     tooltip: widget.controller.t('restore'),
                     onPressed: () => setState(() => minimized = false),
@@ -128,7 +160,7 @@ class _RemoteVideoOverlayState extends State<RemoteVideoOverlay> {
                   children: [
                     const Icon(Icons.mic_rounded, size: 15),
                     const SizedBox(width: 5),
-                    Text('${widget.controller.t('partnerVideo')}  •  480p'),
+                    Text(widget.controller.t('partnerVideo')),
                   ],
                 ),
               ),
@@ -145,6 +177,36 @@ class _RemoteVideoOverlayState extends State<RemoteVideoOverlay> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  IconButton(
+                    tooltip: microphoneEnabled
+                        ? widget.controller.t('microphoneOn')
+                        : widget.controller.t('microphoneOff'),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () {
+                      setState(() => microphoneEnabled = !microphoneEnabled);
+                    },
+                    icon: Icon(
+                      microphoneEnabled
+                          ? Icons.mic_rounded
+                          : Icons.mic_off_rounded,
+                      size: 19,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: cameraEnabled
+                        ? widget.controller.t('cameraOn')
+                        : widget.controller.t('cameraOff'),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () {
+                      setState(() => cameraEnabled = !cameraEnabled);
+                    },
+                    icon: Icon(
+                      cameraEnabled
+                          ? Icons.videocam_rounded
+                          : Icons.videocam_off_rounded,
+                      size: 19,
+                    ),
+                  ),
                   if (!fullscreenMode)
                     IconButton(
                       tooltip: widget.controller.t('minimize'),
