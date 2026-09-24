@@ -448,7 +448,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ),
         const SizedBox(height: 14),
         SizedBox(
-          height: 182,
+          height: 230,
           child: Row(
             children: [
               Expanded(child: _roomCard()),
@@ -542,12 +542,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               icon: const Icon(Icons.play_arrow_rounded),
               label: Text(widget.controller.t('startWatching')),
             ),
-            const SizedBox(width: 10),
-            OutlinedButton.icon(
-              onPressed: () => _openPlayer(movie),
-              icon: const Icon(Icons.folder_open_rounded),
-              label: Text(widget.controller.t('open')),
-            ),
+
           ],
         ),
         const SizedBox(height: 20),
