@@ -15,9 +15,6 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   int section = 1;
-  bool scanSubfolders = true;
-  bool automaticRefresh = false;
-
   AppController get controller => widget.controller;
 
   Future<void> _browseMovieFolder() async {
@@ -172,7 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: [
         _sectionHeader(
           controller.t('interface'),
-          'SyncWatch desktop appearance and language.',
+          controller.t('appearanceHint'),
           Icons.palette_outlined,
         ),
         DropdownButtonFormField<String>(
@@ -226,8 +223,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 18),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              value: scanSubfolders,
-              onChanged: (value) => setState(() => scanSubfolders = value),
+              value: controller.scanSubfolders,
+              onChanged: controller.setScanSubfolders,
               title: Text(controller.t('scanSubfolders')),
             ),
           ],
@@ -237,8 +234,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              value: automaticRefresh,
-              onChanged: (value) => setState(() => automaticRefresh = value),
+              value: controller.automaticRefresh,
+              onChanged: controller.setAutomaticRefresh,
               title: Text(controller.t('automaticRefresh')),
             ),
           ],
@@ -253,7 +250,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: [
         _sectionHeader(
           controller.t('playback'),
-          'Playback behaviour and synchronization preferences.',
+          controller.t('playbackHint'),
           Icons.play_circle_outline_rounded,
         ),
         _settingsCard(
@@ -294,7 +291,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: [
         _sectionHeader(
           controller.t('call'),
-          'Camera and call audio preferences.',
+          controller.t('callHint'),
           Icons.groups_2_outlined,
         ),
         _settingsCard(
@@ -327,7 +324,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: [
         _sectionHeader(
           controller.t('sync'),
-          'Current synchronization profile.',
+          controller.t('syncHint'),
           Icons.sync_rounded,
         ),
         _settingsCard(
