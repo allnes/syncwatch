@@ -4,8 +4,10 @@
   "configurations": [
     {
       "type": "default",
+      "project": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "projectTarget": "",
       "name": "SyncWatch Mock",
-      "program": "powershell.exe",
+      "workingDirectory": "${workspaceRoot}",
       "args": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -13,23 +15,21 @@
         "-File",
         "${workspaceRoot}\\scripts\\bootstrap_and_run.ps1",
         "-Mock"
-      ],
-      "currentDir": "${workspaceRoot}",
-      "noDebug": true
+      ]
     },
     {
       "type": "default",
+      "project": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "projectTarget": "",
       "name": "SyncWatch Dev",
-      "program": "powershell.exe",
+      "workingDirectory": "${workspaceRoot}",
       "args": [
         "-NoProfile",
         "-ExecutionPolicy",
         "Bypass",
         "-File",
         "${workspaceRoot}\\scripts\\bootstrap_and_run.ps1"
-      ],
-      "currentDir": "${workspaceRoot}",
-      "noDebug": true
+      ]
     }
   ]
 }
