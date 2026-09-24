@@ -65,6 +65,8 @@ class AppStrings {
       'unknown': '—',
       'noMovies': 'No supported video files found in this folder.',
       'rescan': 'Rescan',
+      'defaultAudio': 'Default audio',
+      'subtitlesOff': 'Off',
     },
     'ru': {
       'movies': 'Фильмы',
@@ -131,6 +133,8 @@ class AppStrings {
       'unknown': '—',
       'noMovies': 'В этой папке не найдено поддерживаемых видеофайлов.',
       'rescan': 'Пересканировать',
+      'defaultAudio': 'Аудио по умолчанию',
+      'subtitlesOff': 'Выкл',
     },
   };
 
