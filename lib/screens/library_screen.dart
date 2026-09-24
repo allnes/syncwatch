@@ -79,8 +79,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
       final process = await Process.start(
         Platform.resolvedExecutable,
         const ['--call-window'],
-        mode: ProcessStartMode.detachedWithStdio,
+        mode: ProcessStartMode.normal,
       );
+      unawaited(process.stdout.drain<void>());
+      unawaited(process.stderr.drain<void>());
       callProcess = process;
       process.exitCode.then((_) async {
         await callEngine.leave();
