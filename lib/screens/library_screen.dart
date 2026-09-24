@@ -103,13 +103,27 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final process = callProcess;
     if (process == null) return;
 
+    final command = r'''
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public static class SyncWatchWindow {
+  [DllImport("user32.dll")]
+  public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+  [DllImport("user32.dll")]
+  public static extern bool SetForegroundWindow(IntPtr hWnd);
+}
+"@
+$p = Get-Process -Id PID_PLACEHOLDER -ErrorAction SilentlyContinue
+if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
+  [SyncWatchWindow]::ShowWindowAsync($p.MainWindowHandle, 9) | Out-Null
+  [SyncWatchWindow]::SetForegroundWindow($p.MainWindowHandle) | Out-Null
+}
+'''.replaceAll('PID_PLACEHOLDER', process.pid.toString());
+
     await Process.run(
       'powershell.exe',
-      [
-        '-NoProfile',
-        '-Command',
-        '(New-Object -ComObject WScript.Shell).AppActivate(${process.pid}) | Out-Null',
-      ],
+      ['-NoProfile', '-Command', command],
       runInShell: true,
     );
   }
