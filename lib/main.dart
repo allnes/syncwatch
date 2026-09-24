@@ -14,6 +14,14 @@ Future<void> main(List<String> args) async {
   await controller.load();
 
   if (args.contains('--call-window')) {
+    final commandArg = args.cast<String?>().firstWhere(
+      (arg) => arg != null && arg.startsWith('--call-command-file='),
+      orElse: () => null,
+    );
+    final commandFilePath = commandArg == null
+        ? null
+        : commandArg.substring('--call-command-file='.length);
+
     const options = WindowOptions(
       size: Size(260, 180),
       minimumSize: Size(260, 180),
@@ -24,7 +32,12 @@ Future<void> main(List<String> args) async {
       backgroundColor: Colors.transparent,
     );
 
-    runApp(CallWindowApp(controller: controller));
+    runApp(
+      CallWindowApp(
+        controller: controller,
+        commandFilePath: commandFilePath,
+      ),
+    );
 
     await windowManager.waitUntilReadyToShow(options, () async {
       await windowManager.show();
