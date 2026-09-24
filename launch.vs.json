@@ -1,0 +1,35 @@
+{
+  "version": "0.2.1",
+  "defaults": {},
+  "configurations": [
+    {
+      "type": "default",
+      "name": "SyncWatch Mock",
+      "program": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceRoot}\\scripts\\bootstrap_and_run.ps1",
+        "-Mock"
+      ],
+      "currentDir": "${workspaceRoot}",
+      "noDebug": true
+    },
+    {
+      "type": "default",
+      "name": "SyncWatch Dev",
+      "program": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceRoot}\\scripts\\bootstrap_and_run.ps1"
+      ],
+      "currentDir": "${workspaceRoot}",
+      "noDebug": true
+    }
+  ]
+}
