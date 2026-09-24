@@ -71,7 +71,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
     currentIndex = widget.initialIndex < 0 ? 0 : widget.initialIndex;
     currentMovie = widget.playlist.isEmpty
         ? widget.movie
-        : widget.playlist[currentIndex.clamp(0, widget.playlist.length - 1)];
+        : widget.playlist[
+            currentIndex.clamp(0, widget.playlist.length - 1).toInt()
+          ];
 
     player = Player();
     videoController = VideoController(player);
@@ -134,7 +136,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   String get _initialAudioForCurrent {
     if (currentMovie.fullPath == widget.movie.fullPath) {
-      return _initialAudioForCurrent;
+      return widget.initialAudioTrack;
     }
     if (currentMovie.audioTrackNames.isNotEmpty) {
       return currentMovie.audioTrackNames.first;
@@ -144,7 +146,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   String get _initialSubtitleForCurrent {
     if (currentMovie.fullPath == widget.movie.fullPath) {
-      return _initialSubtitleForCurrent;
+      return widget.initialSubtitleTrack;
     }
     if (currentMovie.subtitleTrackNames.isNotEmpty) {
       return currentMovie.subtitleTrackNames.first;
