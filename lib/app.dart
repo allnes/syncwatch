@@ -15,6 +15,8 @@ class AppController extends ChangeNotifier {
   int skipSeconds = 10;
   bool autoReady = true;
   bool ducking = false;
+  bool scanSubfolders = true;
+  bool automaticRefresh = false;
   double movieVolume = 0.40;
   double callVolume = 0.80;
 
@@ -42,6 +44,16 @@ class AppController extends ChangeNotifier {
 
   void setDucking(bool value) {
     ducking = value;
+    notifyListeners();
+  }
+
+  void setScanSubfolders(bool value) {
+    scanSubfolders = value;
+    notifyListeners();
+  }
+
+  void setAutomaticRefresh(bool value) {
+    automaticRefresh = value;
     notifyListeners();
   }
 
