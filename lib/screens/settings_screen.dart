@@ -260,7 +260,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   .map(
                     (value) => DropdownMenuItem(
                       value: value,
-                      child: Text('$value s'),
+                      child: Text('$value ${controller.t('secondsShort')}'),
                     ),
                   )
                   .toList(),
