@@ -645,7 +645,7 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
         ),
         const SizedBox(height: 14),
         SizedBox(
-          height: 180,
+          height: 164,
           child: Row(
             children: [
               Expanded(child: _roomCard()),
@@ -693,7 +693,7 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -737,7 +737,7 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         Row(
           children: [
             FilledButton.icon(
@@ -752,7 +752,7 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
 
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -864,54 +864,21 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
           const SizedBox(height: 8),
           _memberRow(widget.controller.t('friend')),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: callActive ? _focusCallWindow : _startCall,
-                  icon: Icon(
-                    callActive
-                        ? Icons.call_end_rounded
-                        : Icons.video_call_rounded,
-                  ),
-                  label: Text(
-                    callActive
-                        ? widget.controller.t('goToCall')
-                        : widget.controller.t('startCall'),
-                  ),
-                ),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: callActive ? _focusCallWindow : _startCall,
+              icon: Icon(
+                callActive
+                    ? Icons.open_in_new_rounded
+                    : Icons.video_call_rounded,
               ),
-              const SizedBox(width: 8),
-              IconButton.filledTonal(
-                tooltip: widget.controller.t('microphoneOn'),
-                onPressed: () async {
-                  setState(() => microphoneEnabled = !microphoneEnabled);
-                  if (callActive) {
-                    await callEngine.setMicrophoneEnabled(microphoneEnabled);
-                  }
-                },
-                icon: Icon(
-                  microphoneEnabled
-                      ? Icons.mic_rounded
-                      : Icons.mic_off_rounded,
-                ),
+              label: Text(
+                callActive
+                    ? widget.controller.t('goToCall')
+                    : widget.controller.t('startCall'),
               ),
-              const SizedBox(width: 6),
-              IconButton.filledTonal(
-                tooltip: widget.controller.t('cameraOn'),
-                onPressed: () async {
-                  setState(() => cameraEnabled = !cameraEnabled);
-                  if (callActive) {
-                    await callEngine.setCameraEnabled(cameraEnabled);
-                  }
-                },
-                icon: Icon(
-                  cameraEnabled
-                      ? Icons.videocam_rounded
-                      : Icons.videocam_off_rounded,
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
