@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -5,9 +8,50 @@ import 'app.dart';
 import 'core/app_theme.dart';
 
 class CallWindowApp extends StatelessWidget {
-  const CallWindowApp({super.key, required this.controller});
+  const CallWindowApp({
+    super.key,
+    required this.controller,
+    required this.commandFilePath,
+  });
 
   final AppController controller;
+  final String? commandFilePath;
+
+  @override
+  void initState() {
+    super.initState();
+    _startCommandListener();
+  }
+
+  @override
+  void dispose() {
+    commandTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startCommandListener() {
+    final path = widget.commandFilePath;
+    if (path == null || path.isEmpty) return;
+
+    commandTimer = Timer.periodic(
+      const Duration(milliseconds: 150),
+      (_) => _pollCommand(path),
+    );
+  }
+
+  Future<void> _pollCommand(String path) async {
+    try {
+      final command = await File(path).readAsString();
+      if (command == lastCommand) return;
+      lastCommand = command;
+
+      if (command.startsWith('restore:')) {
+        await windowManager.show();
+        await windowManager.setAlwaysOnTop(true);
+        await windowManager.focus();
+      }
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,21 +59,31 @@ class CallWindowApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       locale: controller.locale,
       theme: buildSyncWatchTheme(),
-      home: _CallWindow(controller: controller),
+      home: _CallWindow(
+        controller: controller,
+        commandFilePath: commandFilePath,
+      ),
     );
   }
 }
 
 class _CallWindow extends StatefulWidget {
-  const _CallWindow({required this.controller});
+  const _CallWindow({
+    required this.controller,
+    required this.commandFilePath,
+  });
 
   final AppController controller;
+  final String? commandFilePath;
 
   @override
   State<_CallWindow> createState() => _CallWindowState();
 }
 
 class _CallWindowState extends State<_CallWindow> {
+  Timer? commandTimer;
+  String? lastCommand;
+
   bool microphoneEnabled = true;
   bool cameraEnabled = true;
   bool fullscreen = false;
