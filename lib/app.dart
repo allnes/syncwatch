@@ -21,6 +21,9 @@ class AppController extends ChangeNotifier {
   double movieVolume = 0.40;
   double callVolume = 0.80;
 
+  String activeMoviePath = '';
+  double activeMoviePositionSeconds = 0;
+
   SharedPreferences? _prefs;
 
   String t(String key) => AppStrings.get(locale.languageCode, key);
@@ -42,6 +45,9 @@ class AppController extends ChangeNotifier {
         _prefs?.getBool('automaticRefresh') ?? automaticRefresh;
     movieVolume = _prefs?.getDouble('movieVolume') ?? movieVolume;
     callVolume = _prefs?.getDouble('callVolume') ?? callVolume;
+    activeMoviePath = _prefs?.getString('activeMoviePath') ?? '';
+    activeMoviePositionSeconds =
+        _prefs?.getDouble('activeMoviePositionSeconds') ?? 0;
   }
 
   Future<void> _setString(String key, String value) async {
@@ -112,6 +118,41 @@ class AppController extends ChangeNotifier {
     callVolume = value.clamp(0.0, 1.0).toDouble();
     _setDouble('callVolume', callVolume);
     notifyListeners();
+  }
+
+  bool hasPlaybackSessionFor(String moviePath) {
+    return activeMoviePath == moviePath && moviePath.isNotEmpty;
+  }
+
+  double playbackPositionFor(String moviePath) {
+    return hasPlaybackSessionFor(moviePath)
+        ? activeMoviePositionSeconds
+        : 0;
+  }
+
+  void beginPlaybackSession(String moviePath) {
+    final changed = activeMoviePath != moviePath;
+    activeMoviePath = moviePath;
+    if (changed) {
+      activeMoviePositionSeconds = 0;
+    }
+    _setString('activeMoviePath', activeMoviePath);
+    _setDouble('activeMoviePositionSeconds', activeMoviePositionSeconds);
+    notifyListeners();
+  }
+
+  void updatePlaybackPosition(
+    String moviePath,
+    double seconds, {
+    bool persist = false,
+  }) {
+    activeMoviePath = moviePath;
+    activeMoviePositionSeconds = seconds < 0 ? 0 : seconds;
+    if (persist) {
+      _setString('activeMoviePath', activeMoviePath);
+      _setDouble('activeMoviePositionSeconds', activeMoviePositionSeconds);
+      notifyListeners();
+    }
   }
 
   void setSyncServer(String value) {
