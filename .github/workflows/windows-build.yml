@@ -26,6 +26,13 @@ jobs:
             flutter create --platforms=windows --project-name syncwatch --org dev.syncwatch --no-pub .
           }
 
+      - name: Remove generated template test
+        shell: pwsh
+        run: |
+          if (Test-Path "test\widget_test.dart") {
+            Remove-Item "test\widget_test.dart" -Force
+          }
+
       - name: Get dependencies
         run: flutter pub get
 
