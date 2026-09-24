@@ -10,7 +10,6 @@ import '../app.dart';
 import '../core/app_theme.dart';
 import '../models/movie_item.dart';
 import '../services/sync_engine.dart';
-import '../widgets/remote_video_overlay.dart';
 import 'settings_screen.dart';
 
 class PlayerScreen extends StatefulWidget {
@@ -251,7 +250,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       top: 0,
                       child: _topBar(context),
                     ),
-                  RemoteVideoOverlay(controller: widget.controller),
                   if (!isFullscreen || bottomControlsVisible)
                     Positioned(
                       left: 0,
@@ -299,77 +297,23 @@ class _PlayerScreenState extends State<PlayerScreen> {
             if (!isFullscreen || topControlsVisible)
               Positioned(
                 left: 24,
-                top: isFullscreen ? 82 : 20,
+                top: isFullscreen ? 82 : 18,
                 right: 24,
                 child: IgnorePointer(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      currentMovie.fileName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 23,
-                        fontWeight: FontWeight.w800,
-                        shadows: [
-                          Shadow(color: Colors.black87, blurRadius: 8),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 6,
-                      children: [
-                        _surfaceInfo(
-                          Icons.schedule_rounded,
-                          _formatSeconds(durationSeconds),
-                        ),
-                        _surfaceInfo(
-                          Icons.monitor_rounded,
-                          player.state.width != null && player.state.height != null
-                              ? '${player.state.width}×${player.state.height}'
-                              : currentMovie.resolution,
-                        ),
-                        _surfaceInfo(
-                          Icons.graphic_eq_rounded,
-                          currentAudioTrack == null
-                              ? _initialAudioForCurrent
-                              : _audioLabel(currentAudioTrack!),
-                        ),
-                        _surfaceInfo(
-                          Icons.subtitles_rounded,
-                          currentSubtitleTrack == null
-                              ? _initialSubtitleForCurrent
-                              : _subtitleLabel(currentSubtitleTrack!),
-                        ),
+                  child: Text(
+                    currentMovie.fileName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                      shadows: [
+                        Shadow(color: Colors.black87, blurRadius: 8),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _surfaceInfo(IconData icon, String text) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.42),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16),
-            const SizedBox(width: 6),
-            Text(text),
           ],
         ),
       ),
