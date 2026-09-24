@@ -30,13 +30,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Dialog(
       insetPadding: const EdgeInsets.all(28),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          minWidth: 780,
-          maxWidth: 980,
-          minHeight: 560,
-          maxHeight: 720,
-        ),
+      child: SizedBox(
+        width: 760,
+        height: 500,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(18),
           child: Column(
@@ -46,7 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Expanded(
                 child: Row(
                   children: [
-                    SizedBox(width: 230, child: _sidebar()),
+                    SizedBox(width: 205, child: _sidebar()),
                     const VerticalDivider(width: 1),
                     Expanded(child: _content()),
                   ],
@@ -94,7 +90,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Container(
       color: syncBackgroundDeep.withValues(alpha: 0.35),
-      padding: const EdgeInsets.fromLTRB(14, 18, 14, 14),
+      padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
       child: Column(
         children: [
           for (var i = 0; i < items.length; i++)
@@ -131,7 +127,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _content() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(26),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
       child: switch (section) {
         0 => _interface(),
         1 => _movies(),
@@ -158,7 +154,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         const SizedBox(height: 6),
         Text(subtitle, style: const TextStyle(color: Colors.white60)),
-        const SizedBox(height: 22),
+        const SizedBox(height: 16),
       ],
     );
   }
@@ -354,7 +350,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _settingsCard({required List<Widget> children}) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: syncBackgroundDeep.withValues(alpha: 0.34),
         borderRadius: BorderRadius.circular(15),
@@ -369,7 +365,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _actions(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
