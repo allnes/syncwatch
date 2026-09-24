@@ -45,6 +45,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String? metadataPath;
   bool microphoneEnabled = true;
   bool cameraEnabled = true;
+  bool youReady = true;
+  bool partnerReady = true;
   final CallEngine callEngine = MockCallEngine();
   int selectedAudioIndex = 0;
   int selectedSubtitleIndex = 0;
@@ -500,9 +502,7 @@ if ($script:found -ne [IntPtr]::Zero) {
                 : widget.controller.t('callInactive'),
           ),
           const SizedBox(width: 22),
-          const Icon(Icons.check_circle_rounded, color: syncSuccess, size: 20),
-          const SizedBox(width: 7),
-          Text(widget.controller.t('bothReady')),
+          _readyStatusChip(),
           const SizedBox(width: 12),
           if (callActive)
             IconButton(
@@ -1007,6 +1007,42 @@ if ($script:found -ne [IntPtr]::Zero) {
     );
   }
 
+  Widget _readyStatusChip({bool compact = false}) {
+    final readyCount = (youReady ? 1 : 0) + (partnerReady ? 1 : 0);
+    final statusText =
+        '$readyCount/2 ${widget.controller.t('ready').toLowerCase()}';
+
+    final tooltipText = [
+      '${widget.controller.t('you')} — ' +
+          (youReady
+              ? widget.controller.t('ready')
+              : widget.controller.t('notReady')),
+      '${widget.controller.t('friend')} — ' +
+          (partnerReady
+              ? widget.controller.t('ready')
+              : widget.controller.t('notReady')),
+    ].join('\n');
+
+    return Tooltip(
+      message: tooltipText,
+      waitDuration: const Duration(milliseconds: 300),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            readyCount == 2
+                ? Icons.check_circle_rounded
+                : Icons.radio_button_unchecked_rounded,
+            size: compact ? 16 : 20,
+            color: readyCount == 2 ? syncSuccess : Colors.white54,
+          ),
+          SizedBox(width: compact ? 5 : 7),
+          Text(statusText),
+        ],
+      ),
+    );
+  }
+
   Widget _roomCard() {
     return Container(
       padding: const EdgeInsets.all(14),
@@ -1029,9 +1065,7 @@ if ($script:found -ne [IntPtr]::Zero) {
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
-              const Icon(Icons.circle, size: 9, color: syncSuccess),
-              const SizedBox(width: 6),
-              Text(widget.controller.t('bothReady')),
+              _readyStatusChip(compact: true),
             ],
           ),
           const SizedBox(height: 8),
