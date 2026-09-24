@@ -161,7 +161,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Icons.palette_outlined,
         ),
         DropdownButtonFormField<String>(
-          value: controller.locale.languageCode,
+          initialValue: controller.locale.languageCode,
           decoration: InputDecoration(labelText: controller.t('language')),
           items: const [
             DropdownMenuItem(value: 'en', child: Text('English')),
@@ -244,7 +244,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _settingsCard(
           children: [
             DropdownButtonFormField<int>(
-              value: controller.skipSeconds,
+              initialValue: controller.skipSeconds,
               decoration: InputDecoration(
                 labelText: controller.t('skipInterval'),
               ),
@@ -285,7 +285,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _settingsCard(
           children: [
             DropdownButtonFormField<String>(
-              value: '480p',
+              initialValue: '480p',
               decoration:
                   InputDecoration(labelText: controller.t('cameraQuality')),
               items: const [
