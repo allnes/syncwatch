@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/app_strings.dart';
 import 'core/app_theme.dart';
@@ -20,69 +21,127 @@ class AppController extends ChangeNotifier {
   double movieVolume = 0.40;
   double callVolume = 0.80;
 
+  SharedPreferences? _prefs;
+
   String t(String key) => AppStrings.get(locale.languageCode, key);
+
+  Future<void> load() async {
+    _prefs = await SharedPreferences.getInstance();
+
+    locale = Locale(_prefs?.getString('language') ?? 'en');
+    libraryPath = _prefs?.getString('libraryPath') ?? libraryPath;
+    syncServer = _prefs?.getString('syncServer') ?? syncServer;
+    roomName = _prefs?.getString('roomName') ?? roomName;
+    username = _prefs?.getString('username') ?? username;
+
+    skipSeconds = _prefs?.getInt('skipSeconds') ?? skipSeconds;
+    autoReady = _prefs?.getBool('autoReady') ?? autoReady;
+    ducking = _prefs?.getBool('ducking') ?? ducking;
+    scanSubfolders = _prefs?.getBool('scanSubfolders') ?? scanSubfolders;
+    automaticRefresh =
+        _prefs?.getBool('automaticRefresh') ?? automaticRefresh;
+    movieVolume = _prefs?.getDouble('movieVolume') ?? movieVolume;
+    callVolume = _prefs?.getDouble('callVolume') ?? callVolume;
+  }
+
+  Future<void> _setString(String key, String value) async {
+    await _prefs?.setString(key, value);
+  }
+
+  Future<void> _setBool(String key, bool value) async {
+    await _prefs?.setBool(key, value);
+  }
+
+  Future<void> _setInt(String key, int value) async {
+    await _prefs?.setInt(key, value);
+  }
+
+  Future<void> _setDouble(String key, double value) async {
+    await _prefs?.setDouble(key, value);
+  }
 
   void setLanguage(String languageCode) {
     locale = Locale(languageCode);
+    _setString('language', languageCode);
     notifyListeners();
   }
 
   void setLibraryPath(String value) {
     libraryPath = value;
+    _setString('libraryPath', value);
     notifyListeners();
   }
 
   void setSkipSeconds(int value) {
     skipSeconds = value;
+    _setInt('skipSeconds', value);
     notifyListeners();
   }
 
   void setAutoReady(bool value) {
     autoReady = value;
+    _setBool('autoReady', value);
     notifyListeners();
   }
 
   void setDucking(bool value) {
     ducking = value;
+    _setBool('ducking', value);
     notifyListeners();
   }
 
   void setScanSubfolders(bool value) {
     scanSubfolders = value;
+    _setBool('scanSubfolders', value);
     notifyListeners();
   }
 
   void setAutomaticRefresh(bool value) {
     automaticRefresh = value;
+    _setBool('automaticRefresh', value);
     notifyListeners();
   }
 
   void setMovieVolume(double value) {
     movieVolume = value.clamp(0.0, 1.0).toDouble();
+    _setDouble('movieVolume', movieVolume);
     notifyListeners();
   }
 
   void setCallVolume(double value) {
     callVolume = value.clamp(0.0, 1.0).toDouble();
+    _setDouble('callVolume', callVolume);
     notifyListeners();
   }
 
-  void setSyncServer(String value) => syncServer = value;
-  void setRoomName(String value) => roomName = value;
-  void setUsername(String value) => username = value;
+  void setSyncServer(String value) {
+    syncServer = value;
+    _setString('syncServer', value);
+    notifyListeners();
+  }
+
+  void setRoomName(String value) {
+    roomName = value;
+    _setString('roomName', value);
+    notifyListeners();
+  }
+
+  void setUsername(String value) {
+    username = value;
+    _setString('username', value);
+    notifyListeners();
+  }
 }
 
-class SyncWatchApp extends StatefulWidget {
-  const SyncWatchApp({super.key, required this.mockMode});
+class SyncWatchApp extends StatelessWidget {
+  const SyncWatchApp({
+    super.key,
+    required this.mockMode,
+    required this.controller,
+  });
 
   final bool mockMode;
-
-  @override
-  State<SyncWatchApp> createState() => _SyncWatchAppState();
-}
-
-class _SyncWatchAppState extends State<SyncWatchApp> {
-  final AppController controller = AppController();
+  final AppController controller;
 
   @override
   Widget build(BuildContext context) {
@@ -98,7 +157,7 @@ class _SyncWatchAppState extends State<SyncWatchApp> {
           theme: buildSyncWatchTheme(),
           home: LibraryScreen(
             controller: controller,
-            mockMode: widget.mockMode,
+            mockMode: mockMode,
           ),
         );
       },
