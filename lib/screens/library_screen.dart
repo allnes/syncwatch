@@ -829,6 +829,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
           syncEngine: MockSyncEngine(),
           initialAudioTrack: audioNames[selectedAudioIndex],
           initialSubtitleTrack: subtitleNames[selectedSubtitleIndex],
+          playlist: movies,
+          initialIndex: movies.indexWhere(
+            (item) => item.fullPath == movie.fullPath,
+          ),
         ),
       ),
     );
