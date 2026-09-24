@@ -445,6 +445,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     children: [
                       PopupMenuButton<int>(
                         tooltip: widget.controller.t('playlist'),
+                        constraints: const BoxConstraints(
+                          minWidth: 280,
+                          maxWidth: 460,
+                          maxHeight: 360,
+                        ),
                         onSelected: _switchToIndex,
                         itemBuilder: (context) => [
                           for (var i = 0; i < widget.playlist.length; i++)
@@ -486,6 +491,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       const SizedBox(width: 8),
                       PopupMenuButton<AudioTrack>(
                         tooltip: widget.controller.t('audioTracks'),
+                        constraints: const BoxConstraints(
+                          minWidth: 260,
+                          maxWidth: 440,
+                          maxHeight: 360,
+                        ),
                         onSelected: player.setAudioTrack,
                         itemBuilder: (context) {
                           if (audioTracks.isEmpty) {
@@ -520,36 +530,57 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      PopupMenuButton<SubtitleTrack>(
-                        tooltip: widget.controller.t('subtitles'),
-                        onSelected: player.setSubtitleTrack,
-                        itemBuilder: (context) {
-                          final tracks = <SubtitleTrack>[
-                            SubtitleTrack.no(),
-                            ...subtitleTracks.where((track) => track.id != 'no'),
-                          ];
-                          return [
-                            for (final track in tracks)
-                              PopupMenuItem<SubtitleTrack>(
-                                value: track,
-                                child: Row(
-                                  children: [
-                                    if (currentSubtitleTrack?.id == track.id)
-                                      const Icon(Icons.check_rounded, size: 18)
-                                    else
-                                      const SizedBox(width: 18),
-                                    const SizedBox(width: 8),
-                                    Expanded(child: Text(_subtitleLabel(track))),
-                                  ],
-                                ),
-                              ),
-                          ];
-                        },
-                        child: _trackButton(
+                      if (currentMovie.subtitleTracks == 0 &&
+                          subtitleTracks
+                              .where((track) => track.id != 'no')
+                              .isEmpty)
+                        _staticTrackStatus(
                           icon: Icons.subtitles_rounded,
+                          text: widget.controller.t('noSubtitles'),
+                        )
+                      else
+                        PopupMenuButton<SubtitleTrack>(
                           tooltip: widget.controller.t('subtitles'),
+                          constraints: const BoxConstraints(
+                            minWidth: 260,
+                            maxWidth: 440,
+                            maxHeight: 360,
+                          ),
+                          onSelected: player.setSubtitleTrack,
+                          itemBuilder: (context) {
+                            final tracks = <SubtitleTrack>[
+                              SubtitleTrack.no(),
+                              ...subtitleTracks.where(
+                                (track) => track.id != 'no',
+                              ),
+                            ];
+                            return [
+                              for (final track in tracks)
+                                PopupMenuItem<SubtitleTrack>(
+                                  value: track,
+                                  child: Row(
+                                    children: [
+                                      if (currentSubtitleTrack?.id == track.id)
+                                        const Icon(
+                                          Icons.check_rounded,
+                                          size: 18,
+                                        )
+                                      else
+                                        const SizedBox(width: 18),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(_subtitleLabel(track)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ];
+                          },
+                          child: _trackButton(
+                            icon: Icons.subtitles_rounded,
+                            tooltip: widget.controller.t('subtitles'),
+                          ),
                         ),
-                      ),
                       const SizedBox(width: 8),
                       IconButton(
                         tooltip: widget.controller.t('fullscreen'),
@@ -566,6 +597,29 @@ class _PlayerScreenState extends State<PlayerScreen> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _staticTrackStatus({
+    required IconData icon,
+    required String text,
+  }) {
+    return Container(
+      height: 42,
+      padding: const EdgeInsets.symmetric(horizontal: 11),
+      decoration: BoxDecoration(
+        color: syncAccent.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: syncAccent.withValues(alpha: 0.32)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 20),
+          const SizedBox(width: 7),
+          Text(text),
         ],
       ),
     );
