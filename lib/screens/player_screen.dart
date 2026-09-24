@@ -596,18 +596,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           ),
                         const SizedBox(width: 2),
                         IconButton(
-                          tooltip: widget.controller.t('settings'),
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () => showDialog<void>(
-                            context: context,
-                            barrierColor: Colors.black.withValues(alpha: 0.56),
-                            builder: (_) => SettingsScreen(
-                              controller: widget.controller,
-                            ),
-                          ),
-                          icon: const Icon(Icons.settings_rounded),
-                        ),
-                        IconButton(
                           tooltip: widget.controller.t('fullscreen'),
                           visualDensity: VisualDensity.compact,
                           onPressed: _toggleFullscreen,
