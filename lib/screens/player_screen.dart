@@ -38,7 +38,7 @@ class PlayerScreen extends StatefulWidget {
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
 
-class _PlayerScreenState extends State<PlayerScreen> {
+class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   late final Player player;
   late final VideoController videoController;
 
@@ -51,6 +51,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool isFullscreen = false;
   bool topControlsVisible = true;
   bool bottomControlsVisible = true;
+  bool nativeTitleBarVisibleInFullscreen = false;
   late int currentIndex;
   late MovieItem currentMovie;
 
@@ -70,6 +71,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void initState() {
     super.initState();
+    windowManager.addListener(this);
 
     currentIndex = widget.initialIndex < 0 ? 0 : widget.initialIndex;
     currentMovie = widget.playlist.isEmpty
@@ -212,6 +214,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   void dispose() {
+    windowManager.removeListener(this);
+    if (isFullscreen) {
+      unawaited(
+        windowManager.setTitleBarStyle(
+          TitleBarStyle.normal,
+          windowButtonVisibility: true,
+        ),
+      );
+    }
     _volumeOsdTimer?.cancel();
     for (final subscription in _subscriptions) {
       subscription.cancel();
@@ -240,7 +251,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 _changeMovieVolume(delta);
               }
             },
-            child: Stack(
+            child: MouseRegion(
+              onHover: (event) {
+                if (isFullscreen &&
+                    nativeTitleBarVisibleInFullscreen &&
+                    event.localPosition.dy > 90) {
+                  _hideFullscreenTopChrome();
+                }
+              },
+              child: Stack(
               children: [
                 Positioned.fill(child: _movieSurface(context)),
 
@@ -251,16 +270,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     top: 0,
                     height: 90,
                     child: MouseRegion(
-                      onEnter: (_) {
-                        if (!topControlsVisible) {
-                          setState(() => topControlsVisible = true);
-                        }
-                      },
-                      onExit: (_) {
-                        if (topControlsVisible) {
-                          setState(() => topControlsVisible = false);
-                        }
-                      },
+                      onEnter: (_) => _showFullscreenTopChrome(),
                       child: topControlsVisible
                           ? _topBar(context)
                           : const SizedBox.expand(),
@@ -314,6 +324,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     child: _volumeIndicator(),
                   ),
               ],
+            ),
             ),
           ),
         );
@@ -403,15 +414,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
               onPressed: () => widget.onShowCall?.call(),
               icon: const Icon(Icons.videocam_rounded),
             ),
-          IconButton(
-            tooltip: widget.controller.t('fullscreen'),
-            onPressed: _toggleFullscreen,
-            icon: Icon(
-              isFullscreen
-                  ? Icons.fullscreen_exit_rounded
-                  : Icons.fullscreen_rounded,
-            ),
-          ),
           IconButton(
             tooltip: widget.controller.t('settings'),
             onPressed: () => showDialog<void>(
@@ -842,14 +844,96 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Future<void> _toggleFullscreen() async {
-    final next = !await windowManager.isFullScreen();
-    await windowManager.setFullScreen(next);
+    final maximized = await windowManager.isMaximized();
+    if (maximized) {
+      await windowManager.unmaximize();
+    } else {
+      await windowManager.maximize();
+    }
+  }
+
+  Future<void> _showFullscreenTopChrome() async {
+    if (!isFullscreen) return;
+
+    if (!nativeTitleBarVisibleInFullscreen) {
+      await windowManager.setTitleBarStyle(
+        TitleBarStyle.normal,
+        windowButtonVisibility: true,
+      );
+    }
+
     if (!mounted) return;
     setState(() {
-      isFullscreen = next;
-      topControlsVisible = !next;
-      bottomControlsVisible = !next;
+      nativeTitleBarVisibleInFullscreen = true;
+      topControlsVisible = true;
     });
+  }
+
+  Future<void> _hideFullscreenTopChrome() async {
+    if (!isFullscreen) return;
+
+    if (nativeTitleBarVisibleInFullscreen) {
+      await windowManager.setTitleBarStyle(
+        TitleBarStyle.hidden,
+        windowButtonVisibility: false,
+      );
+    }
+
+    if (!mounted) return;
+    setState(() {
+      nativeTitleBarVisibleInFullscreen = false;
+      topControlsVisible = false;
+    });
+  }
+
+  Future<void> _enterPlayerFullscreen() async {
+    await windowManager.setTitleBarStyle(
+      TitleBarStyle.hidden,
+      windowButtonVisibility: false,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      isFullscreen = true;
+      nativeTitleBarVisibleInFullscreen = false;
+      topControlsVisible = false;
+      bottomControlsVisible = false;
+    });
+  }
+
+  Future<void> _leavePlayerFullscreen() async {
+    await windowManager.setTitleBarStyle(
+      TitleBarStyle.normal,
+      windowButtonVisibility: true,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      isFullscreen = false;
+      nativeTitleBarVisibleInFullscreen = false;
+      topControlsVisible = true;
+      bottomControlsVisible = true;
+    });
+  }
+
+  @override
+  void onWindowMaximize() {
+    unawaited(_enterPlayerFullscreen());
+  }
+
+  @override
+  void onWindowUnmaximize() {
+    unawaited(_leavePlayerFullscreen());
+  }
+
+  @override
+  void onWindowEnterFullScreen() {
+    unawaited(_enterPlayerFullscreen());
+  }
+
+  @override
+  void onWindowLeaveFullScreen() {
+    unawaited(_leavePlayerFullscreen());
   }
 
   Future<void> _showContextMenu(
