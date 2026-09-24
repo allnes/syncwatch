@@ -510,7 +510,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             readyCount == 2
                 ? Icons.check_circle_rounded
                 : Icons.radio_button_unchecked_rounded,
-            size: 18,
+            size: 16,
             color: readyCount == 2 ? syncSuccess : Colors.white54,
           ),
           const SizedBox(width: 6),
@@ -778,7 +778,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         anchorBox.localToGlobal(Offset.zero, ancestor: overlayBox);
     final anchorRect = anchorOffset & anchorBox.size;
 
-    const rowHeight = 40.0;
+    const rowHeight = 34.0;
     final menuHeight =
         (items.length * rowHeight + 8).clamp(48.0, maxHeight).toDouble();
     final maxLeft = (overlayBox.size.width - width - 8)
@@ -813,22 +813,43 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                   itemCount: items.length,
                   itemBuilder: (context, index) {
                     final selected = index == selectedIndex;
-                    return ListTile(
-                      dense: true,
-                      selected: selected,
-                      leading: selected
-                          ? const Icon(Icons.check_rounded, size: 18)
-                          : const SizedBox(width: 18),
-                      title: Tooltip(
-                        message: items[index],
-                        waitDuration: const Duration(milliseconds: 350),
-                        child: Text(
-                          items[index],
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                    return InkWell(
+                      onTap: () => Navigator.of(context).pop(index),
+                      child: Container(
+                        height: rowHeight,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        color: selected
+                            ? syncAccent.withValues(alpha: 0.10)
+                            : Colors.transparent,
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 14,
+                              child: selected
+                                  ? const Icon(
+                                      Icons.check_rounded,
+                                      size: 14,
+                                      color: syncAccentSoft,
+                                    )
+                                  : null,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Tooltip(
+                                message: items[index],
+                                waitDuration:
+                                    const Duration(milliseconds: 350),
+                                child: Text(
+                                  items[index],
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 12.5),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      onTap: () => Navigator.of(context).pop(index),
                     );
                   },
                 ),
@@ -1167,8 +1188,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         anchorBox.localToGlobal(Offset.zero, ancestor: overlayBox);
     final anchorRect = anchorOffset & anchorBox.size;
 
-    const width = 270.0;
-    const height = 116.0;
+    const width = 310.0;
+    const height = 92.0;
     final maxLeft = (overlayBox.size.width - width - 8)
         .clamp(8.0, double.infinity)
         .toDouble();
@@ -1196,8 +1217,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                 borderRadius: BorderRadius.circular(12),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
+                    horizontal: 10,
+                    vertical: 7,
                   ),
                   child: AnimatedBuilder(
                     animation: widget.controller,
@@ -1222,7 +1243,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                               await player.setVolume(value * 100.0);
                             },
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 2),
                           _volumeRow(
                             label: widget.controller.t('callVolume'),
                             value: widget.controller.callVolume,
@@ -1254,16 +1275,17 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     return Row(
       children: [
         SizedBox(
-          width: 42,
+          width: 50,
           child: Text(
             label,
             maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            softWrap: false,
+            style: const TextStyle(fontSize: 12.5),
           ),
         ),
         IconButton(
           visualDensity: VisualDensity.compact,
-          constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+          constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
           padding: EdgeInsets.zero,
           onPressed: () => onMute(),
           icon: Icon(
@@ -1272,9 +1294,20 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           ),
         ),
         Expanded(
-          child: Slider(
-            value: value,
-            onChanged: (newValue) => onChanged(newValue),
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 2,
+              thumbShape: const RoundSliderThumbShape(
+                enabledThumbRadius: 5,
+              ),
+              overlayShape: const RoundSliderOverlayShape(
+                overlayRadius: 9,
+              ),
+            ),
+            child: Slider(
+              value: value,
+              onChanged: (newValue) => onChanged(newValue),
+            ),
           ),
         ),
         SizedBox(
@@ -1282,6 +1315,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           child: Text(
             '${(value * 100).round()}%',
             textAlign: TextAlign.right,
+            style: const TextStyle(fontSize: 12.5),
           ),
         ),
       ],
