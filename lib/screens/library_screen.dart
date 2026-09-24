@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
@@ -728,14 +729,20 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
               ),
             ),
             Expanded(
-              child: _trackSelector(
-                icon: Icons.subtitles_rounded,
-                label: widget.controller.t('subtitles'),
-                items: subtitleNames,
-                value: selectedSubtitleIndex,
-                onChanged: (value) =>
-                    setState(() => selectedSubtitleIndex = value),
-              ),
+              child: movie.subtitleTracks == 0
+                  ? _metric(
+                      Icons.subtitles_rounded,
+                      widget.controller.t('subtitles'),
+                      widget.controller.t('noSubtitles'),
+                    )
+                  : _trackSelector(
+                      icon: Icons.subtitles_rounded,
+                      label: widget.controller.t('subtitles'),
+                      items: subtitleNames,
+                      value: selectedSubtitleIndex,
+                      onChanged: (value) =>
+                          setState(() => selectedSubtitleIndex = value),
+                    ),
             ),
           ],
         ),
@@ -811,6 +818,7 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
                   child: DropdownButton<int>(
                     value: value,
                     isExpanded: true,
+                    menuMaxHeight: 300,
                     items: [
                       for (var i = 0; i < items.length; i++)
                         DropdownMenuItem(
