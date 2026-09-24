@@ -158,13 +158,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Future<void> _openMedia() async {
     final resumePosition =
         widget.controller.playbackPositionFor(currentMovie.fullPath);
-    widget.controller.beginPlaybackSession(currentMovie.fullPath);
 
     await player.setVolume(widget.controller.movieVolume * 100.0);
     await player.open(
       Media(Uri.file(currentMovie.fullPath).toString()),
       play: false,
     );
+
+    widget.controller.beginPlaybackSession(currentMovie.fullPath);
 
     if (resumePosition > 0) {
       await player.seek(
