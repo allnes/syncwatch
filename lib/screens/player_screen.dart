@@ -51,6 +51,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   bool isFullscreen = false;
   bool topControlsVisible = true;
   bool bottomControlsVisible = true;
+  bool youReady = true;
+  bool partnerReady = true;
   late int currentIndex;
   late MovieItem currentMovie;
 
@@ -466,9 +468,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           const SizedBox(width: 8),
           Text(widget.controller.roomName),
           const Spacer(),
-          const Icon(Icons.circle, size: 9, color: syncSuccess),
-          const SizedBox(width: 6),
-          Text('2/2 ${widget.controller.t('ready')}'),
+          _readyStatusChip(),
           const SizedBox(width: 16),
           if (widget.onShowCall != null)
             IconButton(
@@ -485,6 +485,42 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             ),
             icon: const Icon(Icons.settings_rounded),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _readyStatusChip() {
+    final readyCount = (youReady ? 1 : 0) + (partnerReady ? 1 : 0);
+    final statusText =
+        '$readyCount/2 ${widget.controller.t('ready').toLowerCase()}';
+
+    final tooltipText = [
+      '${widget.controller.t('you')} — ' +
+          (youReady
+              ? widget.controller.t('ready')
+              : widget.controller.t('notReady')),
+      '${widget.controller.t('friend')} — ' +
+          (partnerReady
+              ? widget.controller.t('ready')
+              : widget.controller.t('notReady')),
+    ].join('\n');
+
+    return Tooltip(
+      message: tooltipText,
+      waitDuration: const Duration(milliseconds: 300),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            readyCount == 2
+                ? Icons.check_circle_rounded
+                : Icons.radio_button_unchecked_rounded,
+            size: 18,
+            color: readyCount == 2 ? syncSuccess : Colors.white54,
+          ),
+          const SizedBox(width: 6),
+          Text(statusText),
         ],
       ),
     );
