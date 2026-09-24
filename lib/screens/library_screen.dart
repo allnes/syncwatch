@@ -452,6 +452,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
           const SizedBox(width: 7),
           Text(widget.controller.t('bothReady')),
           const SizedBox(width: 12),
+          if (callActive)
+            IconButton(
+              tooltip: widget.controller.t('goToCall'),
+              onPressed: _focusCallWindow,
+              icon: const Icon(Icons.videocam_rounded),
+            ),
           IconButton(
             tooltip: widget.controller.t('settings'),
             onPressed: _showSettings,
@@ -625,7 +631,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ),
         const SizedBox(height: 14),
         SizedBox(
-          height: 230,
+          height: 180,
           child: Row(
             children: [
               Expanded(child: _roomCard()),
@@ -848,7 +854,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             children: [
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: _toggleCall,
+                  onPressed: callActive ? _focusCallWindow : _startCall,
                   icon: Icon(
                     callActive
                         ? Icons.call_end_rounded
@@ -856,7 +862,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   ),
                   label: Text(
                     callActive
-                        ? widget.controller.t('endCall')
+                        ? widget.controller.t('goToCall')
                         : widget.controller.t('startCall'),
                   ),
                 ),
@@ -996,7 +1002,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
-  void _openPlayer(MovieItem movie) {
+  Future<void> _openPlayer(MovieItem movie) async {
     final audioNames = movie.audioTrackNames.isEmpty
         ? [widget.controller.t('noAudioTracks')]
         : movie.audioTrackNames;
@@ -1004,7 +1010,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ? [widget.controller.t('noSubtitles')]
         : movie.subtitleTrackNames;
 
-    Navigator.of(context).push(
+    widget.controller.beginPlaybackSession(movie.fullPath);
+
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => PlayerScreen(
           controller: widget.controller,
@@ -1019,6 +1027,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ),
       ),
     );
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   String _formatShort(Duration duration) {
