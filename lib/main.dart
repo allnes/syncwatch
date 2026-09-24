@@ -23,12 +23,12 @@ Future<void> main(List<String> args) async {
       backgroundColor: Colors.transparent,
     );
 
+    runApp(CallWindowApp(controller: controller));
+
     await windowManager.waitUntilReadyToShow(options, () async {
       await windowManager.show();
       await windowManager.focus();
     });
-
-    runApp(CallWindowApp(controller: controller));
     return;
   }
 
