@@ -632,7 +632,7 @@ if ($null -ne $p -and $p.MainWindowHandle -ne 0) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final selectedHeight =
-            (constraints.maxHeight * 0.55).clamp(310.0, 410.0);
+            (constraints.maxHeight * 0.52).clamp(300.0, 370.0);
 
         return Column(
           children: [
