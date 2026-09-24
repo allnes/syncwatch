@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:media_kit/media_kit.dart';
 
 import '../app.dart';
 import '../core/app_theme.dart';
@@ -40,6 +41,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String searchQuery = '';
   bool scanning = false;
   bool callActive = false;
+  Process? callProcess;
+  bool metadataLoading = false;
+  String? metadataPath;
   bool microphoneEnabled = true;
   bool cameraEnabled = true;
   final CallEngine callEngine = MockCallEngine();
@@ -54,25 +58,60 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   @override
   void dispose() {
+    callProcess?.kill();
     if (callActive) {
       callEngine.leave();
     }
     super.dispose();
   }
 
-  Future<void> _toggleCall() async {
+  Future<void> _startCall() async {
     if (callActive) {
-      await callEngine.leave();
-      if (!mounted) return;
-      setState(() => callActive = false);
+      await _focusCallWindow();
       return;
     }
 
     await callEngine.join();
     await callEngine.setMicrophoneEnabled(microphoneEnabled);
     await callEngine.setCameraEnabled(cameraEnabled);
+
+    try {
+      final process = await Process.start(
+        Platform.resolvedExecutable,
+        const ['--call-window'],
+        mode: ProcessStartMode.detachedWithStdio,
+      );
+      callProcess = process;
+      process.exitCode.then((_) async {
+        await callEngine.leave();
+        if (!mounted) return;
+        setState(() {
+          callActive = false;
+          callProcess = null;
+        });
+      });
+    } catch (_) {
+      await callEngine.leave();
+      rethrow;
+    }
+
     if (!mounted) return;
     setState(() => callActive = true);
+  }
+
+  Future<void> _focusCallWindow() async {
+    final process = callProcess;
+    if (process == null) return;
+
+    await Process.run(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-Command',
+        '(New-Object -ComObject WScript.Shell).AppActivate(${process.pid}) | Out-Null',
+      ],
+      runInShell: true,
+    );
   }
 
   Future<void> _browseFolder() async {
