@@ -2,9 +2,11 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../app.dart';
+import '../core/app_theme.dart';
 import '../models/movie_item.dart';
 import '../services/sync_engine.dart';
 import '../widgets/remote_video_overlay.dart';
+import 'settings_screen.dart';
 
 class PlayerScreen extends StatefulWidget {
   const PlayerScreen({
@@ -53,7 +55,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       animation: widget.controller,
       builder: (context, _) {
         return Scaffold(
-          backgroundColor: Colors.black,
+          backgroundColor: syncBackgroundDeep,
           body: Listener(
             onPointerSignal: (event) {
               if (event is PointerScrollEvent) {
@@ -66,14 +68,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
             child: Stack(
               children: [
                 Positioned.fill(child: _movieSurface()),
+                Positioned(left: 0, right: 0, top: 0, child: _topBar(context)),
                 RemoteVideoOverlay(controller: widget.controller),
-                Positioned(left: 18, top: 18, child: _topStatus(context)),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: _controls(context),
-                ),
+                Positioned(left: 0, right: 0, bottom: 0, child: _controls()),
               ],
             ),
           ),
@@ -84,84 +81,119 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Widget _movieSurface() {
     return Container(
+      margin: const EdgeInsets.only(top: 68, bottom: 118),
       decoration: const BoxDecoration(
         gradient: RadialGradient(
-          center: Alignment(0.1, -0.2),
-          radius: 1.2,
-          colors: [Color(0xFF162538), Color(0xFF05070B), Colors.black],
-        ),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.play_circle_outline_rounded,
-              size: 84,
-              color: Colors.white12,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              widget.movie.fileName,
-              style: const TextStyle(color: Colors.white30),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _topStatus(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.52),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              tooltip: widget.controller.t('back'),
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.arrow_back_rounded),
-            ),
-            const SizedBox(width: 4),
-            Text(widget.controller.roomName),
-            const SizedBox(width: 12),
-            const Icon(Icons.circle, size: 8, color: Color(0xFF56D38B)),
-            const SizedBox(width: 6),
-            Text(widget.controller.t('connected')),
-            const SizedBox(width: 12),
-            Text(
-              '2/2 ${widget.controller.t('ready')}',
-              style: const TextStyle(color: Color(0xFF82AFFF)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _controls(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(22, 12, 22, 18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.bottomCenter,
-          end: Alignment.topCenter,
+          center: Alignment(0.15, -0.15),
+          radius: 1.1,
           colors: [
-            Colors.black.withValues(alpha: 0.94),
-            Colors.black.withValues(alpha: 0.70),
-            Colors.transparent,
+            Color(0xFF183B59),
+            Color(0xFF0A2236),
+            Color(0xFF06121D),
           ],
         ),
       ),
+      child: Stack(
+        children: [
+          Positioned(
+            left: 32,
+            top: 28,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.movie.fileName,
+                  style: const TextStyle(
+                    fontSize: 27,
+                    fontWeight: FontWeight.w800,
+                    shadows: [
+                      Shadow(color: Colors.black54, blurRadius: 8),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    const Icon(Icons.schedule_rounded, size: 18),
+                    const SizedBox(width: 6),
+                    Text(_formatSeconds(durationSeconds)),
+                    const SizedBox(width: 18),
+                    const Icon(Icons.monitor_rounded, size: 18),
+                    const SizedBox(width: 6),
+                    Text(widget.movie.resolution),
+                    const SizedBox(width: 18),
+                    const Icon(Icons.graphic_eq_rounded, size: 18),
+                    const SizedBox(width: 6),
+                    Text('${widget.movie.audioTracks} tracks'),
+                    const SizedBox(width: 18),
+                    const Icon(Icons.subtitles_rounded, size: 18),
+                    const SizedBox(width: 6),
+                    Text('${widget.movie.subtitleTracks} tracks'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Center(
+            child: Icon(
+              Icons.movie_creation_outlined,
+              size: 94,
+              color: Colors.white.withValues(alpha: 0.08),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _topBar(BuildContext context) {
+    return Container(
+      height: 68,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      color: syncBackgroundDeep.withValues(alpha: 0.98),
+      child: Row(
+        children: [
+          IconButton(
+            tooltip: widget.controller.t('back'),
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.arrow_back_rounded),
+          ),
+          const SizedBox(width: 6),
+          const Text(
+            'SyncWatch',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(width: 20),
+          const VerticalDivider(indent: 16, endIndent: 16),
+          const SizedBox(width: 12),
+          const Icon(Icons.groups_2_rounded, color: syncAccentSoft),
+          const SizedBox(width: 8),
+          Text(widget.controller.roomName),
+          const Spacer(),
+          const Icon(Icons.circle, size: 9, color: syncSuccess),
+          const SizedBox(width: 6),
+          Text('2/2 ${widget.controller.t('ready')}'),
+          const SizedBox(width: 16),
+          IconButton(
+            tooltip: widget.controller.t('settings'),
+            onPressed: () => showDialog<void>(
+              context: context,
+              barrierColor: Colors.black.withValues(alpha: 0.56),
+              builder: (_) => SettingsScreen(controller: widget.controller),
+            ),
+            icon: const Icon(Icons.settings_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _controls() {
+    return Container(
+      height: 118,
+      padding: const EdgeInsets.fromLTRB(22, 8, 22, 14),
+      color: syncBackgroundDeep.withValues(alpha: 0.98),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
@@ -177,50 +209,45 @@ class _PlayerScreenState extends State<PlayerScreen> {
               Text(_formatSeconds(durationSeconds)),
             ],
           ),
-          SizedBox(
-            height: 62,
+          Expanded(
             child: Stack(
               alignment: Alignment.center,
               children: [
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    IconButton(
-                      tooltip:
-                          '-${widget.controller.skipSeconds} ${widget.controller.t('seconds')}',
-                      iconSize: 34,
+                    _roundControl(
+                      icon: Icons.fast_rewind_rounded,
                       onPressed: () => _skip(-widget.controller.skipSeconds),
-                      icon: const Icon(Icons.fast_rewind_rounded),
                     ),
                     const SizedBox(width: 16),
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                        shape: const CircleBorder(),
-                        padding: const EdgeInsets.all(17),
-                      ),
+                    _roundControl(
+                      icon: playing
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
                       onPressed: _togglePlayback,
-                      child: Icon(
-                        playing
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded,
-                        size: 34,
-                      ),
+                      prominent: true,
                     ),
                     const SizedBox(width: 16),
-                    IconButton(
-                      tooltip:
-                          '+${widget.controller.skipSeconds} ${widget.controller.t('seconds')}',
-                      iconSize: 34,
+                    _roundControl(
+                      icon: Icons.fast_forward_rounded,
                       onPressed: () => _skip(widget.controller.skipSeconds),
-                      icon: const Icon(Icons.fast_forward_rounded),
                     ),
                   ],
+                ),
+                Positioned(
+                  left: 0,
+                  child: OutlinedButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(Icons.subtitles_rounded),
+                    label: Text(widget.controller.t('subtitles')),
+                  ),
                 ),
                 Positioned(
                   right: 0,
                   child: Row(
                     children: [
-                      IconButton(
+                      IconButton.filledTonal(
                         tooltip: widget.controller.t('audio'),
                         onPressed: () => _showAudioPopover(context),
                         icon: Icon(
@@ -229,15 +256,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               : Icons.volume_up_rounded,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       IconButton(
-                        tooltip: 'CC',
+                        tooltip: widget.controller.t('fullscreen'),
                         onPressed: () {},
-                        icon: const Icon(Icons.subtitles_rounded),
-                      ),
-                      IconButton(
-                        tooltip: widget.controller.t('settings'),
-                        onPressed: () {},
-                        icon: const Icon(Icons.more_vert_rounded),
+                        icon: const Icon(Icons.fullscreen_rounded),
                       ),
                     ],
                   ),
@@ -246,6 +269,29 @@ class _PlayerScreenState extends State<PlayerScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _roundControl({
+    required IconData icon,
+    required VoidCallback onPressed,
+    bool prominent = false,
+  }) {
+    return SizedBox(
+      width: prominent ? 62 : 50,
+      height: prominent ? 62 : 50,
+      child: FilledButton(
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          padding: EdgeInsets.zero,
+          backgroundColor: prominent
+              ? syncAccent
+              : syncAccent.withValues(alpha: 0.17),
+          side: const BorderSide(color: syncAccent),
+          shape: const CircleBorder(),
+        ),
+        child: Icon(icon, size: prominent ? 32 : 28),
       ),
     );
   }
@@ -266,8 +312,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void _seekAbsolute(double targetSeconds) {
     final target = targetSeconds.clamp(0.0, durationSeconds).toDouble();
     setState(() => positionSeconds = target);
-
-    // Room synchronization receives the final timestamp, not "+10" or "+30".
     widget.syncEngine.seekTo(
       Duration(milliseconds: (target * 1000).round()),
     );
@@ -276,54 +320,59 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void _showAudioPopover(BuildContext context) {
     showDialog<void>(
       context: context,
-      builder: (dialogContext) {
-        return AnimatedBuilder(
-          animation: widget.controller,
-          builder: (context, _) {
-            return AlertDialog(
-              title: Text(widget.controller.t('audio')),
-              content: SizedBox(
-                width: 360,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _volumeRow(
-                      label: widget.controller.t('movieVolume'),
-                      value: widget.controller.movieVolume,
-                      muted: movieMuted,
-                      onMute: () => setState(() => movieMuted = !movieMuted),
-                      onChanged: widget.controller.setMovieVolume,
-                    ),
-                    const SizedBox(height: 18),
-                    _volumeRow(
-                      label: widget.controller.t('callVolume'),
-                      value: widget.controller.callVolume,
-                      muted: callMuted,
-                      onMute: () => setState(() => callMuted = !callMuted),
-                      onChanged: widget.controller.setCallVolume,
-                    ),
-                    const Divider(height: 28),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(widget.controller.t('ducking')),
-                      value: widget.controller.ducking,
-                      onChanged: widget.controller.setDucking,
-                    ),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Microphone'),
-                      secondary: Icon(
-                        micMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
+      barrierColor: Colors.black26,
+      builder: (_) {
+        return Dialog(
+          alignment: Alignment.bottomRight,
+          insetPadding: const EdgeInsets.only(right: 72, bottom: 116),
+          child: SizedBox(
+            width: 350,
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: AnimatedBuilder(
+                animation: widget.controller,
+                builder: (context, _) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _volumeRow(
+                        label: widget.controller.t('movieVolume'),
+                        value: widget.controller.movieVolume,
+                        muted: movieMuted,
+                        onMute: () => setState(() => movieMuted = !movieMuted),
+                        onChanged: widget.controller.setMovieVolume,
                       ),
-                      value: !micMuted,
-                      onChanged: (enabled) =>
-                          setState(() => micMuted = !enabled),
-                    ),
-                  ],
-                ),
+                      const SizedBox(height: 16),
+                      _volumeRow(
+                        label: widget.controller.t('callVolume'),
+                        value: widget.controller.callVolume,
+                        muted: callMuted,
+                        onMute: () => setState(() => callMuted = !callMuted),
+                        onChanged: widget.controller.setCallVolume,
+                      ),
+                      const Divider(height: 26),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(widget.controller.t('ducking')),
+                        value: widget.controller.ducking,
+                        onChanged: widget.controller.setDucking,
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Microphone'),
+                        secondary: Icon(
+                          micMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
+                        ),
+                        value: !micMuted,
+                        onChanged: (enabled) =>
+                            setState(() => micMuted = !enabled),
+                      ),
+                    ],
+                  );
+                },
               ),
-            );
-          },
+            ),
+          ),
         );
       },
     );
@@ -338,14 +387,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }) {
     return Row(
       children: [
-        SizedBox(width: 58, child: Text(label)),
+        SizedBox(width: 54, child: Text(label)),
         IconButton(
           onPressed: onMute,
           icon: Icon(muted ? Icons.volume_off : Icons.volume_up),
         ),
         Expanded(child: Slider(value: value, onChanged: onChanged)),
         SizedBox(
-          width: 46,
+          width: 44,
           child: Text('${(value * 100).round()}%'),
         ),
       ],
