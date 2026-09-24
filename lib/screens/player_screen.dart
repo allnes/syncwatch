@@ -33,6 +33,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool movieMuted = false;
   bool callMuted = false;
   bool micMuted = false;
+  late String currentAudioTrack;
+  late String currentSubtitleTrack;
   late double positionSeconds;
   late final double durationSeconds;
 
@@ -40,6 +42,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void initState() {
     super.initState();
     durationSeconds = widget.movie.duration.inSeconds.toDouble();
+    currentAudioTrack = widget.initialAudioTrack;
+    currentSubtitleTrack = widget.initialSubtitleTrack;
     positionSeconds = durationSeconds * 0.31;
     widget.syncEngine.connect();
     if (widget.controller.autoReady) {
@@ -128,11 +132,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     const SizedBox(width: 18),
                     const Icon(Icons.graphic_eq_rounded, size: 18),
                     const SizedBox(width: 6),
-                    Text(widget.initialAudioTrack),
+                    Text(currentAudioTrack),
                     const SizedBox(width: 18),
                     const Icon(Icons.subtitles_rounded, size: 18),
                     const SizedBox(width: 6),
-                    Text(widget.initialSubtitleTrack),
+                    Text(currentSubtitleTrack),
                   ],
                 ),
               ],
@@ -240,14 +244,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   ],
                 ),
                 Positioned(
-                  left: 0,
-                  child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.subtitles_rounded),
-                    label: Text(widget.controller.t('subtitles')),
-                  ),
-                ),
-                Positioned(
                   right: 0,
                   child: Row(
                     children: [
@@ -258,6 +254,54 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           movieMuted
                               ? Icons.volume_off_rounded
                               : Icons.volume_up_rounded,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      PopupMenuButton<String>(
+                        tooltip: widget.controller.t('audioTracks'),
+                        initialValue: currentAudioTrack,
+                        onSelected: (value) {
+                          setState(() => currentAudioTrack = value);
+                        },
+                        itemBuilder: (context) {
+                          final items = widget.movie.audioTrackNames.isEmpty
+                              ? <String>[widget.controller.t('defaultAudio')]
+                              : widget.movie.audioTrackNames;
+                          return [
+                            for (final item in items)
+                              PopupMenuItem<String>(
+                                value: item,
+                                child: Text(item),
+                              ),
+                          ];
+                        },
+                        child: _trackButton(
+                          icon: Icons.graphic_eq_rounded,
+                          tooltip: widget.controller.t('audioTracks'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      PopupMenuButton<String>(
+                        tooltip: widget.controller.t('subtitles'),
+                        initialValue: currentSubtitleTrack,
+                        onSelected: (value) {
+                          setState(() => currentSubtitleTrack = value);
+                        },
+                        itemBuilder: (context) {
+                          final items = widget.movie.subtitleTrackNames.isEmpty
+                              ? <String>[widget.controller.t('subtitlesOff')]
+                              : widget.movie.subtitleTrackNames;
+                          return [
+                            for (final item in items)
+                              PopupMenuItem<String>(
+                                value: item,
+                                child: Text(item),
+                              ),
+                          ];
+                        },
+                        child: _trackButton(
+                          icon: Icons.subtitles_rounded,
+                          tooltip: widget.controller.t('subtitles'),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -273,6 +317,26 @@ class _PlayerScreenState extends State<PlayerScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _trackButton({
+    required IconData icon,
+    required String tooltip,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: syncAccent.withValues(alpha: 0.17),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: syncAccent.withValues(alpha: 0.55)),
+        ),
+        alignment: Alignment.center,
+        child: Icon(icon, size: 22),
       ),
     );
   }
