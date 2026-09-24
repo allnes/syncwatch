@@ -1,0 +1,36 @@
+name: Windows build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Generate desktop host files
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "windows\CMakeLists.txt")) {
+            flutter create --platforms=windows --project-name syncwatch --org dev.syncwatch --no-pub .
+          }
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Build Windows debug
+        run: flutter build windows --debug
