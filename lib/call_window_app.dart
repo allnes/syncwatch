@@ -18,6 +18,41 @@ class CallWindowApp extends StatelessWidget {
   final String? commandFilePath;
 
   @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      locale: controller.locale,
+      theme: buildSyncWatchTheme(),
+      home: _CallWindow(
+        controller: controller,
+        commandFilePath: commandFilePath,
+      ),
+    );
+  }
+}
+
+class _CallWindow extends StatefulWidget {
+  const _CallWindow({
+    required this.controller,
+    required this.commandFilePath,
+  });
+
+  final AppController controller;
+  final String? commandFilePath;
+
+  @override
+  State<_CallWindow> createState() => _CallWindowState();
+}
+
+class _CallWindowState extends State<_CallWindow> {
+  Timer? commandTimer;
+  String? lastCommand;
+
+  bool microphoneEnabled = true;
+  bool cameraEnabled = true;
+  bool fullscreen = false;
+
+  @override
   void initState() {
     super.initState();
     _startCommandListener();
@@ -52,41 +87,6 @@ class CallWindowApp extends StatelessWidget {
       }
     } catch (_) {}
   }
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      locale: controller.locale,
-      theme: buildSyncWatchTheme(),
-      home: _CallWindow(
-        controller: controller,
-        commandFilePath: commandFilePath,
-      ),
-    );
-  }
-}
-
-class _CallWindow extends StatefulWidget {
-  const _CallWindow({
-    required this.controller,
-    required this.commandFilePath,
-  });
-
-  final AppController controller;
-  final String? commandFilePath;
-
-  @override
-  State<_CallWindow> createState() => _CallWindowState();
-}
-
-class _CallWindowState extends State<_CallWindow> {
-  Timer? commandTimer;
-  String? lastCommand;
-
-  bool microphoneEnabled = true;
-  bool cameraEnabled = true;
-  bool fullscreen = false;
 
   @override
   Widget build(BuildContext context) {
