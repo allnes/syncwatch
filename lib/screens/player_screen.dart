@@ -363,7 +363,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       ),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: const Text('Microphone'),
+                        title: Text(widget.controller.t('microphone')),
                         secondary: Icon(
                           micMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
                         ),
