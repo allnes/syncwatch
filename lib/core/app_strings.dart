@@ -1,7 +1,7 @@
 class AppStrings {
   static const Map<String, Map<String, String>> _values = {
     'en': {
-      'movies': 'Movies',
+      'movies': 'Library',
       'settings': 'Settings',
       'folder': 'Movie folder',
       'browse': 'Browse...',
@@ -137,7 +137,7 @@ class AppStrings {
       'nextFile': 'Next file',
     },
     'ru': {
-      'movies': 'Фильмы',
+      'movies': 'Библиотека',
       'settings': 'Настройки',
       'folder': 'Папка с фильмами',
       'browse': 'Обзор...',
