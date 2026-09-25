@@ -113,7 +113,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
           Text(
             controller.t('playerSettings'),
             style: const TextStyle(
-              fontSize: 13.5,
+              fontSize: 15,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -168,7 +168,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
                   leading: Icon(items[i].$1, size: 17),
                   title: Text(
                     items[i].$2,
-                    style: TextStyle(fontSize: 11.5, color: _primary),
+                    style: TextStyle(fontSize: 13, color: _primary),
                   ),
                   onTap: () => setState(() => section = i),
                 ),
@@ -207,7 +207,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
         children: [
           DropdownButtonFormField<int>(
             initialValue: controller.skipSeconds,
-            style: TextStyle(fontSize: 11.5, color: _primary),
+            style: TextStyle(fontSize: 13, color: _primary),
             decoration: _decoration(controller.t('skipInterval')),
             items: const [5, 10, 15, 30, 60]
                 .map(
@@ -251,7 +251,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: controller.subtitleFontFamily,
-                  style: TextStyle(fontSize: 11.5, color: _primary),
+                  style: TextStyle(fontSize: 13, color: _primary),
                   decoration: _decoration(controller.t('subtitleFont')),
                   items: const [
                     DropdownMenuItem(
@@ -337,7 +337,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
                   initialValue: controller.subtitlePosition,
                   isDense: true,
                   menuMaxHeight: 120,
-                  style: TextStyle(fontSize: 11, color: _primary),
+                  style: TextStyle(fontSize: 12.5, color: _primary),
                   decoration: _decoration(
                     controller.t('subtitlePosition'),
                   ).copyWith(
@@ -562,7 +562,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
             Text(
               title,
               style: const TextStyle(
-                fontSize: 17,
+                fontSize: 18,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -579,7 +579,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
               icon: const Icon(Icons.restart_alt_rounded, size: 15),
               label: Text(
                 controller.t('resetSection'),
-                style: TextStyle(fontSize: 11, color: _primary),
+                style: TextStyle(fontSize: 12.5, color: _primary),
               ),
             ),
           ],
@@ -633,11 +633,11 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
         Row(
           children: [
             Expanded(
-              child: Text(label, style: const TextStyle(fontSize: 11.5)),
+              child: Text(label, style: const TextStyle(fontSize: 13)),
             ),
             Text(
               '${value.round()}$suffix',
-              style: TextStyle(fontSize: 11, color: _secondary),
+              style: TextStyle(fontSize: 12.5, color: _secondary),
             ),
           ],
         ),
@@ -669,7 +669,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
         children: [
           SizedBox(
             width: 110,
-            child: Text(label, style: const TextStyle(fontSize: 11.5)),
+            child: Text(label, style: const TextStyle(fontSize: 13)),
           ),
           Expanded(
             child: _slider(
@@ -685,7 +685,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
             child: Text(
               shown,
               textAlign: TextAlign.right,
-              style: TextStyle(fontSize: 11, color: _secondary),
+              style: TextStyle(fontSize: 12.5, color: _secondary),
             ),
           ),
         ],
@@ -725,7 +725,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 11.5)),
+        Text(label, style: const TextStyle(fontSize: 13)),
         const SizedBox(height: 6),
         Row(
           children: [
@@ -778,7 +778,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
       child: Row(
         children: [
           Expanded(
-            child: Text(title, style: const TextStyle(fontSize: 11.5)),
+            child: Text(title, style: const TextStyle(fontSize: 13)),
           ),
           MouseRegion(
             cursor: SystemMouseCursors.click,
@@ -864,7 +864,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
                     Text(
                       controller.t('changesSaved'),
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 12.5,
                         color: _secondary,
                       ),
                     ),
@@ -885,7 +885,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
               controller.t('cancel'),
-              style: TextStyle(fontSize: 11.5, color: _primary),
+              style: TextStyle(fontSize: 13, color: _primary),
             ),
           ),
           const SizedBox(width: 7),
@@ -900,7 +900,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
             onPressed: _showSavedNotice,
             child: Text(
               controller.t('save'),
-              style: TextStyle(fontSize: 11.5, color: _primary),
+              style: TextStyle(fontSize: 13, color: _primary),
             ),
           ),
         ],
