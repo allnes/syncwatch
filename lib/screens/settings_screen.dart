@@ -285,6 +285,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _settingsCard(
           children: [
             DropdownButtonFormField<String>(
+              initialValue: controller.callInputDevice,
+              decoration: InputDecoration(
+                labelText: controller.t('inputDevice'),
+                prefixIcon: const Icon(Icons.mic_rounded),
+              ),
+              items: [
+                DropdownMenuItem(
+                  value: 'system',
+                  child: Text(controller.t('systemDefault')),
+                ),
+                DropdownMenuItem(
+                  value: 'laptop',
+                  child: Text(controller.t('laptopMicrophone')),
+                ),
+                DropdownMenuItem(
+                  value: 'usb',
+                  child: Text(controller.t('usbMicrophone')),
+                ),
+              ],
+              onChanged: (value) {
+                if (value != null) controller.setCallInputDevice(value);
+              },
+            ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              initialValue: controller.callOutputDevice,
+              decoration: InputDecoration(
+                labelText: controller.t('outputDevice'),
+                prefixIcon: const Icon(Icons.volume_up_rounded),
+              ),
+              items: [
+                DropdownMenuItem(
+                  value: 'system',
+                  child: Text(controller.t('systemDefault')),
+                ),
+                DropdownMenuItem(
+                  value: 'speakers',
+                  child: Text(controller.t('speakers')),
+                ),
+                DropdownMenuItem(
+                  value: 'headphones',
+                  child: Text(controller.t('headphones')),
+                ),
+              ],
+              onChanged: (value) {
+                if (value != null) controller.setCallOutputDevice(value);
+              },
+            ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
               initialValue: '480p',
               decoration:
                   InputDecoration(labelText: controller.t('cameraQuality')),
@@ -293,7 +343,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
               onChanged: (_) {},
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: controller.ducking,
