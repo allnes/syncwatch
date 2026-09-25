@@ -378,10 +378,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         _settingsCard(
           children: [
-            DropdownButtonFormField<String>(
+            SizedBox(
+              width: 360,
+              child: DropdownButtonFormField<String>(
           isDense: true,
           menuMaxHeight: 160,
           itemHeight: 48,
+          menuWidth: 360,
               style: TextStyle(fontSize: 13, color: _primary),
               initialValue: controller.callInputDevice,
               decoration: _compactDecoration(
@@ -406,11 +409,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (value != null) controller.setCallInputDevice(value);
               },
             ),
+            ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
+            SizedBox(
+              width: 360,
+              child: DropdownButtonFormField<String>(
           isDense: true,
           menuMaxHeight: 160,
           itemHeight: 48,
+          menuWidth: 360,
               style: TextStyle(fontSize: 13, color: _primary),
               initialValue: controller.callOutputDevice,
               decoration: _compactDecoration(
@@ -435,11 +442,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (value != null) controller.setCallOutputDevice(value);
               },
             ),
+            ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
+            SizedBox(
+              width: 220,
+              child: DropdownButtonFormField<String>(
           isDense: true,
           menuMaxHeight: 160,
           itemHeight: 48,
+          menuWidth: 220,
               style: TextStyle(fontSize: 13, color: _primary),
               initialValue: '480p',
               decoration: _compactDecoration(controller.t('cameraQuality')),
@@ -447,6 +458,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 DropdownMenuItem(value: '480p', child: Text('480p')),
               ],
               onChanged: (_) {},
+            ),
             ),
             _compactSwitch(
               value: controller.ducking,
