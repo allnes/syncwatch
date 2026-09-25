@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1359,6 +1360,21 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                 ];
               }
 
+              if (submenu == 'open') {
+                return [
+                  (
+                    label: widget.controller.t('openAudioTrack'),
+                    value: 'open:audio',
+                    selected: false,
+                  ),
+                  (
+                    label: widget.controller.t('openSubtitles'),
+                    value: 'open:subtitle',
+                    selected: false,
+                  ),
+                ];
+              }
+
               return const [];
             }
 
@@ -1430,6 +1446,17 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                           ),
                           onTap: () => setDialogState(
                             () => submenu = 'subtitles',
+                          ),
+                        ),
+                        _contextMenuRow(
+                          icon: Icons.folder_open_rounded,
+                          label: widget.controller.t('open'),
+                          hasSubmenu: true,
+                          onHover: () => setDialogState(
+                            () => submenu = 'open',
+                          ),
+                          onTap: () => setDialogState(
+                            () => submenu = 'open',
                           ),
                         ),
                         const Divider(height: 1),
@@ -1546,6 +1573,14 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       );
       return;
     }
+    if (result == 'open:audio') {
+      await _openExternalAudioTrack();
+      return;
+    }
+    if (result == 'open:subtitle') {
+      await _openExternalSubtitleTrack();
+      return;
+    }
     if (result.startsWith('playlist:')) {
       final index = int.tryParse(result.substring('playlist:'.length));
       if (index != null) await _switchToIndex(index);
@@ -1566,6 +1601,69 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       final match = subtitles.where((track) => track.id == id);
       if (match.isNotEmpty) await player.setSubtitleTrack(match.first);
     }
+  }
+
+  Future<void> _openExternalAudioTrack() async {
+    const typeGroup = XTypeGroup(
+      label: 'Audio',
+      extensions: <String>[
+        'aac',
+        'ac3',
+        'dts',
+        'eac3',
+        'flac',
+        'm4a',
+        'mka',
+        'mp3',
+        'ogg',
+        'opus',
+        'wav',
+      ],
+    );
+
+    final file = await openFile(
+      acceptedTypeGroups: const <XTypeGroup>[typeGroup],
+    );
+    if (file == null) return;
+
+    final title = _fileNameFromPath(file.path);
+    await player.setAudioTrack(
+      AudioTrack.uri(
+        Uri.file(file.path).toString(),
+        title: title,
+      ),
+    );
+  }
+
+  Future<void> _openExternalSubtitleTrack() async {
+    const typeGroup = XTypeGroup(
+      label: 'Subtitles',
+      extensions: <String>[
+        'ass',
+        'srt',
+        'ssa',
+        'sub',
+        'vtt',
+      ],
+    );
+
+    final file = await openFile(
+      acceptedTypeGroups: const <XTypeGroup>[typeGroup],
+    );
+    if (file == null) return;
+
+    final title = _fileNameFromPath(file.path);
+    await player.setSubtitleTrack(
+      SubtitleTrack.uri(
+        Uri.file(file.path).toString(),
+        title: title,
+      ),
+    );
+  }
+
+  String _fileNameFromPath(String path) {
+    final normalized = path.replaceAll('\\', '/');
+    return normalized.substring(normalized.lastIndexOf('/') + 1);
   }
 
   Widget _contextMenuRow({
