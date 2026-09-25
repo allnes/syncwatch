@@ -798,22 +798,18 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   }
 
   double _subtitleBottomPadding(double videoHeight) {
-    final edge = widget.controller.subtitleEdgePadding;
-    final base = switch (widget.controller.subtitlePosition) {
-      'top' => videoHeight * 0.72 + edge,
-      'higher' => videoHeight * 0.46 + edge,
-      'normal' => videoHeight * 0.22 + edge,
-      'lower' => videoHeight * 0.10 + edge,
-      _ => edge,
-    };
+    final offset = widget.controller.subtitleVerticalOffset;
+    final isTop = widget.controller.subtitlePosition == 'top';
 
-    // In fullscreen the control bar overlays the video. Keep subtitles just
-    // above it while visible, but let them drop close to the frame edge when
-    // the bar is hidden.
-    if (isFullscreen && bottomControlsVisible) {
-      return base + 56;
+    var base = isTop
+        ? videoHeight * 0.76 - offset
+        : 20.0 + offset;
+
+    if (!isTop && isFullscreen && bottomControlsVisible) {
+      base += 56;
     }
-    return base;
+
+    return base.clamp(0.0, videoHeight * 0.90).toDouble();
   }
 
   Future<void> _showPlayerSettings() async {
