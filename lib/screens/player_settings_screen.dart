@@ -27,8 +27,6 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
       _isLight ? syncLightText : Colors.white;
   Color get _secondary =>
       _isLight ? syncLightTextSecondary : Colors.white70;
-  Color get _iconColor =>
-      _isLight ? syncLightTextSecondary : Colors.white70;
   int section = 0;
   bool showSavedNotice = false;
   Timer? savedNoticeTimer;
