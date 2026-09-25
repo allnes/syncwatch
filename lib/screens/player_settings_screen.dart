@@ -60,8 +60,8 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
           child: Dialog(
           insetPadding: const EdgeInsets.all(18),
           child: SizedBox(
-            width: 650,
-            height: 680,
+            width: 720,
+            height: 500,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Column(
@@ -71,7 +71,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
                   Expanded(
                     child: Row(
                       children: [
-                        SizedBox(width: 160, child: _sidebar()),
+                        SizedBox(width: 170, child: _sidebar()),
                         const VerticalDivider(width: 1),
                         Expanded(child: _content()),
                       ],
@@ -94,8 +94,8 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
       behavior: HitTestBehavior.opaque,
       onPanUpdate: (details) {
         final size = MediaQuery.sizeOf(context);
-        final maxX = ((size.width - 650) / 2).clamp(0.0, double.infinity);
-        final maxY = ((size.height - 680) / 2).clamp(0.0, double.infinity);
+        final maxX = ((size.width - 720) / 2).clamp(0.0, double.infinity);
+        final maxY = ((size.height - 500) / 2).clamp(0.0, double.infinity);
         setState(() {
           _dialogOffset = Offset(
             (_dialogOffset.dx + details.delta.dx).clamp(-maxX, maxX).toDouble(),
