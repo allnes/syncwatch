@@ -871,8 +871,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _movieDetails(MovieItem movie) {
-    final probingThisMovie =
-        metadataLoading && metadataPath == movie.fullPath;
     final audioNames = movie.audioTrackNames.isEmpty
         ? ['…']
         : movie.audioTrackNames;
