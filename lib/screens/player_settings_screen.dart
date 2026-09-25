@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../app.dart';
 import '../core/app_theme.dart';
+import '../widgets/compact_select.dart';
 
 class PlayerSettingsScreen extends StatefulWidget {
   const PlayerSettingsScreen({
@@ -205,31 +206,15 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
       onReset: controller.resetPlaybackSettings,
       child: _card(
         children: [
-          SizedBox(
+          CompactSelect<int>(
             width: 220,
-            child: DropdownButtonFormField<int>(
-          isDense: true,
-          menuMaxHeight: 180,
-          itemHeight: 48,
-
-            initialValue: controller.skipSeconds,
-            style: TextStyle(fontSize: 13, color: _primary),
-            decoration: _decoration(controller.t('skipInterval')),
+            label: controller.t('skipInterval'),
+            value: controller.skipSeconds,
             items: const [5, 10, 15, 30, 60]
-                .map(
-                  (value) => DropdownMenuItem(
-                    value: value,
-                    child: Text(
-                      '$value ${controller.t('secondsShort')}',
-                    ),
-                  ),
-                )
+                .map((value) => (value, '$value с'))
                 .toList(),
-            onChanged: (value) {
-              if (value != null) controller.setSkipSeconds(value);
-            },
-          ),
-          ),
+            onChanged: controller.setSkipSeconds,
+          )
           const SizedBox(height: 7),
           _compactSwitch(
             value: controller.autoReady,
@@ -255,35 +240,17 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
         children: [
           Row(
             children: [
-              SizedBox(
+              CompactSelect<String>(
                 width: 230,
-                child: DropdownButtonFormField<String>(
-                  isDense: true,
-                  menuMaxHeight: 180,
-                  itemHeight: 48,
-
-                  initialValue: controller.subtitleFontFamily,
-                  style: TextStyle(fontSize: 13, color: _primary),
-                  decoration: _decoration(controller.t('subtitleFont')),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'Segoe UI',
-                      child: Text('Segoe UI'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'Arial',
-                      child: Text('Arial'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'Verdana',
-                      child: Text('Verdana'),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) controller.setSubtitleFontFamily(value);
-                  },
-                ),
-              ),
+                label: controller.t('subtitleFont'),
+                value: controller.subtitleFontFamily,
+                items: const [
+                  ('Segoe UI', 'Segoe UI'),
+                  ('Arial', 'Arial'),
+                  ('Verdana', 'Verdana'),
+                ],
+                onChanged: controller.setSubtitleFontFamily,
+              )
               const SizedBox(width: 10),
               SizedBox(
                 width: 150,
@@ -343,38 +310,16 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              SizedBox(
+              CompactSelect<String>(
                 width: 180,
-                child: DropdownButtonFormField<String>(
-                  isDense: true,
-                  menuMaxHeight: 120,
-                  itemHeight: 48,
-
-                  initialValue: controller.subtitlePosition,
-                  style: TextStyle(fontSize: 12.5, color: _primary),
-                  decoration: _decoration(
-                    controller.t('subtitlePosition'),
-                  ).copyWith(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                  ),
-                  items: [
-                    DropdownMenuItem(
-                      value: 'top',
-                      child: Text(controller.t('subtitlePositionTop')),
-                    ),
-                    DropdownMenuItem(
-                      value: 'bottom',
-                      child: Text(controller.t('subtitlePositionBottom')),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) controller.setSubtitlePosition(value);
-                  },
-                ),
-              ),
+                label: controller.t('subtitlePosition'),
+                value: controller.subtitlePosition,
+                items: [
+                  ('top', controller.t('subtitlePositionTop')),
+                  ('bottom', controller.t('subtitlePositionBottom')),
+                ],
+                onChanged: controller.setSubtitlePosition,
+              )
               const SizedBox(width: 12),
               Expanded(
                 child: _numberSlider(
