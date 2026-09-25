@@ -12,6 +12,7 @@ class AppController extends ChangeNotifier {
   String syncServer = 'syncplay.pl:8997';
   String roomName = 'nevermore';
   String username = 'Alex';
+  String themeMode = 'dark';
 
   int skipSeconds = 10;
   bool autoReady = true;
@@ -61,6 +62,7 @@ class AppController extends ChangeNotifier {
     syncServer = _prefs?.getString('syncServer') ?? syncServer;
     roomName = _prefs?.getString('roomName') ?? roomName;
     username = _prefs?.getString('username') ?? username;
+    themeMode = _prefs?.getString('themeMode') ?? themeMode;
 
     skipSeconds = _prefs?.getInt('skipSeconds') ?? skipSeconds;
     autoReady = _prefs?.getBool('autoReady') ?? autoReady;
@@ -141,6 +143,20 @@ class AppController extends ChangeNotifier {
     locale = Locale(languageCode);
     _setString('language', languageCode);
     notifyListeners();
+  }
+
+  void setThemeMode(String value) {
+    themeMode = value;
+    _setString('themeMode', value);
+    notifyListeners();
+  }
+
+  ThemeMode get materialThemeMode {
+    return switch (themeMode) {
+      'light' => ThemeMode.light,
+      'system' => ThemeMode.system,
+      _ => ThemeMode.dark,
+    };
   }
 
   void setLibraryPath(String value) {
@@ -466,7 +482,9 @@ class SyncWatchApp extends StatelessWidget {
           locale: controller.locale,
           supportedLocales: const [Locale('en'), Locale('ru')],
           localizationsDelegates: GlobalMaterialLocalizations.delegates,
-          theme: buildSyncWatchTheme(),
+          theme: buildSyncWatchTheme(Brightness.light),
+          darkTheme: buildSyncWatchTheme(Brightness.dark),
+          themeMode: controller.materialThemeMode,
           home: LibraryScreen(controller: controller),
         );
       },
