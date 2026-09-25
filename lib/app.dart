@@ -116,6 +116,12 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setTimelinePreview(bool value) {
+    timelinePreview = value;
+    _setBool('timelinePreview', value);
+    notifyListeners();
+  }
+
   void setMovieVolume(double value) {
     movieVolume = value.clamp(0.0, 1.0).toDouble();
     _setDouble('movieVolume', movieVolume);
