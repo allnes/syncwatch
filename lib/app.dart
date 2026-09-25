@@ -405,6 +405,15 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void endPlaybackSession() {
+    activeMoviePath = '';
+    activeMoviePositionSeconds = 0;
+    activeMovieSessionStarted = false;
+    _setString('activeMoviePath', '');
+    _setDouble('activeMoviePositionSeconds', 0);
+    notifyListeners();
+  }
+
   void updatePlaybackPosition(
     String moviePath,
     double seconds, {
