@@ -97,6 +97,9 @@ class AppController extends ChangeNotifier {
         _prefs?.getDouble('defaultMovieVolume') ?? defaultMovieVolume;
     rememberMovieVolume =
         _prefs?.getBool('rememberMovieVolume') ?? rememberMovieVolume;
+    if (!rememberMovieVolume) {
+      movieVolume = defaultMovieVolume;
+    }
     normalizeAudio =
         _prefs?.getBool('normalizeAudio') ?? normalizeAudio;
     smoothScaling =
@@ -343,7 +346,9 @@ class AppController extends ChangeNotifier {
 
   void setMovieVolume(double value) {
     movieVolume = value.clamp(0.0, 1.0).toDouble();
-    _setDouble('movieVolume', movieVolume);
+    if (rememberMovieVolume) {
+      _setDouble('movieVolume', movieVolume);
+    }
     notifyListeners();
   }
 
