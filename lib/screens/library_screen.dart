@@ -155,7 +155,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   String _normalizedDir(String path) {
-    return Directory(path).absolute.path.replaceAll('\\', '/').replaceAll(RegExp(r'/+
+    var normalized = Directory(path).absolute.path.replaceAll('\\', '/');
+    while (normalized.endsWith('/')) {
+      normalized = normalized.substring(0, normalized.length - 1);
+    }
+    return normalized.toLowerCase();
+  }
+
+  Future<void> _scanLibrary({bool forceEmpty = false}) async {
     final directory = Directory(widget.controller.libraryPath);
     if (!await directory.exists()) {
       if (forceEmpty && mounted) {
@@ -194,6 +201,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
             .compareTo(_fileName(b.path).toLowerCase()),
       );
 
+      final rootDir = _normalizedDir(widget.controller.libraryPath);
+
       final scanned = videoFiles.map((file) {
         final fileName = _fileName(file.path);
         final base = _baseName(fileName).toLowerCase();
@@ -207,7 +216,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
             .toList()
           ..sort();
 
-        final rootDir = _normalizedDir(widget.controller.libraryPath);
         final parentDir = _normalizedDir(file.parent.path);
 
         return MovieItem(
