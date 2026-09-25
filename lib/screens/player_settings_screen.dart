@@ -23,7 +23,11 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
       _isLight ? syncLightBackgroundDeep : syncBackgroundDeep;
   Color get _border =>
       _isLight ? syncLightBorder : syncBorder;
+  Color get _primary =>
+      _isLight ? syncLightText : Colors.white;
   Color get _secondary =>
+      _isLight ? syncLightTextSecondary : Colors.white70;
+  Color get _iconColor =>
       _isLight ? syncLightTextSecondary : Colors.white70;
   int section = 0;
   bool showSavedNotice = false;
@@ -148,7 +152,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
                   leading: Icon(items[i].$1, size: 17),
                   title: Text(
                     items[i].$2,
-                    style: const TextStyle(fontSize: 11.5),
+                    style: TextStyle(fontSize: 11.5, color: _primary),
                   ),
                   onTap: () => setState(() => section = i),
                 ),
@@ -187,7 +191,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
         children: [
           DropdownButtonFormField<int>(
             initialValue: controller.skipSeconds,
-            style: const TextStyle(fontSize: 11.5),
+            style: TextStyle(fontSize: 11.5, color: _primary),
             decoration: _decoration(controller.t('skipInterval')),
             items: const [5, 10, 15, 30, 60]
                 .map(
@@ -231,7 +235,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: controller.subtitleFontFamily,
-                  style: const TextStyle(fontSize: 11.5),
+                  style: TextStyle(fontSize: 11.5, color: _primary),
                   decoration: _decoration(controller.t('subtitleFont')),
                   items: const [
                     DropdownMenuItem(
@@ -317,7 +321,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
                   initialValue: controller.subtitlePosition,
                   isDense: true,
                   menuMaxHeight: 120,
-                  style: const TextStyle(fontSize: 11),
+                  style: TextStyle(fontSize: 11, color: _primary),
                   decoration: _decoration(
                     controller.t('subtitlePosition'),
                   ).copyWith(
@@ -559,7 +563,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
               icon: const Icon(Icons.restart_alt_rounded, size: 15),
               label: Text(
                 controller.t('resetSection'),
-                style: const TextStyle(fontSize: 11),
+                style: TextStyle(fontSize: 11, color: _primary),
               ),
             ),
           ],
@@ -589,6 +593,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
   InputDecoration _decoration(String label) {
     return InputDecoration(
       labelText: label,
+      labelStyle: TextStyle(color: _secondary),
       isDense: true,
       contentPadding: const EdgeInsets.symmetric(
         horizontal: 14,
@@ -864,7 +869,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
               controller.t('cancel'),
-              style: const TextStyle(fontSize: 11.5),
+              style: TextStyle(fontSize: 11.5, color: _primary),
             ),
           ),
           const SizedBox(width: 7),
@@ -879,7 +884,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
             onPressed: _showSavedNotice,
             child: Text(
               controller.t('save'),
-              style: const TextStyle(fontSize: 11.5),
+              style: TextStyle(fontSize: 11.5, color: _primary),
             ),
           ),
         ],
