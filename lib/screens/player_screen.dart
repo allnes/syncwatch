@@ -1687,6 +1687,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     });
 
     await _openMedia();
+    await player.play();
+    await widget.syncEngine.play();
   }
 
   Future<void> _togglePlayback() async {
