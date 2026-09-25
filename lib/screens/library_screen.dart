@@ -521,6 +521,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 onShowCall: callActive ? _focusCallWindow : null,
                 onReturnHome: _showLibraryFromPlayer,
                 onMovieChanged: _handlePlayerMovieChanged,
+                onEndWatching: _endActivePlaybackSession,
                 active: showingPlayer,
               );
 
