@@ -32,6 +32,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
   int section = 0;
   bool showSavedNotice = false;
   Timer? savedNoticeTimer;
+  Offset _dialogOffset = Offset.zero;
 
   AppController get controller => widget.controller;
 
@@ -56,7 +57,9 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
-        return Dialog(
+        return Transform.translate(
+          offset: _dialogOffset,
+          child: Dialog(
           insetPadding: const EdgeInsets.all(18),
           child: SizedBox(
             width: 720,
@@ -82,13 +85,27 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
               ),
             ),
           ),
+          ),
         );
       },
     );
   }
 
   Widget _titleBar(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onPanUpdate: (details) {
+        final size = MediaQuery.sizeOf(context);
+        final maxX = ((size.width - 720) / 2).clamp(0.0, double.infinity);
+        final maxY = ((size.height - 500) / 2).clamp(0.0, double.infinity);
+        setState(() {
+          _dialogOffset = Offset(
+            (_dialogOffset.dx + details.delta.dx).clamp(-maxX, maxX).toDouble(),
+            (_dialogOffset.dy + details.delta.dy).clamp(-maxY, maxY).toDouble(),
+          );
+        });
+      },
+      child: Container(
       color: _deep.withValues(alpha: _isLight ? 0.58 : 0.55),
       padding: const EdgeInsets.fromLTRB(10, 5, 4, 5),
       child: Row(
@@ -115,6 +132,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -122,7 +140,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
     final items = [
       (Icons.play_circle_outline_rounded, controller.t('playback')),
       (Icons.subtitles_rounded, controller.t('subtitles')),
-      (Icons.video_settings_outlined, controller.t('video')),
+      (Icons.video_settings_outlined, controller.t('videoImage')),
       (Icons.graphic_eq_rounded, controller.t('audio')),
       (Icons.tune_rounded, controller.t('advancedPlayer')),
     ];
