@@ -269,7 +269,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                     left: 0,
                     right: 0,
                     top: 0,
-                    height: topControlsVisible ? 82 : 40,
+                    height: topControlsVisible ? 68 : 32,
                     child: MouseRegion(
                       onEnter: (_) {
                         if (!topControlsVisible) {
@@ -336,7 +336,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                 if (volumeOsd != null)
                   Positioned(
                     right: 32,
-                    top: isFullscreen && !topControlsVisible ? 28 : 96,
+                    top: isFullscreen && !topControlsVisible ? 24 : 76,
                     child: _volumeIndicator(),
                   ),
               ],
@@ -351,7 +351,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   Widget _movieSurface(BuildContext context) {
     return Container(
       margin: EdgeInsets.only(
-        top: isFullscreen ? 0 : 68,
+        top: isFullscreen ? 0 : 52,
         bottom: isFullscreen ? 0 : 78,
       ),
       color: Colors.black,
@@ -370,26 +370,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
               fit: BoxFit.contain,
               fill: Colors.black,
             ),
-            if (!isFullscreen || topControlsVisible)
-              Positioned(
-                left: 24,
-                top: isFullscreen ? 88 : 18,
-                right: 24,
-                child: IgnorePointer(
-                  child: Text(
-                    currentMovie.fileName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      shadows: [
-                        Shadow(color: Colors.black87, blurRadius: 8),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+
           ],
         ),
       ),
@@ -398,7 +379,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
   Widget _fullscreenWindowBar() {
     return Container(
-      height: 34,
+      height: 28,
       color: const Color(0xFF7357C8),
       child: Row(
         children: [
@@ -415,26 +396,26 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           IconButton(
             tooltip: widget.controller.t('minimize'),
             visualDensity: VisualDensity.compact,
-            constraints: const BoxConstraints(minWidth: 38, minHeight: 34),
+            constraints: const BoxConstraints(minWidth: 34, minHeight: 28),
             padding: EdgeInsets.zero,
             onPressed: windowManager.minimize,
-            icon: const Icon(Icons.remove_rounded, size: 17),
+            icon: const Icon(Icons.remove_rounded, size: 15),
           ),
           IconButton(
             tooltip: widget.controller.t('fullscreen'),
             visualDensity: VisualDensity.compact,
-            constraints: const BoxConstraints(minWidth: 38, minHeight: 34),
+            constraints: const BoxConstraints(minWidth: 34, minHeight: 28),
             padding: EdgeInsets.zero,
             onPressed: _toggleFullscreen,
-            icon: const Icon(Icons.fullscreen_exit_rounded, size: 17),
+            icon: const Icon(Icons.fullscreen_exit_rounded, size: 15),
           ),
           IconButton(
             tooltip: widget.controller.t('hide'),
             visualDensity: VisualDensity.compact,
-            constraints: const BoxConstraints(minWidth: 38, minHeight: 34),
+            constraints: const BoxConstraints(minWidth: 34, minHeight: 28),
             padding: EdgeInsets.zero,
             onPressed: windowManager.close,
-            icon: const Icon(Icons.close_rounded, size: 17),
+            icon: const Icon(Icons.close_rounded, size: 15),
           ),
         ],
       ),
@@ -442,48 +423,120 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   }
 
   Widget _topBar(BuildContext context, {bool compact = false}) {
+    final barHeight = compact ? 40.0 : 52.0;
+    final titleFontSize = compact ? 12.5 : 13.5;
+
     return Container(
-      height: compact ? 48 : 68,
-      padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 20),
+      height: barHeight,
+      padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 12),
       color: syncBackgroundDeep.withValues(alpha: 0.98),
       child: Row(
         children: [
-          IconButton(
-            tooltip: widget.controller.t('back'),
-            onPressed: _returnToHome,
-            icon: const Icon(Icons.arrow_back_rounded),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: widget.controller.t('back'),
+                visualDensity: VisualDensity.compact,
+                constraints: BoxConstraints(
+                  minWidth: compact ? 30 : 34,
+                  minHeight: barHeight,
+                ),
+                padding: EdgeInsets.zero,
+                onPressed: _returnToHome,
+                icon: Icon(
+                  Icons.arrow_back_rounded,
+                  size: compact ? 17 : 19,
+                ),
+              ),
+              const SizedBox(width: 3),
+              Text(
+                'SyncWatch',
+                style: TextStyle(
+                  fontSize: compact ? 14.5 : 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              SizedBox(width: compact ? 10 : 12),
+              SizedBox(
+                height: compact ? 18 : 22,
+                child: const VerticalDivider(width: 1),
+              ),
+              SizedBox(width: compact ? 8 : 10),
+              Icon(
+                Icons.groups_2_rounded,
+                color: syncAccentSoft,
+                size: compact ? 17 : 19,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                widget.controller.roomName,
+                style: TextStyle(fontSize: compact ? 12 : 13),
+              ),
+            ],
           ),
-          const SizedBox(width: 6),
-          Text(
-            'SyncWatch',
-            style: TextStyle(
-              fontSize: compact ? 17 : 20,
-              fontWeight: FontWeight.w800,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Center(
+              child: Tooltip(
+                message: currentMovie.fileName,
+                waitDuration: const Duration(milliseconds: 350),
+                child: Text(
+                  currentMovie.fileName,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: titleFontSize,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.88),
+                  ),
+                ),
+              ),
             ),
           ),
-          const SizedBox(width: 20),
-          const VerticalDivider(indent: 16, endIndent: 16),
-          const SizedBox(width: 8),
-          const Icon(Icons.groups_2_rounded, color: syncAccentSoft),
-          const SizedBox(width: 8),
-          Text(widget.controller.roomName),
-          const Spacer(),
-          _readyStatusChip(),
-          const SizedBox(width: 16),
-          if (widget.onShowCall != null)
-            IconButton(
-              tooltip: widget.controller.t('goToCall'),
-              onPressed: () => widget.onShowCall?.call(),
-              icon: const Icon(Icons.videocam_rounded),
-            ),
-          IconButton(
-            tooltip: widget.controller.t('settings'),
-            onPressed: () => showDialog<void>(
-              context: context,
-              barrierColor: Colors.black.withValues(alpha: 0.56),
-              builder: (_) => SettingsScreen(controller: widget.controller),
-            ),
-            icon: const Icon(Icons.settings_rounded),
+          const SizedBox(width: 12),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _readyStatusChip(),
+              SizedBox(width: compact ? 6 : 8),
+              if (widget.onShowCall != null)
+                IconButton(
+                  tooltip: widget.controller.t('goToCall'),
+                  visualDensity: VisualDensity.compact,
+                  constraints: BoxConstraints(
+                    minWidth: compact ? 30 : 34,
+                    minHeight: barHeight,
+                  ),
+                  padding: EdgeInsets.zero,
+                  onPressed: () => widget.onShowCall?.call(),
+                  icon: Icon(
+                    Icons.videocam_rounded,
+                    size: compact ? 17 : 19,
+                  ),
+                ),
+              IconButton(
+                tooltip: widget.controller.t('settings'),
+                visualDensity: VisualDensity.compact,
+                constraints: BoxConstraints(
+                  minWidth: compact ? 30 : 34,
+                  minHeight: barHeight,
+                ),
+                padding: EdgeInsets.zero,
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  barrierColor: Colors.black.withValues(alpha: 0.56),
+                  builder: (_) =>
+                      SettingsScreen(controller: widget.controller),
+                ),
+                icon: Icon(
+                  Icons.settings_rounded,
+                  size: compact ? 17 : 19,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -510,11 +563,14 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             readyCount == 2
                 ? Icons.circle
                 : Icons.radio_button_unchecked_rounded,
-            size: 16,
+            size: 8,
             color: readyCount == 2 ? syncSuccess : Colors.white54,
           ),
-          const SizedBox(width: 6),
-          Text(statusText),
+          const SizedBox(width: 5),
+          Text(
+            statusText,
+            style: const TextStyle(fontSize: 12),
+          ),
         ],
       ),
     );
