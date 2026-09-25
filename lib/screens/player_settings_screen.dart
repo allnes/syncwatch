@@ -92,12 +92,15 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
             ),
           ),
           const Spacer(),
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-            padding: EdgeInsets.zero,
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.close_rounded, size: 17),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              visualDensity: VisualDensity.compact,
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              padding: EdgeInsets.zero,
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.close_rounded, size: 17),
+            ),
           ),
         ],
       ),
