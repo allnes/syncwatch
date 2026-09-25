@@ -1323,7 +1323,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       return;
     }
     if (result == 'settings') {
-      if (!mounted) return;
+      if (!mounted || !context.mounted) return;
       await showDialog<void>(
         context: context,
         barrierColor: Colors.black.withValues(alpha: 0.56),
