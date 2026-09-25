@@ -54,9 +54,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Dialog(
         insetPadding: const EdgeInsets.all(20),
         child: SizedBox(
-          width: 680,
-          height: 430,
-        child: ClipRRect(
+          width: 480,
+          height: 360,
+          child: ClipRRect(
           borderRadius: BorderRadius.circular(18),
           child: Column(
             children: [
@@ -65,7 +65,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Expanded(
                 child: Row(
                   children: [
-                    SizedBox(width: 205, child: _sidebar()),
+                    SizedBox(width: 150, child: _sidebar()),
                     const VerticalDivider(width: 1),
                     Expanded(child: _content()),
                   ],
@@ -90,22 +90,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
       },
       child: Container(
         color: syncBackgroundDeep.withValues(alpha: 0.55),
-        padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
+        padding: const EdgeInsets.fromLTRB(10, 5, 4, 5),
         child: Row(
           children: [
-            const Icon(Icons.settings_rounded, color: syncAccent, size: 20),
-            const SizedBox(width: 8),
+            const Icon(Icons.settings_rounded, color: syncAccent, size: 18),
+            const SizedBox(width: 6),
             Text(
               'SyncWatch · ${controller.t('settings')}',
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 11.5.5, fontWeight: FontWeight.w700),
             ),
             const Spacer(),
             IconButton(
               visualDensity: VisualDensity.compact,
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
               padding: EdgeInsets.zero,
               onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.close_rounded, size: 19),
+              icon: const Icon(Icons.close_rounded, size: 17),
             ),
           ],
         ),
@@ -124,27 +124,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Container(
       color: syncBackgroundDeep.withValues(alpha: 0.35),
-      padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
+      padding: const EdgeInsets.fromLTRB(5, 7, 5, 6),
       child: Column(
         children: [
           for (var i = 0; i < items.length; i++)
             Padding(
-              padding: const EdgeInsets.only(bottom: 3),
+              padding: const EdgeInsets.only(bottom: 2),
               child: Material(
                 color: Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(9),
                 child: ListTile(
                   dense: true,
-                  visualDensity: const VisualDensity(vertical: -3),
-                  minLeadingWidth: 20,
-                  horizontalTitleGap: 7,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                  visualDensity: const VisualDensity(vertical: -4),
+                  minLeadingWidth: 16,
+                  horizontalTitleGap: 5,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 7),
                   selected: section == i,
                   selectedTileColor: syncAccent.withValues(alpha: 0.15),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  leading: Icon(items[i].$1, size: 19),
+                  leading: Icon(items[i].$1, size: 16),
                   title: Text(items[i].$2, style: const TextStyle(fontSize: 13)),
                   onTap: () => setState(() => section = i),
                 ),
@@ -158,7 +158,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _content() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
       child: switch (section) {
         0 => _interface(),
         1 => _movies(),
@@ -175,20 +175,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: [
         Row(
           children: [
-            Icon(icon, color: syncAccentSoft, size: 24),
+            Icon(icon, color: syncAccentSoft, size: 20),
             const SizedBox(width: 8),
             Text(
               title,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
             ),
           ],
         ),
         const SizedBox(height: 4),
         Text(
           subtitle,
-          style: const TextStyle(color: Colors.white60, fontSize: 12.5),
+          style: const TextStyle(color: Colors.white60, fontSize: 11.5),
         ),
-        const SizedBox(height: 7),
+        const SizedBox(height: 5),
       ],
     );
   }
@@ -203,8 +203,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Icons.palette_outlined,
         ),
         DropdownButtonFormField<String>(
+              style: const TextStyle(fontSize: 11.5),
           initialValue: controller.locale.languageCode,
-          decoration: InputDecoration(labelText: controller.t('language')),
+          decoration: InputDecoration(
+            labelText: controller.t('language'),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          ),
           items: const [
             DropdownMenuItem(value: 'en', child: Text('English')),
             DropdownMenuItem(value: 'ru', child: Text('Русский')),
@@ -237,6 +242,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Expanded(
                   child: TextFormField(
+              style: const TextStyle(fontSize: 11.5),
                     key: ValueKey(controller.libraryPath),
                     initialValue: controller.libraryPath,
                     onChanged: controller.setLibraryPath,
@@ -252,6 +258,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 7),
             SwitchListTile(
+              dense: true,
+              visualDensity: const VisualDensity(vertical: -4),
               contentPadding: EdgeInsets.zero,
               value: controller.scanSubfolders,
               onChanged: controller.setScanSubfolders,
@@ -263,6 +271,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _settingsCard(
           children: [
             SwitchListTile(
+              dense: true,
+              visualDensity: const VisualDensity(vertical: -4),
               contentPadding: EdgeInsets.zero,
               value: controller.automaticRefresh,
               onChanged: controller.setAutomaticRefresh,
@@ -286,8 +296,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _settingsCard(
           children: [
             DropdownButtonFormField<int>(
+              style: const TextStyle(fontSize: 11.5),
               initialValue: controller.skipSeconds,
               decoration: InputDecoration(
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
                 labelText: controller.t('skipInterval'),
               ),
               items: const [5, 10, 15, 30, 60]
@@ -304,6 +317,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 8),
             SwitchListTile(
+              dense: true,
+              visualDensity: const VisualDensity(vertical: -4),
               contentPadding: EdgeInsets.zero,
               value: controller.autoReady,
               onChanged: controller.setAutoReady,
@@ -327,8 +342,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _settingsCard(
           children: [
             DropdownButtonFormField<String>(
+              style: const TextStyle(fontSize: 11.5),
               initialValue: controller.callInputDevice,
               decoration: InputDecoration(
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
                 labelText: controller.t('inputDevice'),
                 prefixIcon: const Icon(Icons.mic_rounded),
               ),
@@ -352,8 +370,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 7),
             DropdownButtonFormField<String>(
+              style: const TextStyle(fontSize: 11.5),
               initialValue: controller.callOutputDevice,
               decoration: InputDecoration(
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
                 labelText: controller.t('outputDevice'),
                 prefixIcon: const Icon(Icons.volume_up_rounded),
               ),
@@ -377,6 +398,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 7),
             DropdownButtonFormField<String>(
+              style: const TextStyle(fontSize: 11.5),
               initialValue: '480p',
               decoration:
                   InputDecoration(labelText: controller.t('cameraQuality')),
@@ -387,6 +409,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 7),
             SwitchListTile(
+              dense: true,
+              visualDensity: const VisualDensity(vertical: -4),
               contentPadding: EdgeInsets.zero,
               value: controller.ducking,
               onChanged: controller.setDucking,
@@ -410,20 +434,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _settingsCard(
           children: [
             TextFormField(
+              style: const TextStyle(fontSize: 11.5),
               initialValue: controller.syncServer,
-              decoration: InputDecoration(labelText: controller.t('server')),
+              decoration: InputDecoration(
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                labelText: controller.t('server')),
               onChanged: controller.setSyncServer,
             ),
             const SizedBox(height: 8),
             TextFormField(
+              style: const TextStyle(fontSize: 11.5),
               initialValue: controller.roomName,
-              decoration: InputDecoration(labelText: controller.t('room')),
+              decoration: InputDecoration(
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                labelText: controller.t('room')),
               onChanged: controller.setRoomName,
             ),
             const SizedBox(height: 8),
             TextFormField(
+              style: const TextStyle(fontSize: 11.5),
               initialValue: controller.username,
-              decoration: InputDecoration(labelText: controller.t('username')),
+              decoration: InputDecoration(
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                labelText: controller.t('username')),
               onChanged: controller.setUsername,
             ),
           ],
@@ -434,10 +470,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _settingsCard({required List<Widget> children}) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: syncBackgroundDeep.withValues(alpha: 0.34),
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: syncBorder),
       ),
       child: Column(
@@ -449,7 +485,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _actions(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 7, 12, 8),
+      padding: const EdgeInsets.fromLTRB(8, 5, 8, 6),
       child: Row(
         children: [
           AnimatedOpacity(
@@ -460,8 +496,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ignoring: !showSavedNotice,
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
+                  horizontal: 8,
+                  vertical: 4,
                 ),
                 decoration: BoxDecoration(
                   color: syncSuccess.withValues(alpha: 0.14),
@@ -482,7 +518,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Text(
                       controller.t('changesSaved'),
                       style: const TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 11.5,
                         color: Colors.white70,
                       ),
                     ),
@@ -495,7 +531,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           OutlinedButton(
             style: OutlinedButton.styleFrom(
               visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             ),
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
