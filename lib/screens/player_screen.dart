@@ -2043,15 +2043,16 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                           onTap: () => Navigator.of(context).pop('play'),
                         ),
                         _contextMenuRow(
-                          icon: movieMuted
-                              ? Icons.volume_up_rounded
-                              : Icons.volume_off_rounded,
-                          label: movieMuted
-                              ? widget.controller.t('unmuteMovie')
-                              : widget.controller.t('muteMovie'),
-                          onTap: () => Navigator.of(context).pop('mute'),
+                          icon: Icons.folder_open_rounded,
+                          label: widget.controller.t('open'),
+                          hasSubmenu: true,
+                          onHover: () => setDialogState(
+                            () => submenu = 'open',
+                          ),
+                          onTap: () => setDialogState(
+                            () => submenu = 'open',
+                          ),
                         ),
-                        const Divider(height: 1),
                         _contextMenuRow(
                           icon: Icons.playlist_play_rounded,
                           label: widget.controller.t('playlist'),
@@ -2085,29 +2086,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                             () => submenu = 'subtitles',
                           ),
                         ),
-                        _contextMenuRow(
-                          icon: Icons.folder_open_rounded,
-                          label: widget.controller.t('open'),
-                          hasSubmenu: true,
-                          onHover: () => setDialogState(
-                            () => submenu = 'open',
-                          ),
-                          onTap: () => setDialogState(
-                            () => submenu = 'open',
-                          ),
-                        ),
                         const Divider(height: 1),
-                        _contextMenuRow(
-                          icon: Icons.image_outlined,
-                          label: widget.controller.t('timelinePreview'),
-                          selected: widget.controller.timelinePreview,
-                          onTap: () => Navigator.of(context).pop('timeline-preview'),
-                        ),
-                        _contextMenuRow(
-                          icon: Icons.fullscreen_rounded,
-                          label: widget.controller.t('fullscreen'),
-                          onTap: () => Navigator.of(context).pop('fullscreen'),
-                        ),
                         _contextMenuRow(
                           icon: Icons.settings_rounded,
                           label: widget.controller.t('settings'),
