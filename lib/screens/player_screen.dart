@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:window_manager/window_manager.dart';
@@ -69,6 +70,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   final GlobalKey audioTrackButtonKey = GlobalKey();
   final GlobalKey subtitleButtonKey = GlobalKey();
   final GlobalKey volumeButtonKey = GlobalKey();
+  final FocusNode _playerFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -236,6 +238,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     );
     widget.syncEngine.dispose();
     player.dispose();
+    _playerFocusNode.dispose();
     super.dispose();
   }
 
@@ -253,7 +256,12 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           },
           child: Scaffold(
           backgroundColor: syncBackgroundDeep,
-          body: Listener(
+          body: KeyboardListener(
+            focusNode: _playerFocusNode,
+            autofocus: true,
+            onKeyEvent: _handleKeyEvent,
+            child: Listener(
+            onPointerDown: (_) => _playerFocusNode.requestFocus(),
             onPointerSignal: (event) {
               if (event is PointerScrollEvent) {
                 final delta = event.scrollDelta.dy < 0 ? 0.05 : -0.05;
@@ -342,10 +350,53 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
               ],
             ),
           ),
+          ),
         ),
         );
       },
     );
+  }
+
+  Future<void> _handleKeyEvent(KeyEvent event) async {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return;
+
+    final key = event.logicalKey;
+
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      await _skip(-widget.controller.skipSeconds);
+      return;
+    }
+    if (key == LogicalKeyboardKey.arrowRight) {
+      await _skip(widget.controller.skipSeconds);
+      return;
+    }
+    if (key == LogicalKeyboardKey.space) {
+      await _togglePlayback();
+      return;
+    }
+    if (key == LogicalKeyboardKey.arrowUp) {
+      await _changeMovieVolume(0.05);
+      return;
+    }
+    if (key == LogicalKeyboardKey.arrowDown) {
+      await _changeMovieVolume(-0.05);
+      return;
+    }
+    if (key == LogicalKeyboardKey.keyM) {
+      movieMuted = !movieMuted;
+      await player.setVolume(
+        movieMuted ? 0 : widget.controller.movieVolume * 100.0,
+      );
+      if (mounted) setState(() {});
+      return;
+    }
+    if (key == LogicalKeyboardKey.keyF) {
+      await _toggleFullscreen();
+      return;
+    }
+    if (key == LogicalKeyboardKey.escape && isFullscreen) {
+      await _toggleFullscreen();
+    }
   }
 
   Widget _movieSurface(BuildContext context) {
