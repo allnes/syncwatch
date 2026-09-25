@@ -18,6 +18,7 @@ class AppController extends ChangeNotifier {
   bool ducking = false;
   bool scanSubfolders = true;
   bool automaticRefresh = false;
+  bool timelinePreview = true;
   double movieVolume = 0.40;
   double callVolume = 0.80;
   String callInputDevice = 'system';
@@ -46,6 +47,8 @@ class AppController extends ChangeNotifier {
     scanSubfolders = _prefs?.getBool('scanSubfolders') ?? scanSubfolders;
     automaticRefresh =
         _prefs?.getBool('automaticRefresh') ?? automaticRefresh;
+    timelinePreview =
+        _prefs?.getBool('timelinePreview') ?? timelinePreview;
     movieVolume = _prefs?.getDouble('movieVolume') ?? movieVolume;
     callVolume = _prefs?.getDouble('callVolume') ?? callVolume;
     callInputDevice = _prefs?.getString('callInputDevice') ?? callInputDevice;
