@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../app.dart';
@@ -17,8 +19,26 @@ class PlayerSettingsScreen extends StatefulWidget {
 
 class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
   int section = 0;
+  bool showSavedNotice = false;
+  Timer? savedNoticeTimer;
 
   AppController get controller => widget.controller;
+
+  @override
+  void dispose() {
+    savedNoticeTimer?.cancel();
+    super.dispose();
+  }
+
+  void _showSavedNotice() {
+    savedNoticeTimer?.cancel();
+    setState(() => showSavedNotice = true);
+
+    savedNoticeTimer = Timer(const Duration(seconds: 5), () {
+      if (!mounted) return;
+      setState(() => showSavedNotice = false);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -328,36 +348,61 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
-            height: 72,
-            alignment: Alignment.center,
+            height: 130,
             decoration: BoxDecoration(
               color: Colors.black26,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: syncBorder),
             ),
-            child: Stack(
-              children: [
-                Center(
-                  child: Text(
-                    controller.locale.languageCode == 'ru'
-                        ? 'Пример субтитров'
-                        : 'Subtitle preview',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: controller.subtitleFontFamily,
-                      fontSize: controller.subtitleFontSize
-                          .clamp(18, 30)
-                          .toDouble(),
-                      fontWeight: FontWeight.w700,
-                      color: Color(controller.subtitleTextColorValue),
-                      shadows: _outlineShadows(
-                        Color(controller.subtitleOutlineColorValue),
-                        controller.subtitleOutlineWidth,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isTop = controller.subtitlePosition == 'top';
+                final baseAlignment =
+                    isTop ? Alignment.topCenter : Alignment.bottomCenter;
+                final maxShift = constraints.maxHeight * 0.34;
+                final shift = (controller.subtitleVerticalOffset / 120.0) *
+                    maxShift *
+                    (isTop ? 1 : -1);
+
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Align(
+                      alignment: baseAlignment,
+                      child: Transform.translate(
+                        offset: Offset(0, shift),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          child: Text(
+                            controller.locale.languageCode == 'ru'
+                                ? 'Пример субтитров'
+                                : 'Subtitle preview',
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            style: TextStyle(
+                              fontFamily: controller.subtitleFontFamily,
+                              fontSize: controller.subtitleFontSize,
+                              fontWeight: FontWeight.w700,
+                              color: Color(
+                                controller.subtitleTextColorValue,
+                              ),
+                              shadows: _outlineShadows(
+                                Color(
+                                  controller.subtitleOutlineColorValue,
+                                ),
+                                controller.subtitleOutlineWidth,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ],
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -758,7 +803,61 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
       padding: const EdgeInsets.fromLTRB(10, 6, 10, 7),
       child: Row(
         children: [
+          AnimatedOpacity(
+            opacity: showSavedNotice ? 1 : 0,
+            duration: const Duration(milliseconds: 750),
+            curve: Curves.easeOut,
+            child: IgnorePointer(
+              ignoring: !showSavedNotice,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: syncSuccess.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: syncSuccess.withValues(alpha: 0.34),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.circle,
+                      size: 6,
+                      color: syncSuccess,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      controller.t('changesSaved'),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
           const Spacer(),
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 7,
+              ),
+            ),
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              controller.t('cancel'),
+              style: const TextStyle(fontSize: 11.5),
+            ),
+          ),
+          const SizedBox(width: 7),
           FilledButton(
             style: FilledButton.styleFrom(
               visualDensity: VisualDensity.compact,
@@ -767,7 +866,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
                 vertical: 7,
               ),
             ),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: _showSavedNotice,
             child: Text(
               controller.t('save'),
               style: const TextStyle(fontSize: 11.5),
