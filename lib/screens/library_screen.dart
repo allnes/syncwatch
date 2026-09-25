@@ -501,6 +501,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 ),
                 onShowCall: callActive ? _focusCallWindow : null,
                 onReturnHome: _showLibraryFromPlayer,
+                active: showingPlayer,
               );
 
         return IndexedStack(
