@@ -54,11 +54,13 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   bool _seekInFlight = false;
 
   Player? _previewPlayer;
+  VideoController? _previewVideoController;
   String? _previewMediaPath;
   Uint8List? _previewFrame;
   double? _previewSeconds;
   double? _previewGlobalX;
   bool _timelineHovering = false;
+  bool _previewFailed = false;
   int _previewRequestSerial = 0;
   final Map<int, Uint8List> _previewCache = <int, Uint8List>{};
 
@@ -262,6 +264,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     );
     widget.syncEngine.dispose();
     _previewPlayer?.dispose();
+    _previewVideoController = null;
     player.dispose();
     _playerFocusNode.dispose();
     super.dispose();
@@ -295,6 +298,24 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             },
             child: Stack(
               children: [
+                if (_previewVideoController != null)
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    width: 2,
+                    height: 2,
+                    child: IgnorePointer(
+                      child: Opacity(
+                        opacity: 0.0,
+                        child: Video(
+                          controller: _previewVideoController!,
+                          controls: NoVideoControls,
+                          fit: BoxFit.cover,
+                          fill: Colors.black,
+                        ),
+                      ),
+                    ),
+                  ),
                 Positioned.fill(child: _movieSurface(context)),
 
                 if (isFullscreen)
@@ -834,6 +855,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
     setState(() {
       _timelineHovering = true;
+      _previewFailed = false;
       _previewSeconds = seconds;
       _previewGlobalX = event.position.dx;
     });
@@ -862,25 +884,68 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     if (!mounted || !widget.controller.timelinePreview) return;
 
     final request = ++_previewRequestSerial;
-    final preview = _previewPlayer ??= Player();
 
     try {
+      if (_previewPlayer == null) {
+        final preview = Player();
+        _previewPlayer = preview;
+        _previewVideoController = VideoController(preview);
+
+        if (mounted) {
+          setState(() {});
+          // Let the hidden Video widget attach its native video surface before
+          // opening media & requesting screenshots.
+          await WidgetsBinding.instance.endOfFrame;
+        }
+      }
+
+      final preview = _previewPlayer!;
+
       if (_previewMediaPath != currentMovie.fullPath) {
         _previewCache.clear();
         _previewFrame = null;
+        _previewFailed = false;
+
         await preview.setVolume(0);
         await preview.open(
           Media(Uri.file(currentMovie.fullPath).toString()),
           play: false,
         );
         _previewMediaPath = currentMovie.fullPath;
+
+        // Wait until the decoder has actual media metadata before seeking.
+        try {
+          await preview.stream.duration
+              .firstWhere((value) => value > Duration.zero)
+              .timeout(const Duration(seconds: 2));
+        } catch (_) {
+          // Some files report duration through state before the stream emits.
+        }
       }
 
       await preview.seek(Duration(seconds: bucket));
-      await Future<void>.delayed(const Duration(milliseconds: 45));
-      final frame = await preview.screenshot(format: 'image/jpeg');
 
-      if (!mounted || request != _previewRequestSerial || frame == null) {
+      // Give mpv time to decode the target frame after an exact seek.
+      await Future<void>.delayed(const Duration(milliseconds: 90));
+
+      Uint8List? frame = await preview.screenshot(
+        format: 'image/jpeg',
+      );
+
+      // Some codecs need one extra decode cycle after seeking.
+      if (frame == null || frame.isEmpty) {
+        await preview.play();
+        await Future<void>.delayed(const Duration(milliseconds: 80));
+        await preview.pause();
+        frame = await preview.screenshot(
+          format: 'image/jpeg',
+        );
+      }
+
+      if (!mounted || request != _previewRequestSerial) return;
+
+      if (frame == null || frame.isEmpty) {
+        setState(() => _previewFailed = true);
         return;
       }
 
@@ -890,10 +955,15 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       _previewCache[bucket] = frame;
 
       if (_timelineHovering) {
-        setState(() => _previewFrame = frame);
+        setState(() {
+          _previewFrame = frame;
+          _previewFailed = false;
+        });
       }
     } catch (_) {
-      // A preview failure must never affect normal movie playback.
+      if (mounted && request == _previewRequestSerial) {
+        setState(() => _previewFailed = true);
+      }
     }
   }
 
@@ -928,19 +998,29 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                 SizedBox(
                   width: previewWidth,
                   height: previewHeight,
-                  child: _previewFrame == null
-                      ? const Center(
-                          child: SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        )
-                      : Image.memory(
+                  child: _previewFrame != null
+                      ? Image.memory(
                           _previewFrame!,
                           fit: BoxFit.cover,
                           gaplessPlayback: true,
-                        ),
+                        )
+                      : _previewFailed
+                          ? const Center(
+                              child: Icon(
+                                Icons.image_not_supported_outlined,
+                                size: 22,
+                                color: Colors.white54,
+                              ),
+                            )
+                          : const Center(
+                              child: SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            ),
                 ),
                 Container(
                   width: double.infinity,
