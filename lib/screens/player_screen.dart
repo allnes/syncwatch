@@ -89,6 +89,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   bool isFullscreen = false;
   bool _fullscreenTransition = false;
   bool _restoreFullscreenAfterMinimize = false;
+  bool _minimizeInProgress = false;
   bool _resumeFullscreenWhenActivated = false;
   bool topControlsVisible = true;
   bool bottomControlsVisible = true;
@@ -654,25 +655,35 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   }
 
   Future<void> _minimizePlayerWindow() async {
-    _restoreFullscreenAfterMinimize = isFullscreen;
-    if (!isFullscreen) {
-      await windowManager.minimize();
-      return;
-    }
+    if (_minimizeInProgress) return;
+    _minimizeInProgress = true;
+    final wasFullscreen = isFullscreen;
+    _restoreFullscreenAfterMinimize = wasFullscreen;
 
-    // window_manager/Windows cannot reliably minimize a native fullscreen
-    // window. Hide it first so the fullscreen -> windowed transition is never
-    // painted, then minimize the restored window.
-    await windowManager.hide();
-    await windowManager.setFullScreen(false);
-    if (mounted) {
-      setState(() {
-        isFullscreen = false;
-        topControlsVisible = true;
-        bottomControlsVisible = true;
-      });
+    try {
+      if (!wasFullscreen) {
+        // Normal window: use the native minimize path directly. No hide,
+        // fullscreen transition or extra repaint is involved.
+        unawaited(windowManager.minimize());
+        return;
+      }
+
+      // Fullscreen requires leaving native fullscreen before Windows can
+      // minimize reliably. Hide only this transition so no intermediate
+      // restored-size frame is painted.
+      await windowManager.hide();
+      await windowManager.setFullScreen(false);
+      if (mounted) {
+        setState(() {
+          isFullscreen = false;
+          topControlsVisible = true;
+          bottomControlsVisible = true;
+        });
+      }
+      await windowManager.minimize();
+    } finally {
+      _minimizeInProgress = false;
     }
-    await windowManager.minimize();
   }
 
   Widget _topBar(BuildContext context, {bool compact = false}) {
