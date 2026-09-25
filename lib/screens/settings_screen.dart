@@ -187,8 +187,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       prefixIcon: prefixIcon,
       isDense: true,
       contentPadding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 11,
+        horizontal: 14,
+        vertical: 13,
       ),
     );
   }
@@ -382,7 +382,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (value != null) controller.setCallInputDevice(value);
               },
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               style: const TextStyle(fontSize: 11.5),
               initialValue: controller.callOutputDevice,
@@ -408,7 +408,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (value != null) controller.setCallOutputDevice(value);
               },
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               style: const TextStyle(fontSize: 11.5),
               initialValue: '480p',
@@ -446,14 +446,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               decoration: _compactDecoration(controller.t('server')),
               onChanged: controller.setSyncServer,
             ),
-            const SizedBox(height: 9),
+            const SizedBox(height: 12),
             TextFormField(
               style: const TextStyle(fontSize: 11.5),
               initialValue: controller.roomName,
               decoration: _compactDecoration(controller.t('room')),
               onChanged: controller.setRoomName,
             ),
-            const SizedBox(height: 9),
+            const SizedBox(height: 12),
             TextFormField(
               style: const TextStyle(fontSize: 11.5),
               initialValue: controller.username,
