@@ -376,26 +376,19 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                   ),
                 Positioned.fill(child: _movieSurface(context)),
 
-                if (isFullscreen) ...[
-                  // The 32 px purple window bar is always present. It must not
-                  // trigger the player header by itself.
+                if (isFullscreen)
                   Positioned(
                     left: 0,
                     right: 0,
                     top: 0,
-                    height: 32,
-                    child: _fullscreenWindowBar(),
-                  ),
-                  // Reveal the header only when the pointer reaches the area
-                  // where the SyncWatch/back header itself appears.
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: 32,
-                    height: 40,
+                    height: 72,
                     child: MouseRegion(
-                      onEnter: (_) {
-                        if (!topControlsVisible) {
+                      onHover: (event) {
+                        // Purple bar + SyncWatch header are one visual unit.
+                        // When hidden, only entering the lower 40 px header
+                        // trigger area reveals the whole unit; touching the
+                        // top 32 px alone does nothing.
+                        if (!topControlsVisible && event.localPosition.dy >= 32) {
                           setState(() => topControlsVisible = true);
                         }
                       },
@@ -405,11 +398,16 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                         }
                       },
                       child: topControlsVisible
-                          ? _topBar(context, compact: true)
+                          ? Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _fullscreenWindowBar(),
+                                _topBar(context, compact: true),
+                              ],
+                            )
                           : const SizedBox.expand(),
                     ),
-                  ),
-                ]
+                  )
                 else
                   Positioned(
                     left: 0,
