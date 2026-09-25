@@ -1032,7 +1032,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                       children: [
                         _menuIconButton(
                           key: playerSettingsButtonKey,
-                          icon: Icons.tune_rounded,
+                          icon: Icons.settings_suggest_rounded,
                           tooltip: widget.controller.t('playerSettings'),
                           onPressed: _showPlayerSettings,
                         ),
@@ -1103,14 +1103,14 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                         else
                           _menuIconButton(
                             key: subtitleButtonKey,
-                            icon: Icons.subtitles_rounded,
+                            icon: Icons.closed_caption_rounded,
                             tooltip: widget.controller.t('subtitles'),
                             onPressed: _showSubtitleMenu,
                           ),
                         const SizedBox(width: 8),
                         _menuIconButton(
                           key: audioTrackButtonKey,
-                          icon: Icons.graphic_eq_rounded,
+                          icon: Icons.queue_music_rounded,
                           tooltip: widget.controller.t('audioTracks'),
                           onPressed: _showAudioTrackMenu,
                         ),
