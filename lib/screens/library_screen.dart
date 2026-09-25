@@ -913,8 +913,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   visualDensity: const VisualDensity(vertical: -4),
                   selected: selected,
                   leading: selected
-                      ? const Icon(Icons.check_rounded, size: 16)
-                      : const SizedBox(width: 16),
+                      ? const Icon(Icons.circle, size: 7, color: syncAccentSoft)
+                      : const SizedBox(width: 7),
                   title: Tooltip(
                     message: items[index],
                     waitDuration: const Duration(milliseconds: 350),
@@ -1029,9 +1029,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
         children: [
           Icon(
             readyCount == 2
-                ? Icons.check_circle_rounded
+                ? Icons.circle
                 : Icons.radio_button_unchecked_rounded,
-            size: compact ? 16 : 20,
+            size: compact ? 8 : 10,
             color: readyCount == 2 ? syncSuccess : Colors.white54,
           ),
           SizedBox(width: compact ? 5 : 7),
