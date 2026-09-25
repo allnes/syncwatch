@@ -5,6 +5,7 @@ environment:
   sdk: ">=3.4.0 <4.0.0"
 dependencies:
   args: ^2.7.0
+  dart_jsonwebtoken: ^3.2.0
   dotenv: ^4.2.0
   http: ^1.6.0
   shelf: ^1.4.2
