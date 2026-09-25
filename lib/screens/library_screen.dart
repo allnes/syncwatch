@@ -58,6 +58,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   int selectedSubtitleIndex = 0;
   String? expandedTrackMenu;
   final ScrollController trackMenuScrollController = ScrollController();
+  final GlobalKey audioSelectorKey = GlobalKey();
+  final GlobalKey subtitleSelectorKey = GlobalKey();
 
   MovieItem? activePlayerMovie;
   String activePlayerAudioTrack = '';
@@ -755,9 +757,38 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           ),
                           if (expandedTrackMenu != null)
                             Positioned.fill(
-                              child: GestureDetector(
+                              child: Listener(
                                 behavior: HitTestBehavior.translucent,
-                                onTap: () {
+                                onPointerDown: (event) {
+                                  final audioHit = _globalKeyContains(
+                                    audioSelectorKey,
+                                    event.position,
+                                  );
+                                  final subtitleHit = _globalKeyContains(
+                                    subtitleSelectorKey,
+                                    event.position,
+                                  );
+
+                                  if (audioHit) {
+                                    setState(() {
+                                      expandedTrackMenu =
+                                          expandedTrackMenu == 'audio'
+                                              ? null
+                                              : 'audio';
+                                    });
+                                    return;
+                                  }
+
+                                  if (subtitleHit) {
+                                    setState(() {
+                                      expandedTrackMenu =
+                                          expandedTrackMenu == 'subtitles'
+                                              ? null
+                                              : 'subtitles';
+                                    });
+                                    return;
+                                  }
+
                                   setState(() => expandedTrackMenu = null);
                                 },
                               ),
@@ -837,6 +868,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               child: _trackSelector(
                 icon: Icons.graphic_eq_rounded,
                 label: widget.controller.t('audioTracks'),
+                controlKey: audioSelectorKey,
                 menuKey: 'audio',
                 items: audioNames,
                 value: selectedAudioIndex,
@@ -854,6 +886,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   : _trackSelector(
                       icon: Icons.subtitles_rounded,
                       label: widget.controller.t('subtitles'),
+                      controlKey: subtitleSelectorKey,
                       menuKey: 'subtitles',
                       items: subtitleNames,
                       value: selectedSubtitleIndex,
@@ -1039,7 +1072,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
+  bool _globalKeyContains(GlobalKey key, Offset globalPosition) {
+    final keyContext = key.currentContext;
+    if (keyContext == null) return false;
+
+    final renderObject = keyContext.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) return false;
+
+    final topLeft = renderObject.localToGlobal(Offset.zero);
+    final rect = topLeft & renderObject.size;
+    return rect.contains(globalPosition);
+  }
+
   Widget _trackSelector({
+    Key? controlKey,
     required IconData icon,
     required String label,
     required String menuKey,
@@ -1064,6 +1110,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 Text(label, style: const TextStyle(color: Colors.white54)),
                 const SizedBox(height: 5),
                 InkWell(
+                  key: controlKey,
                   borderRadius: BorderRadius.circular(8),
                   onTap: items.length <= 1
                       ? null
