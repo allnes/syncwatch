@@ -29,6 +29,7 @@ class PlayerScreen extends StatefulWidget {
     this.onShowCall,
     this.onReturnHome,
     this.onMovieChanged,
+    this.onEndWatching,
     this.active = true,
   });
 
@@ -42,6 +43,7 @@ class PlayerScreen extends StatefulWidget {
   final Future<void> Function()? onShowCall;
   final Future<void> Function()? onReturnHome;
   final ValueChanged<MovieItem>? onMovieChanged;
+  final Future<void> Function()? onEndWatching;
   final bool active;
 
   @override
@@ -627,7 +629,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
               width: buttonWidth,
               icon: Icons.close_rounded,
               iconSize: 16,
-              onPressed: windowManager.close,
+              onPressed: _endWatchingFromPlayer,
             ),
           ],
         ),
@@ -656,6 +658,30 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         ),
       ),
     );
+  }
+
+  Future<void> _endWatchingFromPlayer() async {
+    widget.controller.updatePlaybackPosition(
+      currentMovie.fullPath,
+      player.state.position.inMilliseconds / 1000.0,
+      persist: true,
+    );
+
+    if (isFullscreen) {
+      await _setPlayerFullscreen(false);
+    }
+
+    await windowManager.setTitleBarStyle(
+      TitleBarStyle.normal,
+      windowButtonVisibility: true,
+    );
+
+    if (widget.onEndWatching != null) {
+      await widget.onEndWatching!.call();
+      return;
+    }
+
+    await _returnToHome();
   }
 
   Future<void> _minimizePlayerWindow() async {
