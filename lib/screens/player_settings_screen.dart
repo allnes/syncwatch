@@ -214,7 +214,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
                 .map((value) => (value, '$value с'))
                 .toList(),
             onChanged: controller.setSkipSeconds,
-          )
+          ),
           const SizedBox(height: 7),
           _compactSwitch(
             value: controller.autoReady,
@@ -250,7 +250,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
                   ('Verdana', 'Verdana'),
                 ],
                 onChanged: controller.setSubtitleFontFamily,
-              )
+              ),
               const SizedBox(width: 10),
               SizedBox(
                 width: 150,
@@ -319,7 +319,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
                   ('bottom', controller.t('subtitlePositionBottom')),
                 ],
                 onChanged: controller.setSubtitlePosition,
-              )
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: _numberSlider(
@@ -561,18 +561,6 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: children,
-      ),
-    );
-  }
-
-  InputDecoration _decoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle: TextStyle(color: _secondary),
-      isDense: true,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 9,
       ),
     );
   }
