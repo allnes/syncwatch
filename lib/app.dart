@@ -19,6 +19,8 @@ class AppController extends ChangeNotifier {
   bool scanSubfolders = true;
   bool automaticRefresh = false;
   bool timelinePreview = true;
+  double subtitleFontSize = 30.0;
+  String subtitlePosition = 'bottom';
   double movieVolume = 0.40;
   double callVolume = 0.80;
   String callInputDevice = 'system';
@@ -49,6 +51,10 @@ class AppController extends ChangeNotifier {
         _prefs?.getBool('automaticRefresh') ?? automaticRefresh;
     timelinePreview =
         _prefs?.getBool('timelinePreview') ?? timelinePreview;
+    subtitleFontSize =
+        _prefs?.getDouble('subtitleFontSize') ?? subtitleFontSize;
+    subtitlePosition =
+        _prefs?.getString('subtitlePosition') ?? subtitlePosition;
     movieVolume = _prefs?.getDouble('movieVolume') ?? movieVolume;
     callVolume = _prefs?.getDouble('callVolume') ?? callVolume;
     callInputDevice = _prefs?.getString('callInputDevice') ?? callInputDevice;
@@ -122,6 +128,18 @@ class AppController extends ChangeNotifier {
   void setTimelinePreview(bool value) {
     timelinePreview = value;
     _setBool('timelinePreview', value);
+    notifyListeners();
+  }
+
+  void setSubtitleFontSize(double value) {
+    subtitleFontSize = value.clamp(18.0, 48.0).toDouble();
+    _setDouble('subtitleFontSize', subtitleFontSize);
+    notifyListeners();
+  }
+
+  void setSubtitlePosition(String value) {
+    subtitlePosition = value;
+    _setString('subtitlePosition', value);
     notifyListeners();
   }
 
