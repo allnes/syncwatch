@@ -205,7 +205,9 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
       onReset: controller.resetPlaybackSettings,
       child: _card(
         children: [
-          DropdownButtonFormField<int>(
+          SizedBox(
+            width: 220,
+            child: DropdownButtonFormField<int>(
           isDense: true,
           menuMaxHeight: 180,
           itemHeight: null,
@@ -225,6 +227,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
             onChanged: (value) {
               if (value != null) controller.setSkipSeconds(value);
             },
+          ),
           ),
           const SizedBox(height: 7),
           _compactSwitch(
@@ -251,7 +254,8 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
         children: [
           Row(
             children: [
-              Expanded(
+              SizedBox(
+                width: 230,
                 child: DropdownButtonFormField<String>(
           isDense: true,
           menuMaxHeight: 180,
