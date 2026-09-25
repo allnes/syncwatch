@@ -520,6 +520,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 ),
                 onShowCall: callActive ? _focusCallWindow : null,
                 onReturnHome: _showLibraryFromPlayer,
+                onMovieChanged: _handlePlayerMovieChanged,
                 active: showingPlayer,
               );
 
@@ -832,6 +833,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
+  bool _isLivePlaybackMovie(MovieItem movie) {
+    final active = activePlayerMovie;
+    return active != null && active.fullPath == movie.fullPath;
+  }
+
   Widget _movieDetails(MovieItem movie) {
     final probingThisMovie =
         metadataLoading && metadataPath == movie.fullPath;
@@ -920,12 +926,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
               onPressed: () => _openPlayer(movie),
               icon: const Icon(Icons.play_arrow_rounded),
               label: Text(
-                widget.controller.hasPlaybackSessionFor(movie.fullPath)
+                _isLivePlaybackMovie(movie)
                     ? widget.controller.t('continueWatching')
                     : widget.controller.t('startWatching'),
               ),
             ),
-            if (widget.controller.hasPlaybackSessionFor(movie.fullPath)) ...[
+            if (_isLivePlaybackMovie(movie)) ...[
               const SizedBox(width: 10),
               OutlinedButton.icon(
                 onPressed: _endActivePlaybackSession,
@@ -1379,8 +1385,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Future<void> _openPlayer(MovieItem movie) async {
     // If this exact movie is already the live playback session, simply reveal
     // the existing PlayerScreen. Nothing is reopened or seeked.
-    if (activePlayerMovie != null &&
-        widget.controller.activeMoviePath == movie.fullPath) {
+    if (_isLivePlaybackMovie(movie)) {
       if (mounted) {
         setState(() => showingPlayer = true);
       }
@@ -1406,6 +1411,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
       activePlayerSubtitleTrack = subtitleNames[subtitleIndex];
       playerSessionId++;
       showingPlayer = true;
+    });
+  }
+
+  void _handlePlayerMovieChanged(MovieItem movie) {
+    if (!mounted) return;
+    setState(() {
+      activePlayerMovie = movie;
+      selected = movies.firstWhere(
+        (item) => item.fullPath == movie.fullPath,
+        orElse: () => movie,
+      );
     });
   }
 
