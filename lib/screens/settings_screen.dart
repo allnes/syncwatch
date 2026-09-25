@@ -72,8 +72,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: IconTheme(
             data: IconThemeData(color: _iconColor),
             child: SizedBox(
-              width: 900,
-              height: 540,
+              width: 720,
+              height: 500,
               child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Column(
