@@ -245,6 +245,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
             if (value != null) controller.setLanguage(value);
           },
         ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          style: const TextStyle(fontSize: 11.5),
+          initialValue: controller.themeMode,
+          decoration: _compactDecoration(controller.t('theme')),
+          items: [
+            DropdownMenuItem(
+              value: 'dark',
+              child: Text(controller.t('themeDark')),
+            ),
+            DropdownMenuItem(
+              value: 'light',
+              child: Text(controller.t('themeLight')),
+            ),
+            DropdownMenuItem(
+              value: 'system',
+              child: Text(controller.t('themeSystem')),
+            ),
+          ],
+          onChanged: (value) {
+            if (value != null) controller.setThemeMode(value);
+          },
+        ),
       ],
     );
   }
