@@ -98,6 +98,12 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   void initState() {
     super.initState();
     windowManager.addListener(this);
+    unawaited(
+      windowManager.setTitleBarStyle(
+        TitleBarStyle.hidden,
+        windowButtonVisibility: false,
+      ),
+    );
 
     currentIndex = widget.initialIndex < 0 ? 0 : widget.initialIndex;
     currentMovie = widget.playlist.isEmpty
@@ -246,14 +252,12 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   @override
   void dispose() {
     windowManager.removeListener(this);
-    if (isFullscreen) {
-      unawaited(
-        windowManager.setTitleBarStyle(
-          TitleBarStyle.normal,
-          windowButtonVisibility: true,
-        ),
-      );
-    }
+    unawaited(
+      windowManager.setTitleBarStyle(
+        TitleBarStyle.normal,
+        windowButtonVisibility: true,
+      ),
+    );
     _volumeOsdTimer?.cancel();
     _seekDebounceTimer?.cancel();
     _previewDebounceTimer?.cancel();
@@ -275,6 +279,13 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
   @override
   Widget build(BuildContext context) {
+    unawaited(
+      windowManager.setTitleBarStyle(
+        TitleBarStyle.hidden,
+        windowButtonVisibility: false,
+      ),
+    );
+
     return AnimatedBuilder(
       animation: widget.controller,
       builder: (context, _) {
@@ -326,7 +337,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                     left: 0,
                     right: 0,
                     top: 0,
-                    height: topControlsVisible ? 68 : 32,
+                    height: topControlsVisible ? 72 : 32,
                     child: MouseRegion(
                       onEnter: (_) {
                         if (!topControlsVisible) {
@@ -354,7 +365,13 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                     left: 0,
                     right: 0,
                     top: 0,
-                    child: _topBar(context),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _fullscreenWindowBar(fullscreenMode: false),
+                        _topBar(context),
+                      ],
+                    ),
                   ),
 
                 if (isFullscreen)
@@ -456,7 +473,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   Widget _movieSurface(BuildContext context) {
     return Container(
       margin: EdgeInsets.only(
-        top: isFullscreen ? 0 : 52,
+        top: isFullscreen ? 0 : 84,
         bottom: isFullscreen ? 0 : 78,
       ),
       color: Colors.black,
@@ -514,49 +531,89 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     );
   }
 
-  Widget _fullscreenWindowBar() {
-    return Container(
-      height: 28,
-      color: const Color(0xFF7357C8),
-      child: Row(
-        children: [
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text(
+  Widget _fullscreenWindowBar({bool fullscreenMode = true}) {
+    const barColor = Color(0xFF7357C8);
+    const barHeight = 32.0;
+    const buttonWidth = 46.0;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onPanStart: fullscreenMode
+          ? null
+          : (_) => windowManager.startDragging(),
+      onDoubleTap: fullscreenMode ? _toggleFullscreen : _toggleFullscreen,
+      child: Container(
+        height: barHeight,
+        color: barColor,
+        child: Row(
+          children: [
+            const SizedBox(width: 10),
+            const Text(
               'SyncWatch',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 11.5,
                 color: Colors.white70,
+                fontWeight: FontWeight.w500,
               ),
             ),
-          ),
-          IconButton(
-            tooltip: widget.controller.t('minimize'),
-            visualDensity: VisualDensity.compact,
-            constraints: const BoxConstraints(minWidth: 34, minHeight: 28),
-            padding: EdgeInsets.zero,
-            onPressed: windowManager.minimize,
-            icon: const Icon(Icons.remove_rounded, size: 15),
-          ),
-          IconButton(
-            tooltip: widget.controller.t('fullscreen'),
-            visualDensity: VisualDensity.compact,
-            constraints: const BoxConstraints(minWidth: 34, minHeight: 28),
-            padding: EdgeInsets.zero,
-            onPressed: _toggleFullscreen,
-            icon: const Icon(Icons.fullscreen_exit_rounded, size: 15),
-          ),
-          IconButton(
-            tooltip: widget.controller.t('hide'),
-            visualDensity: VisualDensity.compact,
-            constraints: const BoxConstraints(minWidth: 34, minHeight: 28),
-            padding: EdgeInsets.zero,
-            onPressed: windowManager.close,
-            icon: const Icon(Icons.close_rounded, size: 15),
-          ),
-        ],
+            const Spacer(),
+            _windowBarButton(
+              tooltip: widget.controller.t('minimize'),
+              width: buttonWidth,
+              icon: Icons.remove_rounded,
+              iconSize: 14,
+              onPressed: _minimizePlayerWindow,
+            ),
+            _windowBarButton(
+              tooltip: widget.controller.t('fullscreen'),
+              width: buttonWidth,
+              icon: fullscreenMode
+                  ? Icons.fullscreen_exit_rounded
+                  : Icons.crop_square_rounded,
+              iconSize: fullscreenMode ? 16 : 13,
+              onPressed: _toggleFullscreen,
+            ),
+            _windowBarButton(
+              tooltip: widget.controller.t('hide'),
+              width: buttonWidth,
+              icon: Icons.close_rounded,
+              iconSize: 16,
+              onPressed: windowManager.close,
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  Widget _windowBarButton({
+    required String tooltip,
+    required double width,
+    required IconData icon,
+    required double iconSize,
+    required VoidCallback onPressed,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: SizedBox(
+        width: width,
+        height: 32,
+        child: IconButton(
+          visualDensity: VisualDensity.compact,
+          constraints: const BoxConstraints.expand(),
+          padding: EdgeInsets.zero,
+          onPressed: onPressed,
+          icon: Icon(icon, size: iconSize),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _minimizePlayerWindow() async {
+    if (isFullscreen) {
+      await _setPlayerFullscreen(false);
+    }
+    await windowManager.minimize();
   }
 
   Widget _topBar(BuildContext context, {bool compact = false}) {
@@ -1718,6 +1775,11 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       await _setPlayerFullscreen(false);
     }
 
+    await windowManager.setTitleBarStyle(
+      TitleBarStyle.normal,
+      windowButtonVisibility: true,
+    );
+
     if (!mounted) return;
 
     if (widget.onReturnHome != null) {
@@ -1748,10 +1810,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           await Future<void>.delayed(const Duration(milliseconds: 40));
         }
 
-        await windowManager.setTitleBarStyle(
-          TitleBarStyle.hidden,
-          windowButtonVisibility: false,
-        );
         await windowManager.setFullScreen(true);
 
         if (!mounted) return;
@@ -1762,10 +1820,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         });
       } else {
         await windowManager.setFullScreen(false);
-        await windowManager.setTitleBarStyle(
-          TitleBarStyle.normal,
-          windowButtonVisibility: true,
-        );
 
         if (!mounted) return;
         setState(() {
