@@ -2053,6 +2053,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                             () => submenu = 'open',
                           ),
                         ),
+                        const Divider(height: 1),
                         _contextMenuRow(
                           icon: Icons.playlist_play_rounded,
                           label: widget.controller.t('playlist'),
