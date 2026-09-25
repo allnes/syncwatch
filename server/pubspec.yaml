@@ -1,0 +1,13 @@
+name: syncwatch_server
+description: SyncWatch backend and test peer
+publish_to: none
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+dependencies:
+  args: ^2.7.0
+  dotenv: ^4.2.0
+  http: ^1.6.0
+  shelf: ^1.4.2
+  shelf_router: ^1.1.4
+dev_dependencies:
+  lints: ^5.1.1
