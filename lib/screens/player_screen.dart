@@ -921,6 +921,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     final playlistRect = rectFor(playlistButtonKey);
     final subtitleRect = rectFor(subtitleButtonKey);
     final audioRect = rectFor(audioTrackButtonKey);
+    final volumeRect = rectFor(volumeButtonKey);
 
     const rowHeight = 34.0;
     final menuHeight =
@@ -936,6 +937,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     const switchPlaylist = -1001;
     const switchSubtitles = -1002;
     const switchAudio = -1003;
+    const switchVolume = -1004;
 
     return showGeneralDialog<int>(
       context: context,
@@ -1029,6 +1031,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
               switchTarget(subtitleRect, switchSubtitles),
             if (anchorKey != audioTrackButtonKey)
               switchTarget(audioRect, switchAudio),
+            if (anchorKey != volumeButtonKey)
+              switchTarget(volumeRect, switchVolume),
           ],
         );
       },
@@ -1053,6 +1057,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     }
     if (selected == -1003) {
       await _showAudioTrackMenu();
+      return;
+    }
+    if (selected == -1004) {
+      await _showAudioPopover();
       return;
     }
     if (selected != null && selected >= 0) {
@@ -1082,6 +1090,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     }
     if (selected == -1002) {
       await _showSubtitleMenu();
+      return;
+    }
+    if (selected == -1004) {
+      await _showAudioPopover();
       return;
     }
     if (selected != null && selected >= 0) {
@@ -1114,6 +1126,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     }
     if (selected == -1003) {
       await _showAudioTrackMenu();
+      return;
+    }
+    if (selected == -1004) {
+      await _showAudioPopover();
       return;
     }
     if (selected != null && selected >= 0) {
@@ -1598,12 +1614,28 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     final anchorContext = volumeButtonKey.currentContext;
     if (anchorContext == null) return;
 
-    final anchorBox = anchorContext.findRenderObject() as RenderBox;
     final overlayBox =
         Overlay.of(context).context.findRenderObject() as RenderBox;
-    final anchorOffset =
-        anchorBox.localToGlobal(Offset.zero, ancestor: overlayBox);
-    final anchorRect = anchorOffset & anchorBox.size;
+
+    Rect? rectFor(GlobalKey key) {
+      final keyContext = key.currentContext;
+      if (keyContext == null) return null;
+      final box = keyContext.findRenderObject();
+      if (box is! RenderBox) return null;
+      final offset = box.localToGlobal(Offset.zero, ancestor: overlayBox);
+      return offset & box.size;
+    }
+
+    final anchorRect = rectFor(volumeButtonKey);
+    if (anchorRect == null) return;
+
+    final playlistRect = rectFor(playlistButtonKey);
+    final subtitleRect = rectFor(subtitleButtonKey);
+    final audioRect = rectFor(audioTrackButtonKey);
+
+    const switchPlaylist = -1001;
+    const switchSubtitles = -1002;
+    const switchAudio = -1003;
 
     const width = 310.0;
     const height = 92.0;
@@ -1615,15 +1647,35 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     final top =
         (anchorRect.top - height - 10).clamp(8.0, double.infinity).toDouble();
 
-    await showGeneralDialog<void>(
+    final result = await showGeneralDialog<int>(
       context: context,
-      barrierDismissible: true,
+      barrierDismissible: false,
       barrierLabel: 'volume',
       barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 100),
+      transitionDuration: const Duration(milliseconds: 80),
       pageBuilder: (context, animation, secondaryAnimation) {
+        Widget switchTarget(Rect? rect, int code) {
+          if (rect == null) return const SizedBox.shrink();
+          return Positioned(
+            left: rect.left,
+            top: rect.top,
+            width: rect.width,
+            height: rect.height,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => Navigator.of(context).pop(code),
+            ),
+          );
+        }
+
         return Stack(
           children: [
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => Navigator.of(context).pop(),
+              ),
+            ),
             Positioned(
               left: left,
               top: top,
@@ -1676,10 +1728,25 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                 ),
               ),
             ),
+            switchTarget(playlistRect, switchPlaylist),
+            switchTarget(subtitleRect, switchSubtitles),
+            switchTarget(audioRect, switchAudio),
           ],
         );
       },
     );
+
+    if (result == switchPlaylist) {
+      await _showPlaylistMenu();
+      return;
+    }
+    if (result == switchSubtitles) {
+      await _showSubtitleMenu();
+      return;
+    }
+    if (result == switchAudio) {
+      await _showAudioTrackMenu();
+    }
   }
 
   Widget _volumeRow({
