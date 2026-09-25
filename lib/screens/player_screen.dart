@@ -95,6 +95,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   bool _resumeFullscreenWhenActivated = false;
   bool topControlsVisible = true;
   bool bottomControlsVisible = true;
+  Offset _lastPointerPosition = Offset.zero;
   bool youReady = true;
   bool partnerReady = true;
   late int currentIndex;
@@ -355,6 +356,15 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             onKeyEvent: _handleKeyEvent,
             child: Listener(
             onPointerDown: (_) => _playerFocusNode.requestFocus(),
+            onPointerHover: (event) {
+              _lastPointerPosition = event.position;
+              if (isFullscreen &&
+                  !topControlsVisible &&
+                  event.position.dy >= 32 &&
+                  event.position.dy < 72) {
+                setState(() => topControlsVisible = true);
+              }
+            },
             onPointerSignal: (event) {
               if (event is PointerScrollEvent) {
                 final delta = event.scrollDelta.dy < 0 ? 0.05 : -0.05;
@@ -1932,9 +1942,14 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         await windowManager.setFullScreen(true);
 
         if (!mounted) return;
+        final pointerInHeaderTrigger =
+            _lastPointerPosition.dy >= 32 && _lastPointerPosition.dy < 72;
         setState(() {
           isFullscreen = true;
-          topControlsVisible = false;
+          // Entering fullscreen can happen while the pointer is already over
+          // the future header trigger area. There is then no MouseRegion enter
+          // event, so reveal it immediately from the tracked pointer position.
+          topControlsVisible = pointerInHeaderTrigger;
           bottomControlsVisible = false;
         });
       } else {
