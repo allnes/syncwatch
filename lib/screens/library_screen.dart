@@ -758,7 +758,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           if (expandedTrackMenu != null)
                             Positioned.fill(
                               child: Listener(
-                                behavior: HitTestBehavior.translucent,
+                                behavior: HitTestBehavior.opaque,
                                 onPointerDown: (event) {
                                   final audioHit = _globalKeyContains(
                                     audioSelectorKey,
