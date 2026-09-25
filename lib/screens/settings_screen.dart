@@ -55,8 +55,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Dialog(
         insetPadding: const EdgeInsets.all(16),
         child: SizedBox(
-          width: 480,
-          height: 360,
+          width: 720,
+          height: 500,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Column(
