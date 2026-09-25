@@ -20,6 +20,8 @@ class AppController extends ChangeNotifier {
   bool automaticRefresh = false;
   double movieVolume = 0.40;
   double callVolume = 0.80;
+  String callInputDevice = 'system';
+  String callOutputDevice = 'system';
 
   String activeMoviePath = '';
   double activeMoviePositionSeconds = 0;
@@ -46,6 +48,8 @@ class AppController extends ChangeNotifier {
         _prefs?.getBool('automaticRefresh') ?? automaticRefresh;
     movieVolume = _prefs?.getDouble('movieVolume') ?? movieVolume;
     callVolume = _prefs?.getDouble('callVolume') ?? callVolume;
+    callInputDevice = _prefs?.getString('callInputDevice') ?? callInputDevice;
+    callOutputDevice = _prefs?.getString('callOutputDevice') ?? callOutputDevice;
     activeMoviePath = _prefs?.getString('activeMoviePath') ?? '';
     activeMoviePositionSeconds =
         _prefs?.getDouble('activeMoviePositionSeconds') ?? 0;
@@ -121,6 +125,18 @@ class AppController extends ChangeNotifier {
   void setCallVolume(double value) {
     callVolume = value.clamp(0.0, 1.0).toDouble();
     _setDouble('callVolume', callVolume);
+    notifyListeners();
+  }
+
+  void setCallInputDevice(String value) {
+    callInputDevice = value;
+    _setString('callInputDevice', value);
+    notifyListeners();
+  }
+
+  void setCallOutputDevice(String value) {
+    callOutputDevice = value;
+    _setString('callOutputDevice', value);
     notifyListeners();
   }
 
