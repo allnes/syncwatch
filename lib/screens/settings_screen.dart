@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
@@ -15,7 +17,26 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   int section = 1;
+  Offset dialogOffset = Offset.zero;
+  bool showSavedNotice = false;
+  Timer? savedNoticeTimer;
   AppController get controller => widget.controller;
+
+  @override
+  void dispose() {
+    savedNoticeTimer?.cancel();
+    super.dispose();
+  }
+
+  void _showSavedNotice() {
+    savedNoticeTimer?.cancel();
+    setState(() => showSavedNotice = true);
+
+    savedNoticeTimer = Timer(const Duration(seconds: 5), () {
+      if (!mounted) return;
+      setState(() => showSavedNotice = false);
+    });
+  }
 
   Future<void> _browseMovieFolder() async {
     final path = await getDirectoryPath(
@@ -28,11 +49,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      insetPadding: const EdgeInsets.all(28),
-      child: SizedBox(
-        width: 760,
-        height: 500,
+    return Transform.translate(
+      offset: dialogOffset,
+      child: Dialog(
+        insetPadding: const EdgeInsets.all(20),
+        child: SizedBox(
+          width: 680,
+          height: 430,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(18),
           child: Column(
@@ -42,7 +65,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Expanded(
                 child: Row(
                   children: [
-                    SizedBox(width: 245, child: _sidebar()),
+                    SizedBox(width: 205, child: _sidebar()),
                     const VerticalDivider(width: 1),
                     Expanded(child: _content()),
                   ],
@@ -58,23 +81,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _titleBar(BuildContext context) {
-    return Container(
-      color: syncBackgroundDeep.withValues(alpha: 0.55),
-      padding: const EdgeInsets.fromLTRB(20, 14, 10, 14),
-      child: Row(
-        children: [
-          const Icon(Icons.settings_rounded, color: syncAccent),
-          const SizedBox(width: 10),
-          Text(
-            'SyncWatch · ${controller.t('settings')}',
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-          ),
-          const Spacer(),
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.close_rounded),
-          ),
-        ],
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onPanUpdate: (details) {
+        setState(() {
+          dialogOffset += details.delta;
+        });
+      },
+      child: Container(
+        color: syncBackgroundDeep.withValues(alpha: 0.55),
+        padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
+        child: Row(
+          children: [
+            const Icon(Icons.settings_rounded, color: syncAccent, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'SyncWatch · ${controller.t('settings')}',
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+            const Spacer(),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              padding: EdgeInsets.zero,
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.close_rounded, size: 19),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -90,23 +124,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Container(
       color: syncBackgroundDeep.withValues(alpha: 0.35),
-      padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
       child: Column(
         children: [
           for (var i = 0; i < items.length; i++)
             Padding(
-              padding: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.only(bottom: 3),
               child: Material(
                 color: Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
                 child: ListTile(
+                  dense: true,
+                  visualDensity: const VisualDensity(vertical: -3),
+                  minLeadingWidth: 20,
+                  horizontalTitleGap: 7,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10),
                   selected: section == i,
                   selectedTileColor: syncAccent.withValues(alpha: 0.15),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  leading: Icon(items[i].$1),
-                  title: Text(items[i].$2),
+                  leading: Icon(items[i].$1, size: 19),
+                  title: Text(items[i].$2, style: const TextStyle(fontSize: 13)),
                   onTap: () => setState(() => section = i),
                 ),
               ),
@@ -119,7 +158,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _content() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       child: switch (section) {
         0 => _interface(),
         1 => _movies(),
@@ -136,17 +175,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: [
         Row(
           children: [
-            Icon(icon, color: syncAccentSoft, size: 30),
-            const SizedBox(width: 12),
+            Icon(icon, color: syncAccentSoft, size: 24),
+            const SizedBox(width: 8),
             Text(
               title,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             ),
           ],
         ),
-        const SizedBox(height: 6),
-        Text(subtitle, style: const TextStyle(color: Colors.white60)),
-        const SizedBox(height: 16),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: const TextStyle(color: Colors.white60, fontSize: 12.5),
+        ),
+        const SizedBox(height: 7),
       ],
     );
   }
@@ -190,7 +232,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               controller.t('folder'),
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 7),
             Row(
               children: [
                 Expanded(
@@ -208,7 +250,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 7),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: controller.scanSubfolders,
@@ -217,7 +259,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 7),
         _settingsCard(
           children: [
             SwitchListTile(
@@ -260,7 +302,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (value != null) controller.setSkipSeconds(value);
               },
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: controller.autoReady,
@@ -308,7 +350,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (value != null) controller.setCallInputDevice(value);
               },
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 7),
             DropdownButtonFormField<String>(
               initialValue: controller.callOutputDevice,
               decoration: InputDecoration(
@@ -333,7 +375,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (value != null) controller.setCallOutputDevice(value);
               },
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 7),
             DropdownButtonFormField<String>(
               initialValue: '480p',
               decoration:
@@ -343,7 +385,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
               onChanged: (_) {},
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 7),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: controller.ducking,
@@ -372,13 +414,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               decoration: InputDecoration(labelText: controller.t('server')),
               onChanged: controller.setSyncServer,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             TextFormField(
               initialValue: controller.roomName,
               decoration: InputDecoration(labelText: controller.t('room')),
               onChanged: controller.setRoomName,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             TextFormField(
               initialValue: controller.username,
               decoration: InputDecoration(labelText: controller.t('username')),
@@ -392,7 +434,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _settingsCard({required List<Widget> children}) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: syncBackgroundDeep.withValues(alpha: 0.34),
         borderRadius: BorderRadius.circular(15),
@@ -407,18 +449,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _actions(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      padding: const EdgeInsets.fromLTRB(12, 7, 12, 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          OutlinedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(controller.t('cancel')),
+          AnimatedOpacity(
+            opacity: showSavedNotice ? 1 : 0,
+            duration: const Duration(milliseconds: 750),
+            curve: Curves.easeOut,
+            child: IgnorePointer(
+              ignoring: !showSavedNotice,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: syncSuccess.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: syncSuccess.withValues(alpha: 0.34),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.circle,
+                      size: 7,
+                      color: syncSuccess,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      controller.t('changesSaved'),
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-          const SizedBox(width: 10),
-          FilledButton(
+          const Spacer(),
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
             onPressed: () => Navigator.of(context).pop(),
-            child: Text(controller.t('save')),
+            child: Text(
+              controller.t('cancel'),
+              style: const TextStyle(fontSize: 12.5),
+            ),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            onPressed: _showSavedNotice,
+            child: Text(
+              controller.t('save'),
+              style: const TextStyle(fontSize: 12.5),
+            ),
           ),
         ],
       ),
