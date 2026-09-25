@@ -21,9 +21,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _isLight ? syncLightBackgroundDeep : syncBackgroundDeep;
   Color get _border =>
       _isLight ? syncLightBorder : syncBorder;
+  Color get _primary =>
+      _isLight ? syncLightText : Colors.white;
   Color get _secondary =>
       _isLight ? syncLightTextSecondary : Colors.white60;
   Color get _secondaryStrong =>
+      _isLight ? syncLightTextSecondary : Colors.white70;
+  Color get _iconColor =>
       _isLight ? syncLightTextSecondary : Colors.white70;
   int section = 1;
   Offset dialogOffset = Offset.zero;
@@ -63,10 +67,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       offset: dialogOffset,
       child: Dialog(
         insetPadding: const EdgeInsets.all(16),
-        child: SizedBox(
-          width: 720,
-          height: 500,
-          child: ClipRRect(
+        child: DefaultTextStyle.merge(
+          style: TextStyle(color: _primary),
+          child: IconTheme(
+            data: IconThemeData(color: _iconColor),
+            child: SizedBox(
+              width: 720,
+              height: 500,
+              child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Column(
               children: [
@@ -84,6 +92,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1),
                 _actions(context),
               ],
+            ),
+              ),
             ),
           ),
         ),
@@ -161,7 +171,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   leading: Icon(items[i].$1, size: 16),
                   title: Text(
                     items[i].$2,
-                    style: const TextStyle(fontSize: 11.5),
+                    style: TextStyle(fontSize: 11.5, color: _primary),
                   ),
                   onTap: () => setState(() => section = i),
                 ),
@@ -194,6 +204,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }) {
     return InputDecoration(
       labelText: label,
+      labelStyle: TextStyle(color: _secondary),
       prefixIcon: prefixIcon,
       isDense: true,
       contentPadding: const EdgeInsets.symmetric(
@@ -226,6 +237,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: TextStyle(
             color: _secondary,
             fontSize: 11.5,
+            fontWeight: FontWeight.w500,
           ),
         ),
         const SizedBox(height: 5),
@@ -243,7 +255,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Icons.palette_outlined,
         ),
         DropdownButtonFormField<String>(
-          style: const TextStyle(fontSize: 11.5),
+          style: TextStyle(fontSize: 11.5, color: _primary),
           initialValue: controller.locale.languageCode,
           decoration: _compactDecoration(controller.t('language')),
           items: const [
@@ -256,7 +268,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
-          style: const TextStyle(fontSize: 11.5),
+          style: TextStyle(fontSize: 11.5, color: _primary),
           initialValue: controller.themeMode,
           decoration: _compactDecoration(controller.t('theme')),
           items: [
@@ -304,7 +316,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Expanded(
                   child: TextFormField(
-                    style: const TextStyle(fontSize: 11.5),
+                    style: TextStyle(fontSize: 11.5, color: _primary),
                     key: ValueKey(controller.libraryPath),
                     initialValue: controller.libraryPath,
                     decoration: _compactDecoration(''),
@@ -353,7 +365,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _settingsCard(
           children: [
             DropdownButtonFormField<String>(
-              style: const TextStyle(fontSize: 11.5),
+              style: TextStyle(fontSize: 11.5, color: _primary),
               initialValue: controller.callInputDevice,
               decoration: _compactDecoration(
                 controller.t('inputDevice'),
@@ -379,7 +391,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              style: const TextStyle(fontSize: 11.5),
+              style: TextStyle(fontSize: 11.5, color: _primary),
               initialValue: controller.callOutputDevice,
               decoration: _compactDecoration(
                 controller.t('outputDevice'),
@@ -405,7 +417,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              style: const TextStyle(fontSize: 11.5),
+              style: TextStyle(fontSize: 11.5, color: _primary),
               initialValue: '480p',
               decoration: _compactDecoration(controller.t('cameraQuality')),
               items: const [
@@ -436,21 +448,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _settingsCard(
           children: [
             TextFormField(
-              style: const TextStyle(fontSize: 11.5),
+              style: TextStyle(fontSize: 11.5, color: _primary),
               initialValue: controller.syncServer,
               decoration: _compactDecoration(controller.t('server')),
               onChanged: controller.setSyncServer,
             ),
             const SizedBox(height: 14),
             TextFormField(
-              style: const TextStyle(fontSize: 11.5),
+              style: TextStyle(fontSize: 11.5, color: _primary),
               initialValue: controller.roomName,
               decoration: _compactDecoration(controller.t('room')),
               onChanged: controller.setRoomName,
             ),
             const SizedBox(height: 14),
             TextFormField(
-              style: const TextStyle(fontSize: 11.5),
+              style: TextStyle(fontSize: 11.5, color: _primary),
               initialValue: controller.username,
               decoration: _compactDecoration(controller.t('username')),
               onChanged: controller.setUsername,
@@ -473,7 +485,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(fontSize: 11.5),
+              style: TextStyle(fontSize: 11.5, color: _primary),
             ),
           ),
           MouseRegion(
@@ -601,7 +613,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
               controller.t('cancel'),
-              style: const TextStyle(fontSize: 11.5),
+              style: TextStyle(fontSize: 11.5, color: _primary),
             ),
           ),
           const SizedBox(width: 6),
@@ -613,7 +625,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: _showSavedNotice,
             child: Text(
               controller.t('save'),
-              style: const TextStyle(fontSize: 11.5),
+              style: TextStyle(fontSize: 11.5, color: _primary),
             ),
           ),
         ],
