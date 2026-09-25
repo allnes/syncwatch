@@ -421,6 +421,51 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
               controls: NoVideoControls,
               fit: BoxFit.contain,
               fill: Colors.black,
+              subtitleViewConfiguration: SubtitleViewConfiguration(
+                textAlign: TextAlign.center,
+                padding: EdgeInsets.fromLTRB(
+                  48,
+                  24,
+                  48,
+                  isFullscreen
+                      ? (bottomControlsVisible ? 88 : 34)
+                      : 88,
+                ),
+                style: TextStyle(
+                  height: 1.16,
+                  fontSize: isFullscreen ? 36 : 30,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  backgroundColor: Colors.transparent,
+                  shadows: const [
+                    Shadow(
+                      offset: Offset(-2, -2),
+                      blurRadius: 1,
+                      color: Colors.black,
+                    ),
+                    Shadow(
+                      offset: Offset(2, -2),
+                      blurRadius: 1,
+                      color: Colors.black,
+                    ),
+                    Shadow(
+                      offset: Offset(-2, 2),
+                      blurRadius: 1,
+                      color: Colors.black,
+                    ),
+                    Shadow(
+                      offset: Offset(2, 2),
+                      blurRadius: 1,
+                      color: Colors.black,
+                    ),
+                    Shadow(
+                      offset: Offset(0, 2),
+                      blurRadius: 4,
+                      color: Colors.black87,
+                    ),
+                  ],
+                ),
+              ),
             ),
 
           ],
