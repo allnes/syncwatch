@@ -211,7 +211,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
           isDense: true,
           menuMaxHeight: 180,
           itemHeight: 48,
-          menuWidth: 220,
+
             initialValue: controller.skipSeconds,
             style: TextStyle(fontSize: 13, color: _primary),
             decoration: _decoration(controller.t('skipInterval')),
@@ -261,7 +261,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
                   isDense: true,
                   menuMaxHeight: 180,
                   itemHeight: 48,
-                  menuWidth: 230,
+
                   initialValue: controller.subtitleFontFamily,
                   style: TextStyle(fontSize: 13, color: _primary),
                   decoration: _decoration(controller.t('subtitleFont')),
@@ -349,7 +349,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
                   isDense: true,
                   menuMaxHeight: 120,
                   itemHeight: 48,
-                  menuWidth: 180,
+
                   initialValue: controller.subtitlePosition,
                   style: TextStyle(fontSize: 12.5, color: _primary),
                   decoration: _decoration(
