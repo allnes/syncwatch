@@ -471,15 +471,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required ValueChanged<bool> onChanged,
     required String title,
   }) {
-    return SwitchListTile(
-      dense: true,
-      visualDensity: const VisualDensity(vertical: -4),
-      contentPadding: EdgeInsets.zero,
-      value: value,
-      onChanged: onChanged,
-      title: Text(
-        title,
-        style: const TextStyle(fontSize: 11.5),
+    return SizedBox(
+      height: 32,
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(fontSize: 11.5),
+            ),
+          ),
+          Transform.scale(
+            scale: 0.72,
+            alignment: Alignment.centerRight,
+            child: Switch(
+              value: value,
+              onChanged: onChanged,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+        ],
       ),
     );
   }
