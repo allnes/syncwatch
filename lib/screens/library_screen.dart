@@ -26,6 +26,21 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
+  bool get _isLight => Theme.of(context).brightness == Brightness.light;
+  Color get _pageBackground =>
+      _isLight ? syncLightBackground : syncBackground;
+  Color get _pageBackgroundDeep =>
+      _isLight ? syncLightBackgroundDeep : syncBackgroundDeep;
+  Color get _panelSurface =>
+      _isLight ? syncLightSurface : syncSurface;
+  Color get _panelRaised =>
+      _isLight ? syncLightSurfaceRaised : syncSurfaceRaised;
+  Color get _panelBorder =>
+      _isLight ? syncLightBorder : syncBorder;
+  Color get _secondaryText =>
+      _isLight ? syncLightTextSecondary : Colors.white54;
+  Color get _secondaryTextStrong =>
+      _isLight ? syncLightTextSecondary : Colors.white70;
   static const _videoExtensions = <String>{
     '.mkv', '.mp4', '.avi', '.mov', '.m4v', '.webm', '.wmv',
     '.mpg', '.mpeg', '.ts', '.m2ts',
@@ -453,15 +468,21 @@ class _LibraryScreenState extends State<LibraryScreen> {
       builder: (context, _) {
         final libraryView = Scaffold(
           body: Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF0B2440),
-                  syncBackground,
-                  syncBackgroundDeep,
-                ],
+                colors: _isLight
+                    ? const [
+                        Color(0xFFEAF1F6),
+                        syncLightBackground,
+                        syncLightBackgroundDeep,
+                      ]
+                    : const [
+                        Color(0xFF0B2440),
+                        syncBackground,
+                        syncBackgroundDeep,
+                      ],
               ),
             ),
             child: SafeArea(
@@ -606,7 +627,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ),
               Text(
                 '${movies.length} ${widget.controller.t('files')}',
-                style: const TextStyle(color: Colors.white54),
+                style: TextStyle(color: _secondaryText),
               ),
             ],
           ),
@@ -619,14 +640,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   alignment: Alignment.centerLeft,
                   decoration: BoxDecoration(
-                    color: syncBackgroundDeep.withValues(alpha: 0.55),
+                    color: _pageBackgroundDeep.withValues(alpha: _isLight ? 0.72 : 0.55),
                     borderRadius: BorderRadius.circular(11),
-                    border: Border.all(color: syncBorder),
+                    border: Border.all(color: _panelBorder),
                   ),
                   child: Text(
                     widget.controller.libraryPath,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white70),
+                    style: TextStyle(color: _secondaryTextStrong),
                   ),
                 ),
               ),
@@ -664,7 +685,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     child: Text(
                       widget.controller.t('noMovies'),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white54),
+                      style: TextStyle(color: _secondaryText),
                     ),
                   )
                 : ListView.separated(
@@ -703,7 +724,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                               : Text(
                                   _formatShort(movie.duration),
                                   style:
-                                      const TextStyle(color: Colors.white54),
+                                      TextStyle(color: _secondaryText),
                                 ),
                           onTap: () async {
                             setState(() {
@@ -744,7 +765,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     ? Center(
                         child: Text(
                           widget.controller.t('noMovies'),
-                          style: const TextStyle(color: Colors.white54),
+                          style: TextStyle(color: _secondaryText),
                         ),
                       )
                     : Stack(
@@ -838,7 +859,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       children: [
         Text(
           widget.controller.t('selectedMovie'),
-          style: const TextStyle(color: Colors.white54),
+          style: TextStyle(color: _secondaryText),
         ),
         const SizedBox(height: 10),
         _adaptiveMovieTitle(movie.fileName),
@@ -924,9 +945,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
           child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: syncBackgroundDeep.withValues(alpha: 0.38),
+            color: _pageBackgroundDeep.withValues(alpha: _isLight ? 0.64 : 0.38),
             borderRadius: BorderRadius.circular(13),
-            border: Border.all(color: syncBorder),
+            border: Border.all(color: _panelBorder),
           ),
           child: Row(
             children: [
@@ -942,7 +963,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       movie.fullPath,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white54),
+                      style: TextStyle(color: _secondaryText),
                     ),
                   ],
                 ),
@@ -1025,7 +1046,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           constraints: const BoxConstraints(maxHeight: 155),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: syncBorder),
+            border: Border.all(color: _panelBorder),
           ),
           child: Scrollbar(
             controller: trackMenuScrollController,
@@ -1114,7 +1135,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(color: Colors.white54)),
+                Text(label, style: TextStyle(color: _secondaryText)),
                 const SizedBox(height: 5),
                 InkWell(
                   key: controlKey,
@@ -1260,7 +1281,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         const SizedBox(width: 6),
         Text(
           widget.controller.t('ready'),
-          style: const TextStyle(color: Colors.white60),
+          style: TextStyle(color: _secondaryText),
         ),
       ],
     );
@@ -1294,7 +1315,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           const Icon(Icons.circle, size: 8, color: syncSuccess),
           const SizedBox(width: 10),
           Expanded(child: Text(text)),
-          Text(time, style: const TextStyle(color: Colors.white54)),
+          Text(time, style: TextStyle(color: _secondaryText)),
         ],
       ),
     );
@@ -1312,7 +1333,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(color: Colors.white54)),
+                Text(label, style: TextStyle(color: _secondaryText)),
                 const SizedBox(height: 5),
                 Text(
                   value,
@@ -1330,9 +1351,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   BoxDecoration _panelDecoration() {
     return BoxDecoration(
-      color: syncSurface.withValues(alpha: 0.92),
+      color: _panelSurface.withValues(alpha: 0.96),
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: syncBorder),
+      border: Border.all(color: _panelBorder),
       boxShadow: const [
         BoxShadow(
           color: Color(0x25000000),
