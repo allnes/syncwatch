@@ -14,11 +14,11 @@ Future<void> main(List<String> args) async {
   await controller.load();
 
   if (args.contains('--call-window')) {
-    final commandArg = args.cast<String?>().firstWhere(
-      (arg) => arg != null && arg.startsWith('--call-command-file='),
-      orElse: () => null,
+    final commandArg = args.firstWhere(
+      (arg) => arg.startsWith('--call-command-file='),
+      orElse: () => '',
     );
-    final commandFilePath = commandArg == null
+    final commandFilePath = commandArg.isEmpty
         ? null
         : commandArg.substring('--call-command-file='.length);
 
