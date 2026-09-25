@@ -479,129 +479,140 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
     return Container(
       height: barHeight,
-      padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 12),
       color: syncBackgroundDeep.withValues(alpha: 0.98),
-      child: Row(
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                tooltip: widget.controller.t('back'),
-                visualDensity: VisualDensity.compact,
-                constraints: BoxConstraints(
-                  minWidth: compact ? 30 : 34,
-                  minHeight: barHeight,
-                ),
-                padding: EdgeInsets.zero,
-                onPressed: _returnToHome,
-                icon: Icon(
-                  Icons.arrow_back_rounded,
-                  size: compact ? 17 : 19,
-                ),
-              ),
-              const SizedBox(width: 3),
-              Tooltip(
-                message: widget.controller.t('back'),
-                waitDuration: const Duration(milliseconds: 350),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(6),
-                  onTap: _returnToHome,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 3,
-                      vertical: 2,
-                    ),
-                    child: Text(
-                      'SyncWatch',
-                      style: TextStyle(
-                        fontSize: compact ? 14.5 : 16,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: compact ? 10 : 12),
-              SizedBox(
-                height: compact ? 18 : 22,
-                child: const VerticalDivider(width: 1),
-              ),
-              SizedBox(width: compact ? 8 : 10),
-              Icon(
-                Icons.groups_2_rounded,
-                color: syncAccentSoft,
-                size: compact ? 17 : 19,
-              ),
-              const SizedBox(width: 5),
-              Text(
-                widget.controller.roomName,
-                style: TextStyle(fontSize: compact ? 12 : 13),
-              ),
-            ],
-          ),
-          const SizedBox(width: 12),
-          Expanded(
+          Positioned.fill(
             child: Center(
-              child: Tooltip(
-                message: currentMovie.fileName,
-                waitDuration: const Duration(milliseconds: 350),
-                child: Text(
-                  currentMovie.fileName,
-                  maxLines: 1,
-                  softWrap: false,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: titleFontSize,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white.withValues(alpha: 0.88),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 220),
+                child: Tooltip(
+                  message: currentMovie.fileName,
+                  waitDuration: const Duration(milliseconds: 350),
+                  child: Text(
+                    currentMovie.fileName,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: titleFontSize,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withValues(alpha: 0.88),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _readyStatusChip(),
-              SizedBox(width: compact ? 6 : 8),
-              if (widget.onShowCall != null)
+          Positioned(
+            left: compact ? 8 : 12,
+            top: 0,
+            bottom: 0,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 IconButton(
-                  tooltip: widget.controller.t('goToCall'),
+                  tooltip: widget.controller.t('back'),
                   visualDensity: VisualDensity.compact,
                   constraints: BoxConstraints(
                     minWidth: compact ? 30 : 34,
                     minHeight: barHeight,
                   ),
                   padding: EdgeInsets.zero,
-                  onPressed: () => widget.onShowCall?.call(),
+                  onPressed: _returnToHome,
                   icon: Icon(
-                    Icons.videocam_rounded,
+                    Icons.arrow_back_rounded,
                     size: compact ? 17 : 19,
                   ),
                 ),
-              IconButton(
-                tooltip: widget.controller.t('settings'),
-                visualDensity: VisualDensity.compact,
-                constraints: BoxConstraints(
-                  minWidth: compact ? 30 : 34,
-                  minHeight: barHeight,
+                const SizedBox(width: 3),
+                Tooltip(
+                  message: widget.controller.t('back'),
+                  waitDuration: const Duration(milliseconds: 350),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(6),
+                    onTap: _returnToHome,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 3,
+                        vertical: 2,
+                      ),
+                      child: Text(
+                        'SyncWatch',
+                        style: TextStyle(
+                          fontSize: compact ? 14.5 : 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-                padding: EdgeInsets.zero,
-                onPressed: () => showDialog<void>(
-                  context: context,
-                  barrierColor: Colors.black.withValues(alpha: 0.56),
-                  builder: (_) =>
-                      SettingsScreen(controller: widget.controller),
+                SizedBox(width: compact ? 10 : 12),
+                SizedBox(
+                  height: compact ? 18 : 22,
+                  child: const VerticalDivider(width: 1),
                 ),
-                icon: Icon(
-                  Icons.settings_rounded,
+                SizedBox(width: compact ? 8 : 10),
+                Icon(
+                  Icons.groups_2_rounded,
+                  color: syncAccentSoft,
                   size: compact ? 17 : 19,
                 ),
-              ),
-            ],
+                const SizedBox(width: 5),
+                Text(
+                  widget.controller.roomName,
+                  style: TextStyle(fontSize: compact ? 12 : 13),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            right: compact ? 8 : 12,
+            top: 0,
+            bottom: 0,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _readyStatusChip(),
+                SizedBox(width: compact ? 6 : 8),
+                if (widget.onShowCall != null)
+                  IconButton(
+                    tooltip: widget.controller.t('goToCall'),
+                    visualDensity: VisualDensity.compact,
+                    constraints: BoxConstraints(
+                      minWidth: compact ? 30 : 34,
+                      minHeight: barHeight,
+                    ),
+                    padding: EdgeInsets.zero,
+                    onPressed: () => widget.onShowCall?.call(),
+                    icon: Icon(
+                      Icons.videocam_rounded,
+                      size: compact ? 17 : 19,
+                    ),
+                  ),
+                IconButton(
+                  tooltip: widget.controller.t('settings'),
+                  visualDensity: VisualDensity.compact,
+                  constraints: BoxConstraints(
+                    minWidth: compact ? 30 : 34,
+                    minHeight: barHeight,
+                  ),
+                  padding: EdgeInsets.zero,
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    barrierColor: Colors.black.withValues(alpha: 0.56),
+                    builder: (_) =>
+                        SettingsScreen(controller: widget.controller),
+                  ),
+                  icon: Icon(
+                    Icons.settings_rounded,
+                    size: compact ? 17 : 19,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
