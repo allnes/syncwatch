@@ -1567,6 +1567,12 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                         ),
                         const Divider(height: 1),
                         _contextMenuRow(
+                          icon: Icons.image_outlined,
+                          label: widget.controller.t('timelinePreview'),
+                          selected: widget.controller.timelinePreview,
+                          onTap: () => Navigator.of(context).pop('timeline-preview'),
+                        ),
+                        _contextMenuRow(
                           icon: Icons.fullscreen_rounded,
                           label: widget.controller.t('fullscreen'),
                           onTap: () => Navigator.of(context).pop('fullscreen'),
@@ -1664,6 +1670,12 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         movieMuted ? 0 : widget.controller.movieVolume * 100.0,
       );
       if (mounted) setState(() {});
+      return;
+    }
+    if (result == 'timeline-preview') {
+      widget.controller.setTimelinePreview(
+        !widget.controller.timelinePreview,
+      );
       return;
     }
     if (result == 'fullscreen') {
@@ -1778,6 +1790,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     required VoidCallback onTap,
     VoidCallback? onHover,
     bool hasSubmenu = false,
+    bool selected = false,
   }) {
     return MouseRegion(
       onEnter: (_) => onHover?.call(),
@@ -1787,7 +1800,18 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           height: 30,
           child: Row(
             children: [
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
+              SizedBox(
+                width: 8,
+                child: selected
+                    ? const Icon(
+                        Icons.circle,
+                        size: 6,
+                        color: syncAccentSoft,
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 2),
               Icon(icon, size: 15, color: Colors.white70),
               const SizedBox(width: 7),
               Expanded(
