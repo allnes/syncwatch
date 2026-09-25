@@ -117,7 +117,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Text(
               'SyncWatch · ${controller.t('settings')}',
               style: const TextStyle(
-                fontSize: 13.5,
+                fontSize: 15,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -171,7 +171,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   leading: Icon(items[i].$1, size: 16),
                   title: Text(
                     items[i].$2,
-                    style: TextStyle(fontSize: 11.5, color: _primary),
+                    style: TextStyle(fontSize: 13, color: _primary),
                   ),
                   onTap: () => setState(() => section = i),
                 ),
@@ -225,7 +225,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Text(
               title,
               style: const TextStyle(
-                fontSize: 17,
+                fontSize: 18,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -236,7 +236,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           subtitle,
           style: TextStyle(
             color: _secondary,
-            fontSize: 11.5,
+            fontSize: 13,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -255,7 +255,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Icons.palette_outlined,
         ),
         DropdownButtonFormField<String>(
-          style: TextStyle(fontSize: 11.5, color: _primary),
+          style: TextStyle(fontSize: 13, color: _primary),
           initialValue: controller.locale.languageCode,
           decoration: _compactDecoration(controller.t('language')),
           items: const [
@@ -268,7 +268,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
-          style: TextStyle(fontSize: 11.5, color: _primary),
+          style: TextStyle(fontSize: 13, color: _primary),
           initialValue: controller.themeMode,
           decoration: _compactDecoration(controller.t('theme')),
           items: [
@@ -308,7 +308,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               controller.t('folder'),
               style: const TextStyle(
                 fontWeight: FontWeight.w600,
-                fontSize: 11.5,
+                fontSize: 13,
               ),
             ),
             const SizedBox(height: 5),
@@ -316,7 +316,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Expanded(
                   child: TextFormField(
-                    style: TextStyle(fontSize: 11.5, color: _primary),
+                    style: TextStyle(fontSize: 13, color: _primary),
                     key: ValueKey(controller.libraryPath),
                     initialValue: controller.libraryPath,
                     decoration: _compactDecoration(''),
@@ -365,7 +365,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _settingsCard(
           children: [
             DropdownButtonFormField<String>(
-              style: TextStyle(fontSize: 11.5, color: _primary),
+              style: TextStyle(fontSize: 13, color: _primary),
               initialValue: controller.callInputDevice,
               decoration: _compactDecoration(
                 controller.t('inputDevice'),
@@ -391,7 +391,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              style: TextStyle(fontSize: 11.5, color: _primary),
+              style: TextStyle(fontSize: 13, color: _primary),
               initialValue: controller.callOutputDevice,
               decoration: _compactDecoration(
                 controller.t('outputDevice'),
@@ -417,7 +417,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              style: TextStyle(fontSize: 11.5, color: _primary),
+              style: TextStyle(fontSize: 13, color: _primary),
               initialValue: '480p',
               decoration: _compactDecoration(controller.t('cameraQuality')),
               items: const [
@@ -448,21 +448,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _settingsCard(
           children: [
             TextFormField(
-              style: TextStyle(fontSize: 11.5, color: _primary),
+              style: TextStyle(fontSize: 13, color: _primary),
               initialValue: controller.syncServer,
               decoration: _compactDecoration(controller.t('server')),
               onChanged: controller.setSyncServer,
             ),
             const SizedBox(height: 14),
             TextFormField(
-              style: TextStyle(fontSize: 11.5, color: _primary),
+              style: TextStyle(fontSize: 13, color: _primary),
               initialValue: controller.roomName,
               decoration: _compactDecoration(controller.t('room')),
               onChanged: controller.setRoomName,
             ),
             const SizedBox(height: 14),
             TextFormField(
-              style: TextStyle(fontSize: 11.5, color: _primary),
+              style: TextStyle(fontSize: 13, color: _primary),
               initialValue: controller.username,
               decoration: _compactDecoration(controller.t('username')),
               onChanged: controller.setUsername,
@@ -485,7 +485,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Expanded(
             child: Text(
               title,
-              style: TextStyle(fontSize: 11.5, color: _primary),
+              style: TextStyle(fontSize: 13, color: _primary),
             ),
           ),
           MouseRegion(
@@ -595,7 +595,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Text(
                       controller.t('changesSaved'),
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 12.5,
                         color: _secondaryStrong,
                       ),
                     ),
@@ -613,7 +613,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
               controller.t('cancel'),
-              style: TextStyle(fontSize: 11.5, color: _primary),
+              style: TextStyle(fontSize: 13, color: _primary),
             ),
           ),
           const SizedBox(width: 6),
@@ -625,7 +625,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: _showSavedNotice,
             child: Text(
               controller.t('save'),
-              style: TextStyle(fontSize: 11.5, color: _primary),
+              style: TextStyle(fontSize: 13, color: _primary),
             ),
           ),
         ],
