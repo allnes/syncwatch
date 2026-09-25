@@ -261,7 +261,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           value: controller.locale.languageCode,
           items: const [('en', 'English'), ('ru', 'Русский')],
           onChanged: controller.setLanguage,
-        )
+        ),
         const SizedBox(height: 12),
         CompactSelect<String>(
           width: 300,
@@ -360,7 +360,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ('usb', controller.t('usbMicrophone')),
               ],
               onChanged: controller.setCallInputDevice,
-            )
+            ),
             const SizedBox(height: 12),
             CompactSelect<String>(
               width: 360,
@@ -373,7 +373,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ('headphones', controller.t('headphones')),
               ],
               onChanged: controller.setCallOutputDevice,
-            )
+            ),
             const SizedBox(height: 12),
             CompactSelect<String>(
               width: 220,
@@ -381,7 +381,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: '480p',
               items: const [('480p', '480p')],
               onChanged: (_) {},
-            )
+            ),
             _compactSwitch(
               value: controller.ducking,
               onChanged: controller.setDucking,
