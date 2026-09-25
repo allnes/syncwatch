@@ -1564,12 +1564,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   }
 
   Future<void> _toggleFullscreen() async {
-    final maximized = await windowManager.isMaximized();
-    if (maximized) {
-      await windowManager.unmaximize();
-    } else {
-      await windowManager.maximize();
-    }
+    final fullscreen = await windowManager.isFullScreen();
+    await windowManager.setFullScreen(!fullscreen);
   }
 
   Future<void> _enterPlayerFullscreen() async {
