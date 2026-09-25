@@ -481,14 +481,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: const TextStyle(fontSize: 11.5),
             ),
           ),
-          Transform.scale(
-            scaleX: 0.66,
-            scaleY: 0.56,
-            alignment: Alignment.centerRight,
-            child: Switch(
-              value: value,
-              onChanged: onChanged,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => onChanged(!value),
+              child: SizedBox(
+                width: 36,
+                height: 22,
+                child: Center(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 140),
+                    curve: Curves.easeOut,
+                    width: 32,
+                    height: 16,
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: value
+                          ? syncAccent.withValues(alpha: 0.10)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(99),
+                      border: Border.all(
+                        color: value ? syncAccent : Colors.white38,
+                        width: 1.2,
+                      ),
+                    ),
+                    child: AnimatedAlign(
+                      duration: const Duration(milliseconds: 140),
+                      curve: Curves.easeOut,
+                      alignment:
+                          value ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: value ? syncAccentSoft : Colors.white70,
+                          boxShadow: value
+                              ? [
+                                  BoxShadow(
+                                    color: syncAccent.withValues(alpha: 0.35),
+                                    blurRadius: 4,
+                                  ),
+                                ]
+                              : null,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
