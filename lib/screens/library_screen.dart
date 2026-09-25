@@ -908,7 +908,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     : widget.controller.t('startWatching'),
               ),
             ),
-
+            if (widget.controller.hasPlaybackSessionFor(movie.fullPath)) ...[
+              const SizedBox(width: 10),
+              OutlinedButton.icon(
+                onPressed: _endActivePlaybackSession,
+                icon: const Icon(Icons.stop_circle_outlined, size: 18),
+                label: Text(widget.controller.t('endWatching')),
+              ),
+            ],
           ],
         ),
         const SizedBox(height: 14),
@@ -1334,6 +1341,22 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ),
       ],
     );
+  }
+
+  Future<void> _endActivePlaybackSession() async {
+    if (activePlayerMovie == null) return;
+
+    if (mounted) {
+      setState(() {
+        showingPlayer = false;
+        activePlayerMovie = null;
+        activePlayerAudioTrack = '';
+        activePlayerSubtitleTrack = '';
+        playerSessionId++;
+      });
+    }
+
+    widget.controller.endPlaybackSession();
   }
 
   Future<void> _openPlayer(MovieItem movie) async {
