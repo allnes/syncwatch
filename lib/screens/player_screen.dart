@@ -661,24 +661,12 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     _restoreFullscreenAfterMinimize = wasFullscreen;
 
     try {
-      if (!wasFullscreen) {
-        // Normal window: use the native minimize path directly. No hide,
-        // fullscreen transition or extra repaint is involved.
-        unawaited(windowManager.minimize());
-        return;
-      }
-
-      // Fullscreen requires leaving native fullscreen before Windows can
-      // minimize reliably. Hide only this transition so no intermediate
-      // restored-size frame is painted.
-      await windowManager.hide();
-      await windowManager.setFullScreen(false);
-      if (mounted) {
-        setState(() {
-          isFullscreen = false;
-          topControlsVisible = true;
-          bottomControlsVisible = true;
-        });
+      if (wasFullscreen) {
+        // media_kit's Windows video texture is recreated when the native
+        // surface changes. Avoid hide/show while that texture is alive: it can
+        // race ANGLE/Impeller and terminate the process. Use the stable native
+        // fullscreen-off -> minimize sequence instead.
+        await _setPlayerFullscreen(false);
       }
       await windowManager.minimize();
     } finally {
@@ -1933,24 +1921,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   void onWindowRestore() {
     if (!widget.active || !_restoreFullscreenAfterMinimize) return;
     _restoreFullscreenAfterMinimize = false;
-    // Windows may preserve native fullscreen across minimize/restore. Only
-    // request it again when window_manager reports that it was lost.
-    unawaited(() async {
-      // Keep the window hidden while restoring fullscreen, then reveal only
-      // the final fullscreen frame.
-      await windowManager.hide();
-      if (!await windowManager.isFullScreen()) {
-        await windowManager.setFullScreen(true);
-      }
-      if (!mounted) return;
-      setState(() {
-        isFullscreen = true;
-        topControlsVisible = false;
-        bottomControlsVisible = false;
-      });
-      await windowManager.show();
-      await windowManager.focus();
-    }());
+    unawaited(_setPlayerFullscreen(true));
   }
 
   @override
