@@ -120,7 +120,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final items = [
       (Icons.palette_outlined, controller.t('interface')),
       (Icons.movie_outlined, controller.t('movies')),
-      (Icons.play_circle_outline_rounded, controller.t('playback')),
       (Icons.groups_2_outlined, controller.t('call')),
       (Icons.sync_rounded, controller.t('sync')),
     ];
@@ -170,8 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: switch (section) {
           0 => _interface(),
           1 => _movies(),
-          2 => _playback(),
-          3 => _call(),
+          2 => _call(),
           _ => _sync(),
         },
       ),
@@ -301,49 +299,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: controller.automaticRefresh,
               onChanged: controller.setAutomaticRefresh,
               title: controller.t('automaticRefresh'),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _playback() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionHeader(
-          controller.t('playback'),
-          controller.t('playbackHint'),
-          Icons.play_circle_outline_rounded,
-        ),
-        _settingsCard(
-          children: [
-            DropdownButtonFormField<int>(
-              style: const TextStyle(fontSize: 11.5),
-              initialValue: controller.skipSeconds,
-              decoration: _compactDecoration(controller.t('skipInterval')),
-              items: const [5, 10, 15, 30, 60]
-                  .map(
-                    (value) => DropdownMenuItem(
-                      value: value,
-                      child: Text('$value ${controller.t('secondsShort')}'),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) controller.setSkipSeconds(value);
-              },
-            ),
-            _compactSwitch(
-              value: controller.autoReady,
-              onChanged: controller.setAutoReady,
-              title: controller.t('autoReady'),
-            ),
-            _compactSwitch(
-              value: controller.timelinePreview,
-              onChanged: controller.setTimelinePreview,
-              title: controller.t('timelinePreview'),
             ),
           ],
         ),
