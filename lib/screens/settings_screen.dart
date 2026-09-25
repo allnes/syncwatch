@@ -254,7 +254,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           controller.t('appearanceHint'),
           Icons.palette_outlined,
         ),
-        DropdownButtonFormField<String>(
+        SizedBox(
+          width: 300,
+          child: DropdownButtonFormField<String>(
           isDense: true,
           menuMaxHeight: 160,
           itemHeight: null,
@@ -269,8 +271,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             if (value != null) controller.setLanguage(value);
           },
         ),
+        ),
         const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
+        SizedBox(
+          width: 300,
+          child: DropdownButtonFormField<String>(
           isDense: true,
           menuMaxHeight: 160,
           itemHeight: null,
@@ -294,6 +299,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onChanged: (value) {
             if (value != null) controller.setThemeMode(value);
           },
+        ),
         ),
       ],
     );
