@@ -68,6 +68,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   bool movieMuted = false;
   bool callMuted = false;
   bool isFullscreen = false;
+  bool _fullscreenTransition = false;
   bool topControlsVisible = true;
   bool bottomControlsVisible = true;
   bool youReady = true;
@@ -1701,10 +1702,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
   Future<void> _returnToHome() async {
     if (isFullscreen) {
-      await windowManager.setTitleBarStyle(
-        TitleBarStyle.normal,
-        windowButtonVisibility: true,
-      );
+      await _setPlayerFullscreen(false);
     }
 
     if (!mounted) return;
@@ -1712,53 +1710,53 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   }
 
   Future<void> _toggleFullscreen() async {
-    final fullscreen = await windowManager.isFullScreen();
+    await _setPlayerFullscreen(!isFullscreen);
+  }
 
-    if (fullscreen || isFullscreen) {
-      await windowManager.setFullScreen(false);
-      await _leavePlayerFullscreen();
-    } else {
-      await windowManager.setFullScreen(true);
-      await _enterPlayerFullscreen();
+  Future<void> _setPlayerFullscreen(bool enabled) async {
+    if (_fullscreenTransition || enabled == isFullscreen) return;
+
+    _fullscreenTransition = true;
+
+    try {
+      if (enabled) {
+        // A maximized Windows window is constrained to the work area and may
+        // leave the taskbar visible. Normalize it before entering real
+        // fullscreen.
+        if (await windowManager.isMaximized()) {
+          await windowManager.unmaximize();
+          await Future<void>.delayed(const Duration(milliseconds: 40));
+        }
+
+        await windowManager.setTitleBarStyle(
+          TitleBarStyle.hidden,
+          windowButtonVisibility: false,
+        );
+        await windowManager.setFullScreen(true);
+
+        if (!mounted) return;
+        setState(() {
+          isFullscreen = true;
+          topControlsVisible = false;
+          bottomControlsVisible = false;
+        });
+      } else {
+        await windowManager.setFullScreen(false);
+        await windowManager.setTitleBarStyle(
+          TitleBarStyle.normal,
+          windowButtonVisibility: true,
+        );
+
+        if (!mounted) return;
+        setState(() {
+          isFullscreen = false;
+          topControlsVisible = true;
+          bottomControlsVisible = true;
+        });
+      }
+    } finally {
+      _fullscreenTransition = false;
     }
-  }
-
-  Future<void> _enterPlayerFullscreen() async {
-    await windowManager.setTitleBarStyle(
-      TitleBarStyle.hidden,
-      windowButtonVisibility: false,
-    );
-
-    if (!mounted) return;
-    setState(() {
-      isFullscreen = true;
-      topControlsVisible = false;
-      bottomControlsVisible = false;
-    });
-  }
-
-  Future<void> _leavePlayerFullscreen() async {
-    await windowManager.setTitleBarStyle(
-      TitleBarStyle.normal,
-      windowButtonVisibility: true,
-    );
-
-    if (!mounted) return;
-    setState(() {
-      isFullscreen = false;
-      topControlsVisible = true;
-      bottomControlsVisible = true;
-    });
-  }
-
-  @override
-  void onWindowEnterFullScreen() {
-    unawaited(_enterPlayerFullscreen());
-  }
-
-  @override
-  void onWindowLeaveFullScreen() {
-    unawaited(_leavePlayerFullscreen());
   }
 
   Future<void> _showContextMenu(
