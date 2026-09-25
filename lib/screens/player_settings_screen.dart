@@ -279,30 +279,27 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
           ),
           const SizedBox(height: 10),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Expanded(
+              SizedBox(
+                width: 180,
                 child: DropdownButtonFormField<String>(
                   initialValue: controller.subtitlePosition,
-                  style: const TextStyle(fontSize: 11.5),
+                  isDense: true,
+                  menuMaxHeight: 120,
+                  style: const TextStyle(fontSize: 11),
                   decoration: _decoration(
                     controller.t('subtitlePosition'),
+                  ).copyWith(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
                   ),
                   items: [
                     DropdownMenuItem(
                       value: 'top',
                       child: Text(controller.t('subtitlePositionTop')),
-                    ),
-                    DropdownMenuItem(
-                      value: 'higher',
-                      child: Text(controller.t('subtitlePositionHigher')),
-                    ),
-                    DropdownMenuItem(
-                      value: 'normal',
-                      child: Text(controller.t('subtitlePositionNormal')),
-                    ),
-                    DropdownMenuItem(
-                      value: 'lower',
-                      child: Text(controller.t('subtitlePositionLower')),
                     ),
                     DropdownMenuItem(
                       value: 'bottom',
@@ -314,17 +311,16 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
                   },
                 ),
               ),
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 170,
+              const SizedBox(width: 12),
+              Expanded(
                 child: _numberSlider(
-                  label: controller.t('subtitleEdgePadding'),
-                  value: controller.subtitleEdgePadding,
-                  min: 0,
-                  max: 80,
-                  divisions: 16,
+                  label: controller.t('subtitleVerticalOffset'),
+                  value: controller.subtitleVerticalOffset,
+                  min: -120,
+                  max: 120,
+                  divisions: 48,
                   suffix: ' px',
-                  onChanged: controller.setSubtitleEdgePadding,
+                  onChanged: controller.setSubtitleVerticalOffset,
                 ),
               ),
             ],
