@@ -40,5 +40,8 @@ Future<void> main(List<String> arguments) async {
   stdout.writeln('LiveKit: ' + (token['server_url'] as String));
   stdout.writeln('Room: ' + (token['room_name'] as String));
   stdout.writeln('Identity: ' + (token['participant_identity'] as String));
-  stdout.writeln(\n    'Token length: ' +\n        (token['participant_token'] as String).length.toString(),\n  );
+  stdout.writeln(
+    'Token length: ' +
+        (token['participant_token'] as String).length.toString(),
+  );
 }
