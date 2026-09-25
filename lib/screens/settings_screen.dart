@@ -163,15 +163,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _content() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-      child: switch (section) {
-        0 => _interface(),
-        1 => _movies(),
-        2 => _playback(),
-        3 => _call(),
-        _ => _sync(),
-      },
+    return Align(
+      alignment: Alignment.topLeft,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+        child: switch (section) {
+          0 => _interface(),
+          1 => _movies(),
+          2 => _playback(),
+          3 => _call(),
+          _ => _sync(),
+        },
+      ),
     );
   }
 
@@ -443,14 +446,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               decoration: _compactDecoration(controller.t('server')),
               onChanged: controller.setSyncServer,
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 9),
             TextFormField(
               style: const TextStyle(fontSize: 11.5),
               initialValue: controller.roomName,
               decoration: _compactDecoration(controller.t('room')),
               onChanged: controller.setRoomName,
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 9),
             TextFormField(
               style: const TextStyle(fontSize: 11.5),
               initialValue: controller.username,
