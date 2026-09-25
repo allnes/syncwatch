@@ -472,7 +472,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String title,
   }) {
     return SizedBox(
-      height: 32,
+      height: 30,
       child: Row(
         children: [
           Expanded(
@@ -482,7 +482,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           Transform.scale(
-            scale: 0.72,
+            scaleX: 0.66,
+            scaleY: 0.56,
             alignment: Alignment.centerRight,
             child: Switch(
               value: value,
