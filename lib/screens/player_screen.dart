@@ -270,6 +270,11 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     // Give libmpv a moment to expose tracks, then apply the preselected values.
     await Future<void>.delayed(const Duration(milliseconds: 150));
     await _applyInitialTracks();
+
+    // Entering the player via Start/Continue Watching means playback should
+    // begin immediately rather than opening on a paused first frame.
+    await player.play();
+    await widget.syncEngine.play();
   }
 
   Future<void> _applyInitialTracks() async {
