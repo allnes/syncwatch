@@ -208,8 +208,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       prefixIcon: prefixIcon,
       isDense: true,
       contentPadding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 14,
+        horizontal: 14,
+        vertical: 10,
       ),
     );
   }
@@ -255,6 +255,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Icons.palette_outlined,
         ),
         DropdownButtonFormField<String>(
+          isDense: true,
+          menuMaxHeight: 210,
+          itemHeight: 40,
           style: TextStyle(fontSize: 13, color: _primary),
           initialValue: controller.locale.languageCode,
           decoration: _compactDecoration(controller.t('language')),
@@ -268,6 +271,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
+          isDense: true,
+          menuMaxHeight: 210,
+          itemHeight: 40,
           style: TextStyle(fontSize: 13, color: _primary),
           initialValue: controller.themeMode,
           decoration: _compactDecoration(controller.t('theme')),
@@ -365,6 +371,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _settingsCard(
           children: [
             DropdownButtonFormField<String>(
+          isDense: true,
+          menuMaxHeight: 210,
+          itemHeight: 40,
               style: TextStyle(fontSize: 13, color: _primary),
               initialValue: controller.callInputDevice,
               decoration: _compactDecoration(
@@ -391,6 +400,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
+          isDense: true,
+          menuMaxHeight: 210,
+          itemHeight: 40,
               style: TextStyle(fontSize: 13, color: _primary),
               initialValue: controller.callOutputDevice,
               decoration: _compactDecoration(
@@ -417,6 +429,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
+          isDense: true,
+          menuMaxHeight: 210,
+          itemHeight: 40,
               style: TextStyle(fontSize: 13, color: _primary),
               initialValue: '480p',
               decoration: _compactDecoration(controller.t('cameraQuality')),
