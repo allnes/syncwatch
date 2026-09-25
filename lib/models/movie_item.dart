@@ -8,6 +8,7 @@ class MovieItem {
     required this.subtitleTracks,
     this.audioTrackNames = const <String>[],
     this.subtitleTrackNames = const <String>[],
+    this.isFolderMovie = false,
   });
 
   final String fileName;
@@ -18,6 +19,7 @@ class MovieItem {
   final int subtitleTracks;
   final List<String> audioTrackNames;
   final List<String> subtitleTrackNames;
+  final bool isFolderMovie;
 }
 
 const demoMovies = <MovieItem>[
