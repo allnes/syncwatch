@@ -59,6 +59,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String? expandedTrackMenu;
   final ScrollController trackMenuScrollController = ScrollController();
 
+  MovieItem? activePlayerMovie;
+  String activePlayerAudioTrack = '';
+  String activePlayerSubtitleTrack = '';
+  int playerSessionId = 0;
+  bool showingPlayer = false;
+
   @override
   void initState() {
     super.initState();
@@ -443,7 +449,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return AnimatedBuilder(
       animation: widget.controller,
       builder: (context, _) {
-        return Scaffold(
+        final libraryView = Scaffold(
           body: Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -477,6 +483,32 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ),
             ),
           ),
+        );
+
+        final movie = activePlayerMovie;
+        final playerView = movie == null
+            ? const SizedBox.shrink()
+            : PlayerScreen(
+                key: ValueKey(playerSessionId),
+                controller: widget.controller,
+                movie: movie,
+                syncEngine: MockSyncEngine(),
+                initialAudioTrack: activePlayerAudioTrack,
+                initialSubtitleTrack: activePlayerSubtitleTrack,
+                playlist: movies,
+                initialIndex: movies.indexWhere(
+                  (item) => item.fullPath == movie.fullPath,
+                ),
+                onShowCall: callActive ? _focusCallWindow : null,
+                onReturnHome: _showLibraryFromPlayer,
+              );
+
+        return IndexedStack(
+          index: showingPlayer && movie != null ? 1 : 0,
+          children: [
+            libraryView,
+            playerView,
+          ],
         );
       },
     );
@@ -1257,6 +1289,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _openPlayer(MovieItem movie) async {
+    // If this exact movie is already the live playback session, simply reveal
+    // the existing PlayerScreen. Nothing is reopened or seeked.
+    if (activePlayerMovie != null &&
+        widget.controller.activeMoviePath == movie.fullPath) {
+      if (mounted) {
+        setState(() => showingPlayer = true);
+      }
+      return;
+    }
+
     final audioNames = movie.audioTrackNames.isEmpty
         ? [widget.controller.t('noAudioTracks')]
         : movie.audioTrackNames;
@@ -1264,26 +1306,24 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ? [widget.controller.t('noSubtitles')]
         : movie.subtitleTrackNames;
 
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => PlayerScreen(
-          controller: widget.controller,
-          movie: movie,
-          syncEngine: MockSyncEngine(),
-          initialAudioTrack: audioNames[selectedAudioIndex],
-          initialSubtitleTrack: subtitleNames[selectedSubtitleIndex],
-          playlist: movies,
-          initialIndex: movies.indexWhere(
-            (item) => item.fullPath == movie.fullPath,
-          ),
-          onShowCall: callActive ? _focusCallWindow : null,
-        ),
-      ),
-    );
+    final audioIndex =
+        selectedAudioIndex.clamp(0, audioNames.length - 1).toInt();
+    final subtitleIndex =
+        selectedSubtitleIndex.clamp(0, subtitleNames.length - 1).toInt();
 
-    if (mounted) {
-      setState(() {});
-    }
+    if (!mounted) return;
+    setState(() {
+      activePlayerMovie = movie;
+      activePlayerAudioTrack = audioNames[audioIndex];
+      activePlayerSubtitleTrack = subtitleNames[subtitleIndex];
+      playerSessionId++;
+      showingPlayer = true;
+    });
+  }
+
+  Future<void> _showLibraryFromPlayer() async {
+    if (!mounted) return;
+    setState(() => showingPlayer = false);
   }
 
   String _formatShort(Duration duration) {
