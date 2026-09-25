@@ -960,14 +960,22 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           );
         }
 
-        return Stack(
-          children: [
-            Positioned.fill(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => Navigator.of(context).pop(),
+        return Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerSignal: (event) {
+            if (event is PointerScrollEvent) {
+              final delta = event.scrollDelta.dy < 0 ? 0.05 : -0.05;
+              _changeMovieVolume(delta);
+            }
+          },
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Navigator.of(context).pop(),
+                ),
               ),
-            ),
             Positioned(
               left: left,
               top: top,
@@ -1730,8 +1738,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             ),
             switchTarget(playlistRect, switchPlaylist),
             switchTarget(subtitleRect, switchSubtitles),
-            switchTarget(audioRect, switchAudio),
-          ],
+              switchTarget(audioRect, switchAudio),
+            ],
+          ),
         );
       },
     );
