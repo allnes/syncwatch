@@ -35,6 +35,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
     '.srt', '.ass', '.ssa', '.vtt', '.sub',
   };
 
+  static const _externalAudioExtensions = <String>{
+    '.aac', '.ac3', '.dts', '.eac3', '.flac', '.m4a', '.mka', '.mp3',
+    '.ogg', '.opus', '.wav',
+  };
+
   List<MovieItem> movies = demoMovies;
   MovieItem? selected = demoMovies.first;
   String searchQuery = '';
@@ -162,6 +167,41 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return normalized.toLowerCase();
   }
 
+  bool _isDirectlyInside(String filePath, String directoryPath) {
+    return _normalizedDir(File(filePath).parent.path) == directoryPath;
+  }
+
+  bool _isInsideOneChildFolder(String filePath, String directoryPath) {
+    final parent = File(filePath).parent;
+    final parentPath = _normalizedDir(parent.path);
+    if (parentPath == directoryPath) return false;
+    return _normalizedDir(parent.parent.path) == directoryPath;
+  }
+
+  bool _looksLikeMovieBundle({
+    required File videoFile,
+    required List<File> allVideos,
+    required List<File> subtitleFiles,
+    required List<File> audioFiles,
+  }) {
+    final movieDir = _normalizedDir(videoFile.parent.path);
+
+    final videosInSameFolder = allVideos.where(
+      (candidate) => _isDirectlyInside(candidate.path, movieDir),
+    );
+
+    if (videosInSameFolder.length != 1) {
+      return false;
+    }
+
+    bool isRelatedExtra(File extra) {
+      return _isDirectlyInside(extra.path, movieDir) ||
+          _isInsideOneChildFolder(extra.path, movieDir);
+    }
+
+    return subtitleFiles.any(isRelatedExtra) || audioFiles.any(isRelatedExtra);
+  }
+
   Future<void> _scanLibrary({bool forceEmpty = false}) async {
     final directory = Directory(widget.controller.libraryPath);
     if (!await directory.exists()) {
@@ -180,6 +220,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
     final videoFiles = <File>[];
     final subtitleFiles = <File>[];
+    final externalAudioFiles = <File>[];
 
     try {
       await for (final entity in directory.list(
@@ -192,6 +233,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
           videoFiles.add(entity);
         } else if (_subtitleExtensions.contains(ext)) {
           subtitleFiles.add(entity);
+        } else if (_externalAudioExtensions.contains(ext)) {
+          externalAudioFiles.add(entity);
         }
       }
 
@@ -200,8 +243,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
             .toLowerCase()
             .compareTo(_fileName(b.path).toLowerCase()),
       );
-
-      final rootDir = _normalizedDir(widget.controller.libraryPath);
 
       final scanned = videoFiles.map((file) {
         final fileName = _fileName(file.path);
@@ -216,7 +257,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
             .toList()
           ..sort();
 
-        final parentDir = _normalizedDir(file.parent.path);
+        final isFolderMovie = _looksLikeMovieBundle(
+          videoFile: file,
+          allVideos: videoFiles,
+          subtitleFiles: subtitleFiles,
+          audioFiles: externalAudioFiles,
+        );
 
         return MovieItem(
           fileName: fileName,
@@ -227,7 +273,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           subtitleTracks: matchingSubs.length,
           audioTrackNames: const [],
           subtitleTrackNames: matchingSubs,
-          isFolderMovie: parentDir != rootDir,
+          isFolderMovie: isFolderMovie,
         );
       }).toList();
 
