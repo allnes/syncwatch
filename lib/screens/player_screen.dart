@@ -900,30 +900,33 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     double width = 360,
     double maxHeight = 280,
   }) async {
-    final anchorContext = anchorKey.currentContext;
-    if (anchorContext == null || items.isEmpty) return null;
-
     final overlayBox =
         Overlay.of(context).context.findRenderObject() as RenderBox;
 
     Rect? rectFor(GlobalKey key) {
       final keyContext = key.currentContext;
       if (keyContext == null) return null;
-      final box = keyContext.findRenderObject();
-      if (box is! RenderBox) return null;
-      final offset = box.localToGlobal(Offset.zero, ancestor: overlayBox);
-      return offset & box.size;
+      final renderObject = keyContext.findRenderObject();
+      if (renderObject is! RenderBox) return null;
+      final offset =
+          renderObject.localToGlobal(Offset.zero, ancestor: overlayBox);
+      return offset & renderObject.size;
     }
 
     final anchorRect = rectFor(anchorKey);
-    if (anchorRect == null) return null;
+    if (anchorRect == null || items.isEmpty) return null;
 
     final playlistRect = rectFor(playlistButtonKey);
     final subtitleRect = rectFor(subtitleButtonKey);
     final audioRect = rectFor(audioTrackButtonKey);
     final volumeRect = rectFor(volumeButtonKey);
 
+    const switchPlaylist = -1001;
+    const switchSubtitles = -1002;
+    const switchAudio = -1003;
+    const switchVolume = -1004;
     const rowHeight = 34.0;
+
     final menuHeight =
         (items.length * rowHeight + 8).clamp(48.0, maxHeight).toDouble();
     final maxLeft = (overlayBox.size.width - width - 8)
@@ -934,18 +937,13 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     final top =
         (anchorRect.top - menuHeight - 10).clamp(8.0, double.infinity).toDouble();
 
-    const switchPlaylist = -1001;
-    const switchSubtitles = -1002;
-    const switchAudio = -1003;
-    const switchVolume = -1004;
-
     return showGeneralDialog<int>(
       context: context,
       barrierDismissible: false,
-      barrierLabel: 'menu',
+      barrierLabel: 'player-popup',
       barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 80),
-      pageBuilder: (context, animation, secondaryAnimation) {
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
         Widget switchTarget(Rect? rect, int code) {
           if (rect == null) return const SizedBox.shrink();
           return Positioned(
@@ -955,27 +953,19 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             height: rect.height,
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: () => Navigator.of(context).pop(code),
+              onTap: () => Navigator.of(dialogContext).pop(code),
             ),
           );
         }
 
-        return Listener(
-          behavior: HitTestBehavior.translucent,
-          onPointerSignal: (event) {
-            if (event is PointerScrollEvent) {
-              final delta = event.scrollDelta.dy < 0 ? 0.05 : -0.05;
-              _changeMovieVolume(delta);
-            }
-          },
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => Navigator.of(context).pop(),
-                ),
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => Navigator.of(dialogContext).pop(),
               ),
+            ),
             Positioned(
               left: left,
               top: top,
@@ -992,7 +982,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                   itemBuilder: (context, index) {
                     final selected = index == selectedIndex;
                     return InkWell(
-                      onTap: () => Navigator.of(context).pop(index),
+                      onTap: () => Navigator.of(dialogContext).pop(index),
                       child: Container(
                         height: rowHeight,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -1619,19 +1609,17 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   }
 
   Future<void> _showAudioPopover() async {
-    final anchorContext = volumeButtonKey.currentContext;
-    if (anchorContext == null) return;
-
     final overlayBox =
         Overlay.of(context).context.findRenderObject() as RenderBox;
 
     Rect? rectFor(GlobalKey key) {
       final keyContext = key.currentContext;
       if (keyContext == null) return null;
-      final box = keyContext.findRenderObject();
-      if (box is! RenderBox) return null;
-      final offset = box.localToGlobal(Offset.zero, ancestor: overlayBox);
-      return offset & box.size;
+      final renderObject = keyContext.findRenderObject();
+      if (renderObject is! RenderBox) return null;
+      final offset =
+          renderObject.localToGlobal(Offset.zero, ancestor: overlayBox);
+      return offset & renderObject.size;
     }
 
     final anchorRect = rectFor(volumeButtonKey);
@@ -1644,9 +1632,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     const switchPlaylist = -1001;
     const switchSubtitles = -1002;
     const switchAudio = -1003;
-
     const width = 310.0;
     const height = 92.0;
+
     final maxLeft = (overlayBox.size.width - width - 8)
         .clamp(8.0, double.infinity)
         .toDouble();
@@ -1658,10 +1646,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     final result = await showGeneralDialog<int>(
       context: context,
       barrierDismissible: false,
-      barrierLabel: 'volume',
+      barrierLabel: 'volume-popup',
       barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 80),
-      pageBuilder: (context, animation, secondaryAnimation) {
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
         Widget switchTarget(Rect? rect, int code) {
           if (rect == null) return const SizedBox.shrink();
           return Positioned(
@@ -1671,73 +1659,81 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             height: rect.height,
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: () => Navigator.of(context).pop(code),
+              onTap: () => Navigator.of(dialogContext).pop(code),
             ),
           );
         }
 
-        return Stack(
-          children: [
-            Positioned.fill(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => Navigator.of(context).pop(),
+        return Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerSignal: (event) {
+            if (event is PointerScrollEvent) {
+              final delta = event.scrollDelta.dy < 0 ? 0.05 : -0.05;
+              unawaited(_changeMovieVolume(delta));
+            }
+          },
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Navigator.of(dialogContext).pop(),
+                ),
               ),
-            ),
-            Positioned(
-              left: left,
-              top: top,
-              width: width,
-              child: Material(
-                elevation: 14,
-                color: syncSurfaceRaised,
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 7,
-                  ),
-                  child: AnimatedBuilder(
-                    animation: widget.controller,
-                    builder: (context, _) {
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _volumeRow(
-                            label: widget.controller.t('movieVolume'),
-                            value: widget.controller.movieVolume,
-                            muted: movieMuted,
-                            onMute: () async {
-                              setState(() => movieMuted = !movieMuted);
-                              await player.setVolume(
-                                movieMuted
-                                    ? 0
-                                    : widget.controller.movieVolume * 100.0,
-                              );
-                            },
-                            onChanged: (value) async {
-                              widget.controller.setMovieVolume(value);
-                              await player.setVolume(value * 100.0);
-                            },
-                          ),
-                          const SizedBox(height: 2),
-                          _volumeRow(
-                            label: widget.controller.t('callVolume'),
-                            value: widget.controller.callVolume,
-                            muted: callMuted,
-                            onMute: () =>
-                                setState(() => callMuted = !callMuted),
-                            onChanged: widget.controller.setCallVolume,
-                          ),
-                        ],
-                      );
-                    },
+              Positioned(
+                left: left,
+                top: top,
+                width: width,
+                child: Material(
+                  elevation: 14,
+                  color: syncSurfaceRaised,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 7,
+                    ),
+                    child: AnimatedBuilder(
+                      animation: widget.controller,
+                      builder: (context, _) {
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _volumeRow(
+                              label: widget.controller.t('movieVolume'),
+                              value: widget.controller.movieVolume,
+                              muted: movieMuted,
+                              onMute: () async {
+                                setState(() => movieMuted = !movieMuted);
+                                await player.setVolume(
+                                  movieMuted
+                                      ? 0
+                                      : widget.controller.movieVolume * 100.0,
+                                );
+                              },
+                              onChanged: (value) async {
+                                widget.controller.setMovieVolume(value);
+                                await player.setVolume(value * 100.0);
+                              },
+                            ),
+                            const SizedBox(height: 2),
+                            _volumeRow(
+                              label: widget.controller.t('callVolume'),
+                              value: widget.controller.callVolume,
+                              muted: callMuted,
+                              onMute: () =>
+                                  setState(() => callMuted = !callMuted),
+                              onChanged: widget.controller.setCallVolume,
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
-            ),
-            switchTarget(playlistRect, switchPlaylist),
-            switchTarget(subtitleRect, switchSubtitles),
+              switchTarget(playlistRect, switchPlaylist),
+              switchTarget(subtitleRect, switchSubtitles),
               switchTarget(audioRect, switchAudio),
             ],
           ),
