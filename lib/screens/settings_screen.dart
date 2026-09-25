@@ -16,6 +16,15 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  bool get _isLight => Theme.of(context).brightness == Brightness.light;
+  Color get _deep =>
+      _isLight ? syncLightBackgroundDeep : syncBackgroundDeep;
+  Color get _border =>
+      _isLight ? syncLightBorder : syncBorder;
+  Color get _secondary =>
+      _isLight ? syncLightTextSecondary : Colors.white60;
+  Color get _secondaryStrong =>
+      _isLight ? syncLightTextSecondary : Colors.white70;
   int section = 1;
   Offset dialogOffset = Offset.zero;
   bool showSavedNotice = false;
@@ -89,7 +98,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         setState(() => dialogOffset += details.delta);
       },
       child: Container(
-        color: syncBackgroundDeep.withValues(alpha: 0.55),
+        color: _deep.withValues(alpha: _isLight ? 0.58 : 0.55),
         padding: const EdgeInsets.fromLTRB(10, 5, 4, 5),
         child: Row(
           children: [
@@ -128,7 +137,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ];
 
     return Container(
-      color: syncBackgroundDeep.withValues(alpha: 0.35),
+      color: _deep.withValues(alpha: _isLight ? 0.48 : 0.35),
       padding: const EdgeInsets.fromLTRB(5, 7, 5, 6),
       child: Column(
         children: [
@@ -214,8 +223,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SizedBox(height: 3),
         Text(
           subtitle,
-          style: const TextStyle(
-            color: Colors.white60,
+          style: TextStyle(
+            color: _secondary,
             fontSize: 11.5,
           ),
         ),
@@ -488,7 +497,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(99),
                       border: Border.all(
-                        color: value ? syncAccent : Colors.white38,
+                        color: value ? syncAccent : (_isLight ? syncLightTextSecondary : Colors.white38),
                         width: 1.2,
                       ),
                     ),
@@ -502,7 +511,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         height: 10,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: value ? syncAccentSoft : Colors.white70,
+                          color: value ? syncAccentSoft : (_isLight ? syncLightTextSecondary : Colors.white70),
                           boxShadow: value
                               ? [
                                   BoxShadow(
@@ -528,9 +537,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: syncBackgroundDeep.withValues(alpha: 0.34),
+        color: _deep.withValues(alpha: _isLight ? 0.44 : 0.34),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: syncBorder),
+        border: Border.all(color: _border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -573,9 +582,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(width: 5),
                     Text(
                       controller.t('changesSaved'),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: Colors.white70,
+                        color: _secondaryStrong,
                       ),
                     ),
                   ],
