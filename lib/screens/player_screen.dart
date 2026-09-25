@@ -62,9 +62,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       _isLight ? syncLightText : Colors.white;
   Color get _playerSecondary =>
       _isLight ? syncLightTextSecondary : Colors.white70;
-  Color get _playerAccent =>
-      _isLight ? syncAccent : syncAccentSoft;
-
   late final Player player;
   late final VideoController videoController;
 
