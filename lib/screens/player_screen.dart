@@ -501,11 +501,25 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                 ),
               ),
               const SizedBox(width: 3),
-              Text(
-                'SyncWatch',
-                style: TextStyle(
-                  fontSize: compact ? 14.5 : 16,
-                  fontWeight: FontWeight.w800,
+              Tooltip(
+                message: widget.controller.t('back'),
+                waitDuration: const Duration(milliseconds: 350),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: _returnToHome,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 3,
+                      vertical: 2,
+                    ),
+                    child: Text(
+                      'SyncWatch',
+                      style: TextStyle(
+                        fontSize: compact ? 14.5 : 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
                 ),
               ),
               SizedBox(width: compact ? 10 : 12),
