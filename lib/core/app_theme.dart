@@ -9,29 +9,55 @@ const syncAccent = Color(0xFF2F8CFF);
 const syncAccentSoft = Color(0xFF6AAFFF);
 const syncSuccess = Color(0xFF30D98B);
 
-ThemeData buildSyncWatchTheme() {
+const syncLightBackground = Color(0xFFE7EEF4);
+const syncLightBackgroundDeep = Color(0xFFDCE6EE);
+const syncLightSurface = Color(0xFFF1F5F8);
+const syncLightSurfaceRaised = Color(0xFFF7FAFC);
+const syncLightBorder = Color(0xFFB9C9D6);
+const syncLightText = Color(0xFF1A2B3A);
+const syncLightTextSecondary = Color(0xFF617386);
+
+ThemeData buildSyncWatchTheme(Brightness brightness) {
+  final isLight = brightness == Brightness.light;
+  final background = isLight ? syncLightBackground : syncBackground;
+  final surface = isLight ? syncLightSurface : syncSurface;
+  final border = isLight ? syncLightBorder : syncBorder;
+  final text = isLight ? syncLightText : Colors.white;
+  final secondaryText =
+      isLight ? syncLightTextSecondary : Colors.white70;
+  final inputFill =
+      isLight ? syncLightSurfaceRaised : const Color(0xFF081B2C);
+
   final scheme = ColorScheme.fromSeed(
     seedColor: syncAccent,
-    brightness: Brightness.dark,
-    surface: syncSurface,
+    brightness: brightness,
+    surface: surface,
   ).copyWith(
     primary: syncAccent,
     secondary: syncAccentSoft,
-    surface: syncSurface,
+    surface: surface,
+    onSurface: text,
   );
 
   return ThemeData(
-    brightness: Brightness.dark,
+    brightness: brightness,
     useMaterial3: true,
     colorScheme: scheme,
-    scaffoldBackgroundColor: syncBackground,
-    dividerColor: syncBorder.withValues(alpha: 0.55),
-    cardColor: syncSurface,
+    scaffoldBackgroundColor: background,
+    dividerColor: border.withValues(alpha: 0.72),
+    cardColor: surface,
+    textTheme: ThemeData(brightness: brightness)
+        .textTheme
+        .apply(
+          bodyColor: text,
+          displayColor: text,
+        ),
+    iconTheme: IconThemeData(color: secondaryText),
     dialogTheme: DialogThemeData(
-      backgroundColor: syncSurface,
+      backgroundColor: surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: syncBorder),
+        side: BorderSide(color: border),
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
@@ -46,9 +72,9 @@ ThemeData buildSyncWatchTheme() {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.white,
+        foregroundColor: text,
         minimumSize: const Size(0, 44),
-        side: const BorderSide(color: syncBorder),
+        side: BorderSide(color: border),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -60,15 +86,17 @@ ThemeData buildSyncWatchTheme() {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: const Color(0xFF081B2C),
+      fillColor: inputFill,
+      labelStyle: TextStyle(color: secondaryText),
+      hintStyle: TextStyle(color: secondaryText),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: syncBorder),
+        borderSide: BorderSide(color: border),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: syncBorder),
+        borderSide: BorderSide(color: border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
