@@ -1347,6 +1347,15 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         visualDensity: VisualDensity.compact,
         constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
         padding: EdgeInsets.zero,
+        style: IconButton.styleFrom(
+          foregroundColor: _isLight ? syncAccent : null,
+          disabledForegroundColor: _isLight
+              ? syncLightTextSecondary.withValues(alpha: 0.42)
+              : null,
+          backgroundColor: _isLight
+              ? syncLightBackgroundDeep
+              : null,
+        ),
         onPressed: onPressed,
         icon: Icon(icon, size: 20),
       ),
@@ -1367,7 +1376,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           padding: EdgeInsets.zero,
           backgroundColor: prominent
               ? syncAccent
-              : syncAccent.withValues(alpha: 0.17),
+              : syncAccent.withValues(alpha: _isLight ? 0.10 : 0.17),
+          foregroundColor: prominent
+              ? Colors.white
+              : (_isLight ? syncAccent : Colors.white),
           side: const BorderSide(color: syncAccent),
           shape: const CircleBorder(),
         ),
