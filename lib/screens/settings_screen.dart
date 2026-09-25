@@ -187,8 +187,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       prefixIcon: prefixIcon,
       isDense: true,
       contentPadding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 9,
+        horizontal: 12,
+        vertical: 11,
       ),
     );
   }
