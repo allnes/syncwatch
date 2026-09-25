@@ -28,6 +28,7 @@ class PlayerScreen extends StatefulWidget {
     required this.initialIndex,
     this.onShowCall,
     this.onReturnHome,
+    this.onMovieChanged,
     this.active = true,
   });
 
@@ -40,6 +41,7 @@ class PlayerScreen extends StatefulWidget {
   final int initialIndex;
   final Future<void> Function()? onShowCall;
   final Future<void> Function()? onReturnHome;
+  final ValueChanged<MovieItem>? onMovieChanged;
   final bool active;
 
   @override
@@ -1685,6 +1687,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       currentAudioTrack = null;
       currentSubtitleTrack = null;
     });
+
+    widget.onMovieChanged?.call(nextMovie);
 
     await _openMedia();
     await player.play();
