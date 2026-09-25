@@ -18,6 +18,13 @@ class PlayerSettingsScreen extends StatefulWidget {
 }
 
 class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
+  bool get _isLight => Theme.of(context).brightness == Brightness.light;
+  Color get _deep =>
+      _isLight ? syncLightBackgroundDeep : syncBackgroundDeep;
+  Color get _border =>
+      _isLight ? syncLightBorder : syncBorder;
+  Color get _secondary =>
+      _isLight ? syncLightTextSecondary : Colors.white70;
   int section = 0;
   bool showSavedNotice = false;
   Timer? savedNoticeTimer;
@@ -78,7 +85,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
 
   Widget _titleBar(BuildContext context) {
     return Container(
-      color: syncBackgroundDeep.withValues(alpha: 0.55),
+      color: _deep.withValues(alpha: _isLight ? 0.58 : 0.55),
       padding: const EdgeInsets.fromLTRB(10, 5, 4, 5),
       child: Row(
         children: [
@@ -117,7 +124,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
     ];
 
     return Container(
-      color: syncBackgroundDeep.withValues(alpha: 0.35),
+      color: _deep.withValues(alpha: _isLight ? 0.48 : 0.35),
       padding: const EdgeInsets.fromLTRB(6, 8, 6, 6),
       child: Column(
         children: [
@@ -355,7 +362,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
             decoration: BoxDecoration(
               color: Colors.black26,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: syncBorder),
+              border: Border.all(color: _border),
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -568,9 +575,9 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(11),
       decoration: BoxDecoration(
-        color: syncBackgroundDeep.withValues(alpha: 0.34),
+        color: _deep.withValues(alpha: _isLight ? 0.44 : 0.34),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: syncBorder),
+        border: Border.all(color: _border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -609,7 +616,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
             ),
             Text(
               '${value.round()}$suffix',
-              style: const TextStyle(fontSize: 11, color: Colors.white70),
+              style: TextStyle(fontSize: 11, color: _secondary),
             ),
           ],
         ),
@@ -657,7 +664,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
             child: Text(
               shown,
               textAlign: TextAlign.right,
-              style: const TextStyle(fontSize: 11, color: Colors.white70),
+              style: TextStyle(fontSize: 11, color: _secondary),
             ),
           ),
         ],
@@ -716,7 +723,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
                       border: Border.all(
                         color: choice == value
                             ? syncAccent
-                            : Colors.white24,
+                            : (_isLight ? syncLightBorder : Colors.white24),
                         width: choice == value ? 2 : 1,
                       ),
                     ),
@@ -773,7 +780,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(99),
                       border: Border.all(
-                        color: value ? syncAccent : Colors.white38,
+                        color: value ? syncAccent : (_isLight ? syncLightTextSecondary : Colors.white38),
                         width: 1.2,
                       ),
                     ),
@@ -787,7 +794,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
                         height: 10,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: value ? syncAccentSoft : Colors.white70,
+                          color: value ? syncAccentSoft : (_isLight ? syncLightTextSecondary : Colors.white70),
                         ),
                       ),
                     ),
@@ -835,9 +842,9 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
                     const SizedBox(width: 5),
                     Text(
                       controller.t('changesSaved'),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: Colors.white70,
+                        color: _secondary,
                       ),
                     ),
                   ],
