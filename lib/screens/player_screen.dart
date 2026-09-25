@@ -376,12 +376,23 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                   ),
                 Positioned.fill(child: _movieSurface(context)),
 
-                if (isFullscreen)
+                if (isFullscreen) ...[
+                  // The 32 px purple window bar is always present. It must not
+                  // trigger the player header by itself.
                   Positioned(
                     left: 0,
                     right: 0,
                     top: 0,
-                    height: topControlsVisible ? 72 : 32,
+                    height: 32,
+                    child: _fullscreenWindowBar(),
+                  ),
+                  // Reveal the header only when the pointer reaches the area
+                  // where the SyncWatch/back header itself appears.
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: 32,
+                    height: 40,
                     child: MouseRegion(
                       onEnter: (_) {
                         if (!topControlsVisible) {
@@ -394,16 +405,11 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                         }
                       },
                       child: topControlsVisible
-                          ? Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _fullscreenWindowBar(),
-                                _topBar(context, compact: true),
-                              ],
-                            )
+                          ? _topBar(context, compact: true)
                           : const SizedBox.expand(),
                     ),
-                  )
+                  ),
+                ]
                 else
                   Positioned(
                     left: 0,
