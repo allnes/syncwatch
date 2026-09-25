@@ -256,8 +256,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         DropdownButtonFormField<String>(
           isDense: true,
-          menuMaxHeight: 210,
-          itemHeight: 48,
+          menuMaxHeight: 160,
+          itemHeight: null,
           style: TextStyle(fontSize: 13, color: _primary),
           initialValue: controller.locale.languageCode,
           decoration: _compactDecoration(controller.t('language')),
@@ -272,8 +272,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
           isDense: true,
-          menuMaxHeight: 210,
-          itemHeight: 48,
+          menuMaxHeight: 160,
+          itemHeight: null,
           style: TextStyle(fontSize: 13, color: _primary),
           initialValue: controller.themeMode,
           decoration: _compactDecoration(controller.t('theme')),
@@ -372,8 +372,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             DropdownButtonFormField<String>(
           isDense: true,
-          menuMaxHeight: 210,
-          itemHeight: 48,
+          menuMaxHeight: 160,
+          itemHeight: null,
               style: TextStyle(fontSize: 13, color: _primary),
               initialValue: controller.callInputDevice,
               decoration: _compactDecoration(
@@ -401,8 +401,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
           isDense: true,
-          menuMaxHeight: 210,
-          itemHeight: 48,
+          menuMaxHeight: 160,
+          itemHeight: null,
               style: TextStyle(fontSize: 13, color: _primary),
               initialValue: controller.callOutputDevice,
               decoration: _compactDecoration(
@@ -430,8 +430,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
           isDense: true,
-          menuMaxHeight: 210,
-          itemHeight: 48,
+          menuMaxHeight: 160,
+          itemHeight: null,
               style: TextStyle(fontSize: 13, color: _primary),
               initialValue: '480p',
               decoration: _compactDecoration(controller.t('cameraQuality')),
