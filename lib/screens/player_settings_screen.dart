@@ -207,8 +207,8 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
         children: [
           DropdownButtonFormField<int>(
           isDense: true,
-          menuMaxHeight: 210,
-          itemHeight: 48,
+          menuMaxHeight: 180,
+          itemHeight: null,
             initialValue: controller.skipSeconds,
             style: TextStyle(fontSize: 13, color: _primary),
             decoration: _decoration(controller.t('skipInterval')),
@@ -254,8 +254,8 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
               Expanded(
                 child: DropdownButtonFormField<String>(
           isDense: true,
-          menuMaxHeight: 210,
-          itemHeight: 48,
+          menuMaxHeight: 180,
+          itemHeight: null,
                   initialValue: controller.subtitleFontFamily,
                   style: TextStyle(fontSize: 13, color: _primary),
                   decoration: _decoration(controller.t('subtitleFont')),
@@ -341,8 +341,8 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
                 width: 180,
                 child: DropdownButtonFormField<String>(
           isDense: true,
-                  menuMaxHeight: 160,
-                  itemHeight: 48,
+                  menuMaxHeight: 120,
+                  itemHeight: null,
                   initialValue: controller.subtitlePosition,
                   style: TextStyle(fontSize: 12.5, color: _primary),
                   decoration: _decoration(
