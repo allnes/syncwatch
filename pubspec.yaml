@@ -12,6 +12,8 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   file_selector: ^1.0.3
+  http: ^1.6.0
+  livekit_client: ^2.13.0
   shared_preferences: ^2.5.3
   window_manager: ^0.5.2
   media_kit_libs_video: ^1.0.7
