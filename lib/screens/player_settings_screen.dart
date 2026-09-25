@@ -85,7 +85,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
           const Icon(Icons.tune_rounded, color: syncAccent, size: 18),
           const SizedBox(width: 6),
           Text(
-            'SyncWatch · ${controller.t('playerSettings')}',
+            controller.t('playerSettings'),
             style: const TextStyle(
               fontSize: 13.5,
               fontWeight: FontWeight.w700,
