@@ -1059,91 +1059,253 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     BuildContext context,
     Offset globalPosition,
   ) async {
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+
     final audio = player.state.tracks.audio
         .where((track) => track.id != 'auto' && track.id != 'no')
         .toList();
-    final subtitles = player.state.tracks.subtitle
-        .where((track) => track.id != 'auto')
-        .toList();
-
-    final result = await showMenu<String>(
-      context: context,
-      position: RelativeRect.fromRect(
-        Rect.fromLTWH(globalPosition.dx, globalPosition.dy, 0, 0),
-        Offset.zero & overlay.size,
+    final subtitles = <SubtitleTrack>[
+      SubtitleTrack.no(),
+      ...player.state.tracks.subtitle.where(
+        (track) => track.id != 'auto' && track.id != 'no',
       ),
-      items: [
-        PopupMenuItem(
-          value: 'play',
-          child: ListTile(
-            dense: true,
-            leading: Icon(
-              playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-            ),
-            title: Text(
-              playing
-                  ? widget.controller.t('pause')
-                  : widget.controller.t('play'),
-            ),
-          ),
-        ),
-        PopupMenuItem(
-          value: 'mute',
-          child: ListTile(
-            dense: true,
-            leading: Icon(
-              movieMuted ? Icons.volume_up_rounded : Icons.volume_off_rounded,
-            ),
-            title: Text(
-              movieMuted
-                  ? widget.controller.t('unmuteMovie')
-                  : widget.controller.t('muteMovie'),
-            ),
-          ),
-        ),
-        PopupMenuItem(
-          value: 'fullscreen',
-          child: ListTile(
-            dense: true,
-            leading: const Icon(Icons.fullscreen_rounded),
-            title: Text(widget.controller.t('fullscreen')),
-          ),
-        ),
-        const PopupMenuDivider(),
-        PopupMenuItem(
-          enabled: false,
-          child: Text(widget.controller.t('audioTracks')),
-        ),
-        for (final track in audio)
-          PopupMenuItem(
-            value: 'audio:${track.id}',
-            child: Text(
-              '${currentAudioTrack?.id == track.id ? '✓ ' : ''}${_audioLabel(track)}',
-            ),
-          ),
-        const PopupMenuDivider(),
-        PopupMenuItem(
-          enabled: false,
-          child: Text(widget.controller.t('subtitles')),
-        ),
-        PopupMenuItem(
-          value: 'subtitle:no',
-          child: Text(
-            '${currentSubtitleTrack?.id == 'no' ? '✓ ' : ''}${widget.controller.t('noSubtitles')}',
-          ),
-        ),
-        for (final track in subtitles.where((track) => track.id != 'no'))
-          PopupMenuItem(
-            value: 'subtitle:${track.id}',
-            child: Text(
-              '${currentSubtitleTrack?.id == track.id ? '✓ ' : ''}${_subtitleLabel(track)}',
-            ),
-          ),
-      ],
+    ];
+
+    const mainWidth = 190.0;
+    const submenuWidth = 250.0;
+    const rowHeight = 30.0;
+    const gap = 4.0;
+
+    final mainLeft = globalPosition.dx
+        .clamp(8.0, overlay.size.width - mainWidth - 8)
+        .toDouble();
+    final mainTop = globalPosition.dy
+        .clamp(8.0, overlay.size.height - 260)
+        .toDouble();
+
+    final openSubmenuRight =
+        mainLeft + mainWidth + gap + submenuWidth <= overlay.size.width - 8;
+    final submenuLeft = openSubmenuRight
+        ? mainLeft + mainWidth + gap
+        : (mainLeft - submenuWidth - gap).clamp(8.0, double.infinity).toDouble();
+
+    final result = await showGeneralDialog<String>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'context-menu',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 80),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        String? submenu;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            List<({String label, String value, bool selected})> submenuItems() {
+              if (submenu == 'playlist') {
+                return [
+                  for (var i = 0; i < widget.playlist.length; i++)
+                    (
+                      label: widget.playlist[i].fileName,
+                      value: 'playlist:$i',
+                      selected: i == currentIndex,
+                    ),
+                ];
+              }
+
+              if (submenu == 'audio') {
+                if (audio.isEmpty) {
+                  return [
+                    (
+                      label: widget.controller.t('noAudioTracks'),
+                      value: '',
+                      selected: false,
+                    ),
+                  ];
+                }
+                return [
+                  for (final track in audio)
+                    (
+                      label: _audioLabel(track),
+                      value: 'audio:${track.id}',
+                      selected: track.id == currentAudioTrack?.id,
+                    ),
+                ];
+              }
+
+              if (submenu == 'subtitles') {
+                return [
+                  for (final track in subtitles)
+                    (
+                      label: _subtitleLabel(track),
+                      value: 'subtitle:${track.id}',
+                      selected: track.id == currentSubtitleTrack?.id,
+                    ),
+                ];
+              }
+
+              return const [];
+            }
+
+            final subItems = submenuItems();
+            final submenuHeight =
+                (subItems.length * rowHeight + 6).clamp(36.0, 260.0).toDouble();
+
+            return Stack(
+              children: [
+                Positioned(
+                  left: mainLeft,
+                  top: mainTop,
+                  width: mainWidth,
+                  child: Material(
+                    elevation: 14,
+                    color: syncBackgroundDeep,
+                    borderRadius: BorderRadius.circular(9),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _contextMenuRow(
+                          icon: playing
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
+                          label: playing
+                              ? widget.controller.t('pause')
+                              : widget.controller.t('play'),
+                          onTap: () => Navigator.of(context).pop('play'),
+                        ),
+                        _contextMenuRow(
+                          icon: movieMuted
+                              ? Icons.volume_up_rounded
+                              : Icons.volume_off_rounded,
+                          label: movieMuted
+                              ? widget.controller.t('unmuteMovie')
+                              : widget.controller.t('muteMovie'),
+                          onTap: () => Navigator.of(context).pop('mute'),
+                        ),
+                        const Divider(height: 1),
+                        _contextMenuRow(
+                          icon: Icons.playlist_play_rounded,
+                          label: widget.controller.t('playlist'),
+                          hasSubmenu: true,
+                          onHover: () => setDialogState(
+                            () => submenu = 'playlist',
+                          ),
+                          onTap: () => setDialogState(
+                            () => submenu = 'playlist',
+                          ),
+                        ),
+                        _contextMenuRow(
+                          icon: Icons.graphic_eq_rounded,
+                          label: widget.controller.t('audioTracks'),
+                          hasSubmenu: true,
+                          onHover: () => setDialogState(
+                            () => submenu = 'audio',
+                          ),
+                          onTap: () => setDialogState(
+                            () => submenu = 'audio',
+                          ),
+                        ),
+                        _contextMenuRow(
+                          icon: Icons.subtitles_rounded,
+                          label: widget.controller.t('subtitles'),
+                          hasSubmenu: true,
+                          onHover: () => setDialogState(
+                            () => submenu = 'subtitles',
+                          ),
+                          onTap: () => setDialogState(
+                            () => submenu = 'subtitles',
+                          ),
+                        ),
+                        const Divider(height: 1),
+                        _contextMenuRow(
+                          icon: Icons.fullscreen_rounded,
+                          label: widget.controller.t('fullscreen'),
+                          onTap: () => Navigator.of(context).pop('fullscreen'),
+                        ),
+                        _contextMenuRow(
+                          icon: Icons.settings_rounded,
+                          label: widget.controller.t('settings'),
+                          onTap: () => Navigator.of(context).pop('settings'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (submenu != null)
+                  Positioned(
+                    left: submenuLeft,
+                    top: mainTop + 60,
+                    width: submenuWidth,
+                    height: submenuHeight,
+                    child: Material(
+                      elevation: 16,
+                      color: syncBackgroundDeep,
+                      borderRadius: BorderRadius.circular(9),
+                      clipBehavior: Clip.antiAlias,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        itemCount: subItems.length,
+                        itemBuilder: (context, index) {
+                          final item = subItems[index];
+                          final enabled = item.value.isNotEmpty;
+
+                          return InkWell(
+                            onTap: enabled
+                                ? () => Navigator.of(context).pop(item.value)
+                                : null,
+                            child: SizedBox(
+                              height: rowHeight,
+                              child: Row(
+                                children: [
+                                  const SizedBox(width: 7),
+                                  SizedBox(
+                                    width: 9,
+                                    child: item.selected
+                                        ? const Icon(
+                                            Icons.circle,
+                                            size: 6,
+                                            color: syncAccentSoft,
+                                          )
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Expanded(
+                                    child: Tooltip(
+                                      message: item.label,
+                                      waitDuration:
+                                          const Duration(milliseconds: 350),
+                                      child: Text(
+                                        item.label,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: enabled
+                                              ? Colors.white
+                                              : Colors.white38,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        );
+      },
     );
 
     if (result == null) return;
+
     if (result == 'play') {
       await _togglePlayback();
       return;
@@ -1158,6 +1320,20 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     }
     if (result == 'fullscreen') {
       await _toggleFullscreen();
+      return;
+    }
+    if (result == 'settings') {
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        barrierColor: Colors.black.withValues(alpha: 0.56),
+        builder: (_) => SettingsScreen(controller: widget.controller),
+      );
+      return;
+    }
+    if (result.startsWith('playlist:')) {
+      final index = int.tryParse(result.substring('playlist:'.length));
+      if (index != null) await _switchToIndex(index);
       return;
     }
     if (result.startsWith('audio:')) {
@@ -1175,6 +1351,46 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       final match = subtitles.where((track) => track.id == id);
       if (match.isNotEmpty) await player.setSubtitleTrack(match.first);
     }
+  }
+
+  Widget _contextMenuRow({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    VoidCallback? onHover,
+    bool hasSubmenu = false,
+  }) {
+    return MouseRegion(
+      onEnter: (_) => onHover?.call(),
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          height: 30,
+          child: Row(
+            children: [
+              const SizedBox(width: 8),
+              Icon(icon, size: 15, color: Colors.white70),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12.5),
+                ),
+              ),
+              if (hasSubmenu)
+                const Icon(
+                  Icons.arrow_right_rounded,
+                  size: 16,
+                  color: Colors.white54,
+                ),
+              const SizedBox(width: 6),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _showAudioPopover() async {
