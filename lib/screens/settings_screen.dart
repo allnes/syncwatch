@@ -340,6 +340,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onChanged: controller.setAutoReady,
               title: controller.t('autoReady'),
             ),
+            _compactSwitch(
+              value: controller.timelinePreview,
+              onChanged: controller.setTimelinePreview,
+              title: controller.t('timelinePreview'),
+            ),
           ],
         ),
       ],
