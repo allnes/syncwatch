@@ -263,6 +263,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
             .compareTo(_fileName(b.path).toLowerCase()),
       );
 
+      final previousByPath = <String, MovieItem>{
+        for (final item in movies) item.fullPath: item,
+      };
+
       final scanned = videoFiles.map((file) {
         final fileName = _fileName(file.path);
         final base = _baseName(fileName).toLowerCase();
@@ -282,6 +286,23 @@ class _LibraryScreenState extends State<LibraryScreen> {
           subtitleFiles: subtitleFiles,
           audioFiles: externalAudioFiles,
         );
+
+        final previous = previousByPath[file.path];
+        if (previous != null &&
+            previous.duration > Duration.zero &&
+            previous.audioTrackNames.isNotEmpty) {
+          return MovieItem(
+            fileName: fileName,
+            fullPath: file.path,
+            duration: previous.duration,
+            resolution: previous.resolution,
+            audioTracks: previous.audioTracks,
+            subtitleTracks: previous.subtitleTracks,
+            audioTrackNames: previous.audioTrackNames,
+            subtitleTrackNames: previous.subtitleTrackNames,
+            isFolderMovie: isFolderMovie,
+          );
+        }
 
         return MovieItem(
           fileName: fileName,
@@ -304,8 +325,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
         selectedSubtitleIndex = 0;
       });
 
-      if (scanned.isNotEmpty) {
-        await _probeMovie(scanned.first);
+      // Populate real media metadata for the whole visible library, not only
+      // the initially selected movie. Audio cannot be inferred from filenames.
+      for (final movie in List<MovieItem>.from(scanned)) {
+        if (!mounted) break;
+        await _probeMovie(movie);
       }
     } finally {
       if (mounted) setState(() => scanning = false);
@@ -850,11 +874,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final probingThisMovie =
         metadataLoading && metadataPath == movie.fullPath;
     final audioNames = movie.audioTrackNames.isEmpty
-        ? [
-            probingThisMovie
-                ? '…'
-                : widget.controller.t('noAudioTracks'),
-          ]
+        ? ['…']
         : movie.audioTrackNames;
     final subtitleNames = movie.subtitleTrackNames.isEmpty
         ? [widget.controller.t('noSubtitles')]
