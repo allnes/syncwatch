@@ -655,9 +655,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
   Future<void> _minimizePlayerWindow() async {
     _restoreFullscreenAfterMinimize = isFullscreen;
-    if (isFullscreen) {
-      await _setPlayerFullscreen(false);
-    }
+    // Minimize the native fullscreen window directly. Do not leave fullscreen
+    // first: that exposes the intermediate restored-size window to the user.
     await windowManager.minimize();
   }
 
@@ -1836,6 +1835,13 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     );
 
     _resumeFullscreenWhenActivated = isFullscreen;
+
+    // Switch to the library before changing the native window mode, so the
+    // fullscreen -> windowed transition happens behind the library view.
+    if (widget.onReturnHome != null) {
+      await widget.onReturnHome!.call();
+    }
+
     if (isFullscreen) {
       await _setPlayerFullscreen(false);
     }
@@ -1848,7 +1854,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     if (!mounted) return;
 
     if (widget.onReturnHome != null) {
-      await widget.onReturnHome!.call();
       _playerFocusNode.unfocus();
       return;
     }
@@ -1902,7 +1907,19 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   void onWindowRestore() {
     if (!widget.active || !_restoreFullscreenAfterMinimize) return;
     _restoreFullscreenAfterMinimize = false;
-    unawaited(_setPlayerFullscreen(true));
+    // Windows may preserve native fullscreen across minimize/restore. Only
+    // request it again when window_manager reports that it was lost.
+    unawaited(() async {
+      if (!await windowManager.isFullScreen()) {
+        await windowManager.setFullScreen(true);
+      }
+      if (!mounted) return;
+      setState(() {
+        isFullscreen = true;
+        topControlsVisible = false;
+        bottomControlsVisible = false;
+      });
+    }());
   }
 
   @override
