@@ -46,6 +46,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   Timer? _volumeOsdTimer;
+  Timer? _seekDebounceTimer;
+  double? _queuedSeekTarget;
+  bool _seekInFlight = false;
 
   bool playing = false;
   bool movieMuted = false;
@@ -91,6 +94,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     _subscriptions.add(
       player.stream.position.listen((position) {
         if (!mounted) return;
+        if (_queuedSeekTarget != null || _seekInFlight) return;
+
         final seconds = position.inMilliseconds / 1000.0;
         widget.controller.updatePlaybackPosition(
           currentMovie.fullPath,
@@ -229,6 +234,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       );
     }
     _volumeOsdTimer?.cancel();
+    _seekDebounceTimer?.cancel();
     for (final subscription in _subscriptions) {
       subscription.cancel();
     }
@@ -1220,16 +1226,71 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   }
 
   Future<void> _skip(int deltaSeconds) async {
-    await _seekAbsolute(positionSeconds + deltaSeconds);
+    final base = _queuedSeekTarget ?? positionSeconds;
+    _queueSeek(base + deltaSeconds);
   }
 
   Future<void> _seekAbsolute(double targetSeconds) async {
+    _queueSeek(targetSeconds, immediate: true);
+  }
+
+  void _queueSeek(
+    double targetSeconds, {
+    bool immediate = false,
+  }) {
     final max = durationSeconds > 0 ? durationSeconds : 0.0;
     final target = targetSeconds.clamp(0.0, max).toDouble();
+
+    _queuedSeekTarget = target;
+    widget.controller.updatePlaybackPosition(
+      currentMovie.fullPath,
+      target,
+    );
+
+    if (mounted) {
+      setState(() => positionSeconds = target);
+    }
+
+    _seekDebounceTimer?.cancel();
+
+    if (immediate) {
+      unawaited(_flushQueuedSeek());
+      return;
+    }
+
+    _seekDebounceTimer = Timer(
+      const Duration(milliseconds: 90),
+      () => unawaited(_flushQueuedSeek()),
+    );
+  }
+
+  Future<void> _flushQueuedSeek() async {
+    if (_seekInFlight) return;
+
+    final target = _queuedSeekTarget;
+    if (target == null) return;
+
+    _seekInFlight = true;
     final duration = Duration(milliseconds: (target * 1000).round());
 
-    await player.seek(duration);
-    await widget.syncEngine.seekTo(duration);
+    try {
+      await player.seek(duration);
+      await widget.syncEngine.seekTo(duration);
+    } finally {
+      _seekInFlight = false;
+
+      if (_queuedSeekTarget == target) {
+        _queuedSeekTarget = null;
+      }
+
+      if (_queuedSeekTarget != null) {
+        _seekDebounceTimer?.cancel();
+        _seekDebounceTimer = Timer(
+          const Duration(milliseconds: 35),
+          () => unawaited(_flushQueuedSeek()),
+        );
+      }
+    }
   }
 
   Future<void> _changeMovieVolume(double delta) async {
