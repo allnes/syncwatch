@@ -52,6 +52,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   Timer? _previewDebounceTimer;
   double? _queuedSeekTarget;
   bool _seekInFlight = false;
+  bool _leavingPlayer = false;
 
   Player? _previewPlayer;
   VideoController? _previewVideoController;
@@ -109,7 +110,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
     _subscriptions.add(
       player.stream.position.listen((position) {
-        if (!mounted) return;
+        if (!mounted || _leavingPlayer) return;
         if (_queuedSeekTarget != null || _seekInFlight) return;
 
         final seconds = position.inMilliseconds / 1000.0;
@@ -258,11 +259,13 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     for (final subscription in _subscriptions) {
       subscription.cancel();
     }
-    widget.controller.updatePlaybackPosition(
-      currentMovie.fullPath,
-      positionSeconds,
-      persist: true,
-    );
+    if (!_leavingPlayer) {
+      widget.controller.updatePlaybackPosition(
+        currentMovie.fullPath,
+        positionSeconds,
+        persist: true,
+      );
+    }
     widget.syncEngine.dispose();
     _previewPlayer?.dispose();
     _previewVideoController = null;
@@ -1701,6 +1704,23 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   }
 
   Future<void> _returnToHome() async {
+    if (_leavingPlayer) return;
+
+    // Freeze the resume point before the player starts shutting down.
+    final stateSeconds =
+        player.state.position.inMilliseconds / 1000.0;
+    final resumeSeconds =
+        stateSeconds > 0 ? stateSeconds : positionSeconds;
+
+    _leavingPlayer = true;
+    _seekDebounceTimer?.cancel();
+
+    widget.controller.updatePlaybackPosition(
+      currentMovie.fullPath,
+      resumeSeconds,
+      persist: true,
+    );
+
     if (isFullscreen) {
       await _setPlayerFullscreen(false);
     }
