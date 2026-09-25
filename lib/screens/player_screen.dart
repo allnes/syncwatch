@@ -1713,7 +1713,14 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
   Future<void> _toggleFullscreen() async {
     final fullscreen = await windowManager.isFullScreen();
-    await windowManager.setFullScreen(!fullscreen);
+
+    if (fullscreen || isFullscreen) {
+      await windowManager.setFullScreen(false);
+      await _leavePlayerFullscreen();
+    } else {
+      await windowManager.setFullScreen(true);
+      await _enterPlayerFullscreen();
+    }
   }
 
   Future<void> _enterPlayerFullscreen() async {
@@ -1742,16 +1749,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       topControlsVisible = true;
       bottomControlsVisible = true;
     });
-  }
-
-  @override
-  void onWindowMaximize() {
-    unawaited(_enterPlayerFullscreen());
-  }
-
-  @override
-  void onWindowUnmaximize() {
-    unawaited(_leavePlayerFullscreen());
   }
 
   @override
