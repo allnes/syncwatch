@@ -22,7 +22,9 @@ class CallWindowApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       locale: controller.locale,
-      theme: buildSyncWatchTheme(),
+      theme: buildSyncWatchTheme(Brightness.light),
+      darkTheme: buildSyncWatchTheme(Brightness.dark),
+      themeMode: controller.materialThemeMode,
       home: _CallWindow(
         controller: controller,
         commandFilePath: commandFilePath,
