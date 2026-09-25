@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../app.dart';
 import '../core/app_theme.dart';
+import '../widgets/compact_select.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.controller});
@@ -254,53 +255,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
           controller.t('appearanceHint'),
           Icons.palette_outlined,
         ),
-        SizedBox(
+        CompactSelect<String>(
           width: 300,
-          child: DropdownButtonFormField<String>(
-          isDense: true,
-          menuMaxHeight: 160,
-          itemHeight: 48,
-          style: TextStyle(fontSize: 13, color: _primary),
-          initialValue: controller.locale.languageCode,
-          decoration: _compactDecoration(controller.t('language')),
-          items: const [
-            DropdownMenuItem(value: 'en', child: Text('English')),
-            DropdownMenuItem(value: 'ru', child: Text('Русский')),
-          ],
-          onChanged: (value) {
-            if (value != null) controller.setLanguage(value);
-          },
-        ),
-        ),
+          label: controller.t('language'),
+          value: controller.locale.languageCode,
+          items: const [('en', 'English'), ('ru', 'Русский')],
+          onChanged: controller.setLanguage,
+        )
         const SizedBox(height: 12),
-        SizedBox(
+        CompactSelect<String>(
           width: 300,
-          child: DropdownButtonFormField<String>(
-          isDense: true,
-          menuMaxHeight: 160,
-          itemHeight: 48,
-          style: TextStyle(fontSize: 13, color: _primary),
-          initialValue: controller.themeMode,
-          decoration: _compactDecoration(controller.t('theme')),
+          label: controller.t('theme'),
+          value: controller.themeMode,
           items: [
-            DropdownMenuItem(
-              value: 'dark',
-              child: Text(controller.t('themeDark')),
-            ),
-            DropdownMenuItem(
-              value: 'light',
-              child: Text(controller.t('themeLight')),
-            ),
-            DropdownMenuItem(
-              value: 'system',
-              child: Text(controller.t('themeSystem')),
-            ),
+            ('dark', controller.t('themeDark')),
+            ('light', controller.t('themeLight')),
+            ('system', controller.t('themeSystem')),
           ],
-          onChanged: (value) {
-            if (value != null) controller.setThemeMode(value);
-          },
-        ),
-        ),
+          onChanged: controller.setThemeMode,
+        )
       ],
     );
   }
@@ -376,85 +349,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         _settingsCard(
           children: [
-            SizedBox(
+            CompactSelect<String>(
               width: 360,
-              child: DropdownButtonFormField<String>(
-          isDense: true,
-          menuMaxHeight: 160,
-          itemHeight: 48,
-              style: TextStyle(fontSize: 13, color: _primary),
-              initialValue: controller.callInputDevice,
-              decoration: _compactDecoration(
-                controller.t('inputDevice'),
-                prefixIcon: const Icon(Icons.mic_rounded, size: 16),
-              ),
+              label: controller.t('inputDevice'),
+              prefixIcon: const Icon(Icons.mic_rounded, size: 16),
+              value: controller.callInputDevice,
               items: [
-                DropdownMenuItem(
-                  value: 'system',
-                  child: Text(controller.t('systemDefault')),
-                ),
-                DropdownMenuItem(
-                  value: 'laptop',
-                  child: Text(controller.t('laptopMicrophone')),
-                ),
-                DropdownMenuItem(
-                  value: 'usb',
-                  child: Text(controller.t('usbMicrophone')),
-                ),
+                ('system', controller.t('systemDefault')),
+                ('laptop', controller.t('laptopMicrophone')),
+                ('usb', controller.t('usbMicrophone')),
               ],
-              onChanged: (value) {
-                if (value != null) controller.setCallInputDevice(value);
-              },
-            ),
-            ),
+              onChanged: controller.setCallInputDevice,
+            )
             const SizedBox(height: 12),
-            SizedBox(
+            CompactSelect<String>(
               width: 360,
-              child: DropdownButtonFormField<String>(
-          isDense: true,
-          menuMaxHeight: 160,
-          itemHeight: 48,
-              style: TextStyle(fontSize: 13, color: _primary),
-              initialValue: controller.callOutputDevice,
-              decoration: _compactDecoration(
-                controller.t('outputDevice'),
-                prefixIcon: const Icon(Icons.volume_up_rounded, size: 16),
-              ),
+              label: controller.t('outputDevice'),
+              prefixIcon: const Icon(Icons.volume_up_rounded, size: 16),
+              value: controller.callOutputDevice,
               items: [
-                DropdownMenuItem(
-                  value: 'system',
-                  child: Text(controller.t('systemDefault')),
-                ),
-                DropdownMenuItem(
-                  value: 'speakers',
-                  child: Text(controller.t('speakers')),
-                ),
-                DropdownMenuItem(
-                  value: 'headphones',
-                  child: Text(controller.t('headphones')),
-                ),
+                ('system', controller.t('systemDefault')),
+                ('speakers', controller.t('speakers')),
+                ('headphones', controller.t('headphones')),
               ],
-              onChanged: (value) {
-                if (value != null) controller.setCallOutputDevice(value);
-              },
-            ),
-            ),
+              onChanged: controller.setCallOutputDevice,
+            )
             const SizedBox(height: 12),
-            SizedBox(
+            CompactSelect<String>(
               width: 220,
-              child: DropdownButtonFormField<String>(
-          isDense: true,
-          menuMaxHeight: 160,
-          itemHeight: 48,
-              style: TextStyle(fontSize: 13, color: _primary),
-              initialValue: '480p',
-              decoration: _compactDecoration(controller.t('cameraQuality')),
-              items: const [
-                DropdownMenuItem(value: '480p', child: Text('480p')),
-              ],
+              label: controller.t('cameraQuality'),
+              value: '480p',
+              items: const [('480p', '480p')],
               onChanged: (_) {},
-            ),
-            ),
+            )
             _compactSwitch(
               value: controller.ducking,
               onChanged: controller.setDucking,
