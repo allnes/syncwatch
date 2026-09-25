@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/gestures.dart';
@@ -12,6 +13,7 @@ import '../app.dart';
 import '../core/app_theme.dart';
 import '../models/movie_item.dart';
 import '../services/sync_engine.dart';
+import 'player_settings_screen.dart';
 import 'settings_screen.dart';
 
 class PlayerScreen extends StatefulWidget {
@@ -47,8 +49,18 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   Timer? _volumeOsdTimer;
   Timer? _seekDebounceTimer;
+  Timer? _previewDebounceTimer;
   double? _queuedSeekTarget;
   bool _seekInFlight = false;
+
+  Player? _previewPlayer;
+  String? _previewMediaPath;
+  Uint8List? _previewFrame;
+  double? _previewSeconds;
+  double? _previewGlobalX;
+  bool _timelineHovering = false;
+  int _previewRequestSerial = 0;
+  final Map<int, Uint8List> _previewCache = <int, Uint8List>{};
 
   bool playing = false;
   bool movieMuted = false;
@@ -70,6 +82,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   AudioTrack? currentAudioTrack;
   SubtitleTrack? currentSubtitleTrack;
 
+  final GlobalKey playerSettingsButtonKey = GlobalKey();
   final GlobalKey playlistButtonKey = GlobalKey();
   final GlobalKey audioTrackButtonKey = GlobalKey();
   final GlobalKey subtitleButtonKey = GlobalKey();
@@ -235,6 +248,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     }
     _volumeOsdTimer?.cancel();
     _seekDebounceTimer?.cancel();
+    _previewDebounceTimer?.cancel();
     for (final subscription in _subscriptions) {
       subscription.cancel();
     }
@@ -244,6 +258,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       persist: true,
     );
     widget.syncEngine.dispose();
+    _previewPlayer?.dispose();
     player.dispose();
     _playerFocusNode.dispose();
     super.dispose();
@@ -348,6 +363,11 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                     child: _controls(),
                   ),
 
+                if (_timelineHovering &&
+                    widget.controller.timelinePreview &&
+                    _previewSeconds != null)
+                  _timelinePreviewOverlay(context),
+
                 if (volumeOsd != null)
                   Positioned(
                     right: 32,
@@ -422,56 +442,58 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Video(
-              controller: videoController,
-              controls: NoVideoControls,
-              fit: BoxFit.contain,
-              fill: Colors.black,
-              subtitleViewConfiguration: SubtitleViewConfiguration(
-                textAlign: TextAlign.center,
-                padding: EdgeInsets.fromLTRB(
-                  48,
-                  24,
-                  48,
-                  isFullscreen
-                      ? (bottomControlsVisible ? 88 : 34)
-                      : 88,
-                ),
-                style: TextStyle(
-                  height: 1.16,
-                  fontSize: isFullscreen ? 36 : 30,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                  backgroundColor: Colors.transparent,
-                  shadows: const [
-                    Shadow(
-                      offset: Offset(-2, -2),
-                      blurRadius: 1,
-                      color: Colors.black,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return Video(
+                  controller: videoController,
+                  controls: NoVideoControls,
+                  fit: BoxFit.contain,
+                  fill: Colors.black,
+                  subtitleViewConfiguration: SubtitleViewConfiguration(
+                    textAlign: TextAlign.center,
+                    padding: EdgeInsets.fromLTRB(
+                      48,
+                      12,
+                      48,
+                      _subtitleBottomPadding(constraints.maxHeight),
                     ),
-                    Shadow(
-                      offset: Offset(2, -2),
-                      blurRadius: 1,
-                      color: Colors.black,
+                    style: TextStyle(
+                      height: 1.16,
+                      fontSize: widget.controller.subtitleFontSize,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      backgroundColor: Colors.transparent,
+                      shadows: const [
+                        Shadow(
+                          offset: Offset(-2, -2),
+                          blurRadius: 1,
+                          color: Colors.black,
+                        ),
+                        Shadow(
+                          offset: Offset(2, -2),
+                          blurRadius: 1,
+                          color: Colors.black,
+                        ),
+                        Shadow(
+                          offset: Offset(-2, 2),
+                          blurRadius: 1,
+                          color: Colors.black,
+                        ),
+                        Shadow(
+                          offset: Offset(2, 2),
+                          blurRadius: 1,
+                          color: Colors.black,
+                        ),
+                        Shadow(
+                          offset: Offset(0, 2),
+                          blurRadius: 4,
+                          color: Colors.black87,
+                        ),
+                      ],
                     ),
-                    Shadow(
-                      offset: Offset(-2, 2),
-                      blurRadius: 1,
-                      color: Colors.black,
-                    ),
-                    Shadow(
-                      offset: Offset(2, 2),
-                      blurRadius: 1,
-                      color: Colors.black,
-                    ),
-                    Shadow(
-                      offset: Offset(0, 2),
-                      blurRadius: 4,
-                      color: Colors.black87,
-                    ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
 
           ],
@@ -704,6 +726,175 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     );
   }
 
+  double _subtitleBottomPadding(double videoHeight) {
+    final base = switch (widget.controller.subtitlePosition) {
+      'top' => videoHeight * 0.72,
+      'higher' => videoHeight * 0.46,
+      'normal' => videoHeight * 0.22,
+      'lower' => videoHeight * 0.10,
+      _ => videoHeight * 0.025,
+    };
+
+    // In fullscreen the control bar overlays the video. Keep subtitles just
+    // above it while visible, but let them drop close to the frame edge when
+    // the bar is hidden.
+    if (isFullscreen && bottomControlsVisible) {
+      return base + 56;
+    }
+    return base;
+  }
+
+  Future<void> _showPlayerSettings() async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.56),
+      builder: (_) => PlayerSettingsScreen(controller: widget.controller),
+    );
+  }
+
+  void _onTimelineHover(PointerHoverEvent event, double width) {
+    if (!widget.controller.timelinePreview || durationSeconds <= 0 || width <= 0) {
+      return;
+    }
+
+    const edge = 10.0;
+    final usableWidth = (width - edge * 2).clamp(1.0, double.infinity);
+    final x = (event.localPosition.dx - edge).clamp(0.0, usableWidth);
+    final ratio = x / usableWidth;
+    final seconds = durationSeconds * ratio;
+
+    setState(() {
+      _timelineHovering = true;
+      _previewSeconds = seconds;
+      _previewGlobalX = event.position.dx;
+    });
+
+    final bucket = (seconds / 2).round() * 2;
+    final cached = _previewCache[bucket];
+    if (cached != null) {
+      setState(() => _previewFrame = cached);
+      return;
+    }
+
+    _previewDebounceTimer?.cancel();
+    _previewDebounceTimer = Timer(
+      const Duration(milliseconds: 110),
+      () => unawaited(_loadTimelinePreview(seconds, bucket)),
+    );
+  }
+
+  void _hideTimelinePreview() {
+    _previewDebounceTimer?.cancel();
+    if (!_timelineHovering) return;
+    setState(() => _timelineHovering = false);
+  }
+
+  Future<void> _loadTimelinePreview(double seconds, int bucket) async {
+    if (!mounted || !widget.controller.timelinePreview) return;
+
+    final request = ++_previewRequestSerial;
+    final preview = _previewPlayer ??= Player();
+
+    try {
+      if (_previewMediaPath != currentMovie.fullPath) {
+        _previewCache.clear();
+        _previewFrame = null;
+        await preview.setVolume(0);
+        await preview.open(
+          Media(Uri.file(currentMovie.fullPath).toString()),
+          play: false,
+        );
+        _previewMediaPath = currentMovie.fullPath;
+      }
+
+      await preview.seek(Duration(seconds: bucket));
+      await Future<void>.delayed(const Duration(milliseconds: 45));
+      final frame = await preview.screenshot(format: 'image/jpeg');
+
+      if (!mounted || request != _previewRequestSerial || frame == null) {
+        return;
+      }
+
+      if (_previewCache.length >= 32) {
+        _previewCache.remove(_previewCache.keys.first);
+      }
+      _previewCache[bucket] = frame;
+
+      if (_timelineHovering) {
+        setState(() => _previewFrame = frame);
+      }
+    } catch (_) {
+      // A preview failure must never affect normal movie playback.
+    }
+  }
+
+  Widget _timelinePreviewOverlay(BuildContext context) {
+    const previewWidth = 192.0;
+    const previewHeight = 108.0;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final centerX = _previewGlobalX ?? screenWidth / 2;
+    final left = (centerX - previewWidth / 2)
+        .clamp(8.0, screenWidth - previewWidth - 8)
+        .toDouble();
+
+    return Positioned(
+      left: left,
+      bottom: isFullscreen ? 78 : 76,
+      width: previewWidth,
+      child: IgnorePointer(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: const Color(0xF0101C29),
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(color: syncBorder),
+            boxShadow: const [
+              BoxShadow(color: Colors.black54, blurRadius: 14),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: previewWidth,
+                  height: previewHeight,
+                  child: _previewFrame == null
+                      ? const Center(
+                          child: SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : Image.memory(
+                          _previewFrame!,
+                          fit: BoxFit.cover,
+                          gaplessPlayback: true,
+                        ),
+                ),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  color: Colors.black38,
+                  child: Text(
+                    _formatSeconds(_previewSeconds ?? 0),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _controls() {
     final sliderMax = durationSeconds > 0 ? durationSeconds : 1.0;
     final sliderValue = positionSeconds.clamp(0.0, sliderMax).toDouble();
@@ -718,25 +909,41 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             children: [
               Text(_formatSeconds(positionSeconds)),
               Expanded(
-                child: SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    trackHeight: 2,
-                    thumbShape: const RoundSliderThumbShape(
-                      enabledThumbRadius: 5,
-                    ),
-                    overlayShape: const RoundSliderOverlayShape(
-                      overlayRadius: 10,
-                    ),
-                  ),
-                  child: Slider(
-                  value: sliderValue,
-                  max: sliderMax,
-                  onChanged: durationSeconds <= 0
-                      ? null
-                      : (value) => setState(() => positionSeconds = value),
-                  onChangeEnd:
-                      durationSeconds <= 0 ? null : (value) => _seekAbsolute(value),
-                  ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      onHover: durationSeconds <= 0
+                          ? null
+                          : (event) => _onTimelineHover(
+                                event,
+                                constraints.maxWidth,
+                              ),
+                      onExit: (_) => _hideTimelinePreview(),
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          trackHeight: 2,
+                          thumbShape: const RoundSliderThumbShape(
+                            enabledThumbRadius: 5,
+                          ),
+                          overlayShape: const RoundSliderOverlayShape(
+                            overlayRadius: 10,
+                          ),
+                        ),
+                        child: Slider(
+                          value: sliderValue,
+                          max: sliderMax,
+                          onChanged: durationSeconds <= 0
+                              ? null
+                              : (value) =>
+                                  setState(() => positionSeconds = value),
+                          onChangeEnd: durationSeconds <= 0
+                              ? null
+                              : (value) => _seekAbsolute(value),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
               Text(_formatSeconds(durationSeconds)),
@@ -748,11 +955,23 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                 Expanded(
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: _menuIconButton(
-                      key: playlistButtonKey,
-                      icon: Icons.playlist_play_rounded,
-                      tooltip: widget.controller.t('playlist'),
-                      onPressed: _showPlaylistMenu,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _menuIconButton(
+                          key: playerSettingsButtonKey,
+                          icon: Icons.tune_rounded,
+                          tooltip: widget.controller.t('playerSettings'),
+                          onPressed: _showPlayerSettings,
+                        ),
+                        const SizedBox(width: 8),
+                        _menuIconButton(
+                          key: playlistButtonKey,
+                          icon: Icons.playlist_play_rounded,
+                          tooltip: widget.controller.t('playlist'),
+                          onPressed: _showPlaylistMenu,
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -968,6 +1187,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     final anchorRect = rectFor(anchorKey);
     if (anchorRect == null || items.isEmpty) return null;
 
+    final settingsRect = rectFor(playerSettingsButtonKey);
     final playlistRect = rectFor(playlistButtonKey);
     final subtitleRect = rectFor(subtitleButtonKey);
     final audioRect = rectFor(audioTrackButtonKey);
@@ -977,6 +1197,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     const switchSubtitles = -1002;
     const switchAudio = -1003;
     const switchVolume = -1004;
+    const switchSettings = -1005;
     const rowHeight = 34.0;
 
     final menuHeight =
@@ -1010,8 +1231,16 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           );
         }
 
-        return Stack(
-          children: [
+        return Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerSignal: (event) {
+            if (event is PointerScrollEvent) {
+              final delta = event.scrollDelta.dy < 0 ? 0.05 : -0.05;
+              unawaited(_changeMovieVolume(delta));
+            }
+          },
+          child: Stack(
+            children: [
             Positioned.fill(
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
@@ -1083,7 +1312,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
               switchTarget(audioRect, switchAudio),
             if (anchorKey != volumeButtonKey)
               switchTarget(volumeRect, switchVolume),
-          ],
+            switchTarget(settingsRect, switchSettings),
+            ],
+          ),
         );
       },
     );
@@ -1101,6 +1332,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       maxHeight: 300,
     );
 
+    if (selected == -1005) {
+      await _showPlayerSettings();
+      return;
+    }
     if (selected == -1002) {
       await _showSubtitleMenu();
       return;
@@ -1134,6 +1369,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       maxHeight: 260,
     );
 
+    if (selected == -1005) {
+      await _showPlayerSettings();
+      return;
+    }
     if (selected == -1001) {
       await _showPlaylistMenu();
       return;
@@ -1170,6 +1409,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       maxHeight: 220,
     );
 
+    if (selected == -1005) {
+      await _showPlayerSettings();
+      return;
+    }
     if (selected == -1001) {
       await _showPlaylistMenu();
       return;
@@ -1683,12 +1926,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       return;
     }
     if (result == 'settings') {
-      if (!mounted || !context.mounted) return;
-      await showDialog<void>(
-        context: context,
-        barrierColor: Colors.black.withValues(alpha: 0.56),
-        builder: (_) => SettingsScreen(controller: widget.controller),
-      );
+      await _showPlayerSettings();
       return;
     }
     if (result == 'open:audio') {
@@ -1853,10 +2091,12 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     final anchorRect = rectFor(volumeButtonKey);
     if (anchorRect == null) return;
 
+    final settingsRect = rectFor(playerSettingsButtonKey);
     final playlistRect = rectFor(playlistButtonKey);
     final subtitleRect = rectFor(subtitleButtonKey);
     final audioRect = rectFor(audioTrackButtonKey);
 
+    const switchSettings = -1005;
     const switchPlaylist = -1001;
     const switchSubtitles = -1002;
     const switchAudio = -1003;
@@ -1960,6 +2200,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                   ),
                 ),
               ),
+              switchTarget(settingsRect, switchSettings),
               switchTarget(playlistRect, switchPlaylist),
               switchTarget(subtitleRect, switchSubtitles),
               switchTarget(audioRect, switchAudio),
@@ -1969,6 +2210,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       },
     );
 
+    if (result == switchSettings) {
+      await _showPlayerSettings();
+      return;
+    }
     if (result == switchPlaylist) {
       await _showPlaylistMenu();
       return;
