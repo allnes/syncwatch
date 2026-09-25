@@ -88,6 +88,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   bool callMuted = false;
   bool isFullscreen = false;
   bool _fullscreenTransition = false;
+  bool _restoreFullscreenAfterMinimize = false;
+  bool _resumeFullscreenWhenActivated = false;
   bool topControlsVisible = true;
   bool bottomControlsVisible = true;
   bool youReady = true;
@@ -205,6 +207,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           windowButtonVisibility: false,
         ),
       );
+      if (_resumeFullscreenWhenActivated) {
+        _resumeFullscreenWhenActivated = false;
+        unawaited(_setPlayerFullscreen(true));
+      }
       _playerFocusNode.requestFocus();
     } else {
       unawaited(
@@ -648,6 +654,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   }
 
   Future<void> _minimizePlayerWindow() async {
+    _restoreFullscreenAfterMinimize = isFullscreen;
     if (isFullscreen) {
       await _setPlayerFullscreen(false);
     }
@@ -1828,6 +1835,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       persist: true,
     );
 
+    _resumeFullscreenWhenActivated = isFullscreen;
     if (isFullscreen) {
       await _setPlayerFullscreen(false);
     }
@@ -1888,6 +1896,13 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     } finally {
       _fullscreenTransition = false;
     }
+  }
+
+  @override
+  void onWindowRestore() {
+    if (!widget.active || !_restoreFullscreenAfterMinimize) return;
+    _restoreFullscreenAfterMinimize = false;
+    unawaited(_setPlayerFullscreen(true));
   }
 
   @override
