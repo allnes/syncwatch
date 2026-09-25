@@ -49,6 +49,22 @@ class PlayerScreen extends StatefulWidget {
 }
 
 class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
+  bool get _isLight => Theme.of(context).brightness == Brightness.light;
+  Color get _playerBackground =>
+      _isLight ? syncLightBackgroundDeep : syncBackgroundDeep;
+  Color get _playerChrome =>
+      _isLight ? syncLightSurface : syncBackgroundDeep;
+  Color get _playerSurface =>
+      _isLight ? syncLightSurfaceRaised : syncSurfaceRaised;
+  Color get _playerBorder =>
+      _isLight ? syncLightBorder : syncBorder;
+  Color get _playerPrimary =>
+      _isLight ? syncLightText : Colors.white;
+  Color get _playerSecondary =>
+      _isLight ? syncLightTextSecondary : Colors.white70;
+  Color get _playerAccent =>
+      _isLight ? syncAccent : syncAccentSoft;
+
   late final Player player;
   late final VideoController videoController;
 
@@ -321,7 +337,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             }
           },
           child: Scaffold(
-          backgroundColor: syncBackgroundDeep,
+          backgroundColor: _playerBackground,
           body: KeyboardListener(
             focusNode: _playerFocusNode,
             autofocus: true,
@@ -556,7 +572,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   }
 
   Widget _fullscreenWindowBar({bool fullscreenMode = true}) {
-    const barColor = Color(0xFF7357C8);
+    final barColor =
+        _isLight ? const Color(0xFFBFD7F2) : const Color(0xFF7357C8);
     const barHeight = 32.0;
     const buttonWidth = 46.0;
 
@@ -572,11 +589,11 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         child: Row(
           children: [
             const SizedBox(width: 10),
-            const Text(
+            Text(
               'SyncWatch',
               style: TextStyle(
                 fontSize: 11.5,
-                color: Colors.white70,
+                color: _playerSecondary,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -646,7 +663,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
     return Container(
       height: barHeight,
-      color: syncBackgroundDeep.withValues(alpha: 0.98),
+      color: _playerChrome.withValues(alpha: 0.98),
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -666,7 +683,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                     style: TextStyle(
                       fontSize: titleFontSize,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white.withValues(alpha: 0.88),
+                      color: _playerPrimary.withValues(alpha: 0.88),
                     ),
                   ),
                 ),
@@ -807,7 +824,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                 ? Icons.circle
                 : Icons.radio_button_unchecked_rounded,
             size: 8,
-            color: readyCount == 2 ? syncSuccess : Colors.white54,
+            color: readyCount == 2 ? syncSuccess : _playerSecondary,
           ),
           const SizedBox(width: 5),
           Text(
@@ -1134,7 +1151,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     return Container(
       height: 70,
       padding: const EdgeInsets.fromLTRB(14, 2, 14, 6),
-      color: syncBackgroundDeep.withValues(alpha: 0.98),
+      color: _playerChrome.withValues(alpha: 0.98),
       child: Column(
         children: [
           Row(
@@ -1366,9 +1383,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     final percent = ((volumeOsd ?? 0) * 100).round();
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: const Color(0xE6122538),
+        color: _playerSurface.withValues(alpha: 0.96),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: syncBorder),
+        border: Border.all(color: _playerBorder),
         boxShadow: const [
           BoxShadow(color: Colors.black38, blurRadius: 16),
         ],
@@ -1486,7 +1503,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
               height: menuHeight,
               child: Material(
                 elevation: 14,
-                color: syncBackgroundDeep,
+                color: _playerSurface,
                 borderRadius: BorderRadius.circular(12),
                 clipBehavior: Clip.antiAlias,
                 child: ListView.builder(
@@ -1524,7 +1541,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                                   items[index],
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 12.5),
+                                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: _playerPrimary,
+                  ),
                                 ),
                               ),
                             ),
@@ -1998,7 +2018,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                   width: mainWidth,
                   child: Material(
                     elevation: 14,
-                    color: syncBackgroundDeep,
+                    color: _playerSurface,
                     borderRadius: BorderRadius.circular(9),
                     clipBehavior: Clip.antiAlias,
                     child: Column(
@@ -2096,7 +2116,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                     height: submenuHeight,
                     child: Material(
                       elevation: 16,
-                      color: syncBackgroundDeep,
+                      color: _playerSurface,
                       borderRadius: BorderRadius.circular(9),
                       clipBehavior: Clip.antiAlias,
                       child: ListView.builder(
@@ -2138,8 +2158,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: enabled
-                                              ? Colors.white
-                                              : Colors.white38,
+                                              ? _playerPrimary
+                                              : _playerSecondary.withValues(alpha: 0.55),
                                         ),
                                       ),
                                     ),
@@ -2309,7 +2329,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                     : null,
               ),
               const SizedBox(width: 2),
-              Icon(icon, size: 15, color: Colors.white70),
+              Icon(icon, size: 15, color: _playerSecondary),
               const SizedBox(width: 7),
               Expanded(
                 child: Text(
@@ -2320,10 +2340,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                 ),
               ),
               if (hasSubmenu)
-                const Icon(
+                Icon(
                   Icons.arrow_right_rounded,
                   size: 16,
-                  color: Colors.white54,
+                  color: _playerSecondary,
                 ),
               const SizedBox(width: 6),
             ],
@@ -2413,7 +2433,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                 width: width,
                 child: Material(
                   elevation: 14,
-                  color: syncSurfaceRaised,
+                  color: _playerSurface,
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
