@@ -635,7 +635,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
         overlayShape: const RoundSliderOverlayShape(overlayRadius: 9),
       ),
       child: Slider(
-        value: value.clamp(min, max),
+        value: value.clamp(min, max).toDouble(),
         min: min,
         max: max,
         divisions: divisions,
@@ -687,7 +687,7 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
 
   List<Shadow> _outlineShadows(Color color, double width) {
     if (width <= 0) return const [];
-    final d = width.clamp(0.5, 4.0);
+    final d = width.clamp(0.5, 4.0).toDouble();
     return [
       Shadow(offset: Offset(-d, -d), blurRadius: 0.5, color: color),
       Shadow(offset: Offset(d, -d), blurRadius: 0.5, color: color),
