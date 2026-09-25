@@ -126,3 +126,8 @@ app.*.symbols
 windows/
 macos/
 test/widget_test.dart
+
+# Local backend credentials
+server/.env
+server/.env.*
+!server/.env.example
