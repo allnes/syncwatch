@@ -259,7 +259,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: DropdownButtonFormField<String>(
           isDense: true,
           menuMaxHeight: 160,
-          itemHeight: null,
+          itemHeight: 48,
+          menuWidth: 300,
           style: TextStyle(fontSize: 13, color: _primary),
           initialValue: controller.locale.languageCode,
           decoration: _compactDecoration(controller.t('language')),
@@ -278,7 +279,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: DropdownButtonFormField<String>(
           isDense: true,
           menuMaxHeight: 160,
-          itemHeight: null,
+          itemHeight: 48,
+          menuWidth: 300,
           style: TextStyle(fontSize: 13, color: _primary),
           initialValue: controller.themeMode,
           decoration: _compactDecoration(controller.t('theme')),
@@ -379,7 +381,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             DropdownButtonFormField<String>(
           isDense: true,
           menuMaxHeight: 160,
-          itemHeight: null,
+          itemHeight: 48,
               style: TextStyle(fontSize: 13, color: _primary),
               initialValue: controller.callInputDevice,
               decoration: _compactDecoration(
@@ -408,7 +410,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             DropdownButtonFormField<String>(
           isDense: true,
           menuMaxHeight: 160,
-          itemHeight: null,
+          itemHeight: 48,
               style: TextStyle(fontSize: 13, color: _primary),
               initialValue: controller.callOutputDevice,
               decoration: _compactDecoration(
@@ -437,7 +439,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             DropdownButtonFormField<String>(
           isDense: true,
           menuMaxHeight: 160,
-          itemHeight: null,
+          itemHeight: 48,
               style: TextStyle(fontSize: 13, color: _primary),
               initialValue: '480p',
               decoration: _compactDecoration(controller.t('cameraQuality')),
