@@ -1779,6 +1779,24 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     }
   }
 
+  @override
+  void onWindowMaximize() {
+    if (_fullscreenTransition || isFullscreen) return;
+    unawaited(_promoteMaximizeToFullscreen());
+  }
+
+  Future<void> _promoteMaximizeToFullscreen() async {
+    if (_fullscreenTransition || isFullscreen) return;
+
+    // The native Windows maximize button expands only to the work area and
+    // leaves the taskbar visible. Treat it as fullscreen intent in the player.
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+
+    if (await windowManager.isMaximized()) {
+      await _setPlayerFullscreen(true);
+    }
+  }
+
   Future<void> _showContextMenu(
     BuildContext context,
     Offset globalPosition,
