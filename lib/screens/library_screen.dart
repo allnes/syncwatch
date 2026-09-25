@@ -27,14 +27,10 @@ class LibraryScreen extends StatefulWidget {
 
 class _LibraryScreenState extends State<LibraryScreen> {
   bool get _isLight => Theme.of(context).brightness == Brightness.light;
-  Color get _pageBackground =>
-      _isLight ? syncLightBackground : syncBackground;
   Color get _pageBackgroundDeep =>
       _isLight ? syncLightBackgroundDeep : syncBackgroundDeep;
   Color get _panelSurface =>
       _isLight ? syncLightSurface : syncSurface;
-  Color get _panelRaised =>
-      _isLight ? syncLightSurfaceRaised : syncSurfaceRaised;
   Color get _panelBorder =>
       _isLight ? syncLightBorder : syncBorder;
   Color get _secondaryText =>
