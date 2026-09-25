@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:math' as math;
 
 import 'package:file_selector/file_selector.dart';
