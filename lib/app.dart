@@ -21,6 +21,7 @@ class AppController extends ChangeNotifier {
   bool timelinePreview = true;
   double subtitleFontSize = 30.0;
   String subtitlePosition = 'bottom';
+  double subtitleVerticalOffset = 0.0;
   String subtitleFontFamily = 'Segoe UI';
   int subtitleTextColorValue = 0xFFFFFFFF;
   int subtitleOutlineColorValue = 0xFF000000;
@@ -73,6 +74,8 @@ class AppController extends ChangeNotifier {
         _prefs?.getDouble('subtitleFontSize') ?? subtitleFontSize;
     subtitlePosition =
         _prefs?.getString('subtitlePosition') ?? subtitlePosition;
+    subtitleVerticalOffset =
+        _prefs?.getDouble('subtitleVerticalOffset') ?? subtitleVerticalOffset;
     subtitleFontFamily =
         _prefs?.getString('subtitleFontFamily') ?? subtitleFontFamily;
     subtitleTextColorValue =
@@ -194,6 +197,12 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setSubtitleVerticalOffset(double value) {
+    subtitleVerticalOffset = value.clamp(-120.0, 120.0).toDouble();
+    _setDouble('subtitleVerticalOffset', subtitleVerticalOffset);
+    notifyListeners();
+  }
+
   void setSubtitleFontFamily(String value) {
     subtitleFontFamily = value;
     _setString('subtitleFontFamily', value);
@@ -297,6 +306,7 @@ class AppController extends ChangeNotifier {
   void resetSubtitleSettings() {
     subtitleFontSize = 30.0;
     subtitlePosition = 'bottom';
+    subtitleVerticalOffset = 0.0;
     subtitleFontFamily = 'Segoe UI';
     subtitleTextColorValue = 0xFFFFFFFF;
     subtitleOutlineColorValue = 0xFF000000;
@@ -304,6 +314,7 @@ class AppController extends ChangeNotifier {
     subtitleEdgePadding = 20.0;
     _setDouble('subtitleFontSize', subtitleFontSize);
     _setString('subtitlePosition', subtitlePosition);
+    _setDouble('subtitleVerticalOffset', subtitleVerticalOffset);
     _setString('subtitleFontFamily', subtitleFontFamily);
     _setInt('subtitleTextColorValue', subtitleTextColorValue);
     _setInt('subtitleOutlineColorValue', subtitleOutlineColorValue);
