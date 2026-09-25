@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:math' as math;
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/gestures.dart';
@@ -186,7 +187,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     final resumePosition =
         widget.controller.playbackPositionFor(currentMovie.fullPath);
 
-    await player.setVolume(widget.controller.movieVolume * 100.0);
+    final openingVolume = widget.controller.rememberMovieVolume
+        ? widget.controller.movieVolume
+        : widget.controller.defaultMovieVolume;
+    await player.setVolume(openingVolume * 100.0);
     await player.open(
       Media(Uri.file(currentMovie.fullPath).toString()),
       play: false,
@@ -433,7 +437,14 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         bottom: isFullscreen ? 0 : 78,
       ),
       color: Colors.black,
-      child: GestureDetector(
+      child: MouseRegion(
+        cursor: isFullscreen &&
+                widget.controller.hideCursorFullscreen &&
+                !topControlsVisible &&
+                !bottomControlsVisible
+            ? SystemMouseCursors.none
+            : SystemMouseCursors.basic,
+        child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onDoubleTap: _toggleFullscreen,
         onSecondaryTapDown: (details) {
@@ -444,7 +455,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           children: [
             LayoutBuilder(
               builder: (context, constraints) {
-                return Video(
+                final video = Video(
                   controller: videoController,
                   controls: NoVideoControls,
                   fit: BoxFit.contain,
@@ -459,45 +470,23 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                     ),
                     style: TextStyle(
                       height: 1.16,
+                      fontFamily: widget.controller.subtitleFontFamily,
                       fontSize: widget.controller.subtitleFontSize,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: Color(widget.controller.subtitleTextColorValue),
                       backgroundColor: Colors.transparent,
-                      shadows: const [
-                        Shadow(
-                          offset: Offset(-2, -2),
-                          blurRadius: 1,
-                          color: Colors.black,
-                        ),
-                        Shadow(
-                          offset: Offset(2, -2),
-                          blurRadius: 1,
-                          color: Colors.black,
-                        ),
-                        Shadow(
-                          offset: Offset(-2, 2),
-                          blurRadius: 1,
-                          color: Colors.black,
-                        ),
-                        Shadow(
-                          offset: Offset(2, 2),
-                          blurRadius: 1,
-                          color: Colors.black,
-                        ),
-                        Shadow(
-                          offset: Offset(0, 2),
-                          blurRadius: 4,
-                          color: Colors.black87,
-                        ),
-                      ],
+                      shadows: _subtitleOutlineShadows(),
                     ),
                   ),
                 );
+
+                return _applyVideoColorAdjustments(video);
               },
             ),
 
           ],
         ),
+      ),
       ),
     );
   }
@@ -726,13 +715,97 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     );
   }
 
+  List<Shadow> _subtitleOutlineShadows() {
+    final width = widget.controller.subtitleOutlineWidth;
+    if (width <= 0) return const [];
+
+    final color = Color(widget.controller.subtitleOutlineColorValue);
+    final d = width.clamp(0.5, 4.0).toDouble();
+    return [
+      Shadow(offset: Offset(-d, -d), blurRadius: 0.5, color: color),
+      Shadow(offset: Offset(d, -d), blurRadius: 0.5, color: color),
+      Shadow(offset: Offset(-d, d), blurRadius: 0.5, color: color),
+      Shadow(offset: Offset(d, d), blurRadius: 0.5, color: color),
+      Shadow(
+        offset: Offset(0, d),
+        blurRadius: 3,
+        color: color.withValues(alpha: 0.75),
+      ),
+    ];
+  }
+
+  Widget _applyVideoColorAdjustments(Widget child) {
+    Widget result = child;
+
+    final saturation = 1.0 + widget.controller.videoSaturation;
+    final s = saturation;
+    final ir = (1 - s) * 0.2126;
+    final ig = (1 - s) * 0.7152;
+    final ib = (1 - s) * 0.0722;
+
+    result = ColorFiltered(
+      colorFilter: ColorFilter.matrix(<double>[
+        ir + s, ig, ib, 0, 0,
+        ir, ig + s, ib, 0, 0,
+        ir, ig, ib + s, 0, 0,
+        0, 0, 0, 1, 0,
+      ]),
+      child: result,
+    );
+
+    final hue = widget.controller.videoHue * math.pi / 180.0;
+    final cosH = math.cos(hue);
+    final sinH = math.sin(hue);
+    result = ColorFiltered(
+      colorFilter: ColorFilter.matrix(<double>[
+        0.213 + cosH * 0.787 - sinH * 0.213,
+        0.715 - cosH * 0.715 - sinH * 0.715,
+        0.072 - cosH * 0.072 + sinH * 0.928,
+        0,
+        0,
+        0.213 - cosH * 0.213 + sinH * 0.143,
+        0.715 + cosH * 0.285 + sinH * 0.140,
+        0.072 - cosH * 0.072 - sinH * 0.283,
+        0,
+        0,
+        0.213 - cosH * 0.213 - sinH * 0.787,
+        0.715 - cosH * 0.715 + sinH * 0.715,
+        0.072 + cosH * 0.928 + sinH * 0.072,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+      ]),
+      child: result,
+    );
+
+    final contrast = 1.0 + widget.controller.videoContrast;
+    final brightness = widget.controller.videoBrightness * 255.0;
+    final translate = 128.0 * (1.0 - contrast) + brightness;
+    result = ColorFiltered(
+      colorFilter: ColorFilter.matrix(<double>[
+        contrast, 0, 0, 0, translate,
+        0, contrast, 0, 0, translate,
+        0, 0, contrast, 0, translate,
+        0, 0, 0, 1, 0,
+      ]),
+      child: result,
+    );
+
+    return result;
+  }
+
   double _subtitleBottomPadding(double videoHeight) {
+    final edge = widget.controller.subtitleEdgePadding;
     final base = switch (widget.controller.subtitlePosition) {
-      'top' => videoHeight * 0.72,
-      'higher' => videoHeight * 0.46,
-      'normal' => videoHeight * 0.22,
-      'lower' => videoHeight * 0.10,
-      _ => videoHeight * 0.025,
+      'top' => videoHeight * 0.72 + edge,
+      'higher' => videoHeight * 0.46 + edge,
+      'normal' => videoHeight * 0.22 + edge,
+      'lower' => videoHeight * 0.10 + edge,
+      _ => edge,
     };
 
     // In fullscreen the control bar overlays the video. Keep subtitles just
