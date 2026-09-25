@@ -508,7 +508,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         children: [
           Icon(
             readyCount == 2
-                ? Icons.check_circle_rounded
+                ? Icons.circle
                 : Icons.radio_button_unchecked_rounded,
             size: 16,
             color: readyCount == 2 ? syncSuccess : Colors.white54,
@@ -827,8 +827,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                               width: 14,
                               child: selected
                                   ? const Icon(
-                                      Icons.check_rounded,
-                                      size: 14,
+                                      Icons.circle,
+                                      size: 7,
                                       color: syncAccentSoft,
                                     )
                                   : null,
