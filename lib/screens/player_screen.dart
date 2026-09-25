@@ -28,6 +28,7 @@ class PlayerScreen extends StatefulWidget {
     required this.initialIndex,
     this.onShowCall,
     this.onReturnHome,
+    this.active = true,
   });
 
   final AppController controller;
@@ -39,6 +40,7 @@ class PlayerScreen extends StatefulWidget {
   final int initialIndex;
   final Future<void> Function()? onShowCall;
   final Future<void> Function()? onReturnHome;
+  final bool active;
 
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
@@ -98,12 +100,14 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   void initState() {
     super.initState();
     windowManager.addListener(this);
-    unawaited(
-      windowManager.setTitleBarStyle(
-        TitleBarStyle.hidden,
-        windowButtonVisibility: false,
-      ),
-    );
+    if (widget.active) {
+      unawaited(
+        windowManager.setTitleBarStyle(
+          TitleBarStyle.hidden,
+          windowButtonVisibility: false,
+        ),
+      );
+    }
 
     currentIndex = widget.initialIndex < 0 ? 0 : widget.initialIndex;
     currentMovie = widget.playlist.isEmpty
@@ -170,6 +174,31 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     widget.syncEngine.connect();
     if (widget.controller.autoReady) {
       widget.syncEngine.setReady(true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant PlayerScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.active == widget.active) return;
+
+    if (widget.active) {
+      unawaited(
+        windowManager.setTitleBarStyle(
+          TitleBarStyle.hidden,
+          windowButtonVisibility: false,
+        ),
+      );
+      _playerFocusNode.requestFocus();
+    } else {
+      unawaited(
+        windowManager.setTitleBarStyle(
+          TitleBarStyle.normal,
+          windowButtonVisibility: true,
+        ),
+      );
+      _playerFocusNode.unfocus();
     }
   }
 
@@ -279,13 +308,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
   @override
   Widget build(BuildContext context) {
-    unawaited(
-      windowManager.setTitleBarStyle(
-        TitleBarStyle.hidden,
-        windowButtonVisibility: false,
-      ),
-    );
-
     return AnimatedBuilder(
       animation: widget.controller,
       builder: (context, _) {
@@ -541,7 +563,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       onPanStart: fullscreenMode
           ? null
           : (_) => windowManager.startDragging(),
-      onDoubleTap: fullscreenMode ? _toggleFullscreen : _toggleFullscreen,
+      onDoubleTap: _toggleFullscreen,
       child: Container(
         height: barHeight,
         color: barColor,
