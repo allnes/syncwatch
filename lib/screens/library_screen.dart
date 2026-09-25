@@ -611,7 +611,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.folder_rounded, color: syncAccentSoft),
+              Icon(
+                Icons.folder_rounded,
+                color: _isLight ? syncAccent : syncAccentSoft,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -709,7 +712,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
                             movie.isFolderMovie
                                 ? Icons.folder_rounded
                                 : Icons.movie_outlined,
-                            color: active ? syncAccentSoft : Colors.white60,
+                            color: active
+                                ? (_isLight ? syncAccent : syncAccentSoft)
+                                : (_isLight
+                                    ? syncLightTextSecondary
+                                    : Colors.white60),
                           ),
                           title: Text(
                             movie.fileName,
@@ -953,7 +960,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
           child: Row(
             children: [
-              const Icon(Icons.folder_copy_outlined, color: syncAccentSoft),
+              Icon(
+                Icons.folder_copy_outlined,
+                color: _isLight ? syncAccent : syncAccentSoft,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -1131,7 +1141,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: syncAccentSoft),
+          Icon(icon, color: _isLight ? syncAccent : syncAccentSoft),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -1227,7 +1237,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
           const SizedBox(height: 7),
           Row(
             children: [
-              const Icon(Icons.groups_2_rounded, color: syncAccentSoft),
+              Icon(
+                Icons.groups_2_rounded,
+                color: _isLight ? syncAccent : syncAccentSoft,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -1271,10 +1284,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Widget _memberRow(String name) {
     return Row(
       children: [
-        const CircleAvatar(
+        CircleAvatar(
           radius: 12,
-          backgroundColor: syncSurfaceRaised,
-          child: Icon(Icons.person_rounded, size: 14),
+          backgroundColor:
+              _isLight ? syncLightBackgroundDeep : syncSurfaceRaised,
+          child: Icon(
+            Icons.person_rounded,
+            size: 14,
+            color: _isLight ? syncAccent : Colors.white70,
+          ),
         ),
         const SizedBox(width: 9),
         Text(name),
