@@ -19,7 +19,7 @@ class LiveKitConnection {
   }) async {
     await disconnect();
     final response = await http.post(
-      Uri.parse(backendUrl + '/livekit/token'),
+      Uri.parse('$backendUrl/livekit/token'),
       headers: const {'content-type': 'application/json'},
       body: jsonEncode({
         'room_name': roomName,
@@ -28,14 +28,15 @@ class LiveKitConnection {
       }),
     );
     if (response.statusCode != 200) {
-      throw StateError('LiveKit token request failed: ' + response.body);
+      throw StateError('LiveKit token request failed: ${response.body}');
     }
     final payload = jsonDecode(response.body) as Map<String, dynamic>;
-    final room = Room();
+    final room = Room(
+      roomOptions: const RoomOptions(adaptiveStream: true, dynacast: true),
+    );
     await room.connect(
       payload['server_url'] as String,
       payload['participant_token'] as String,
-      roomOptions: const RoomOptions(adaptiveStream: true, dynacast: true),
     );
     _room = room;
     return room;
