@@ -62,9 +62,8 @@ Future<void> main() async {
       });
     });
 
-  final handler = const Pipeline()
-      .addMiddleware(logRequests())
-      .addHandler(router.call);
+  final handler =
+      const Pipeline().addMiddleware(logRequests()).addHandler(router.call);
 
   final server = await shelf_io.serve(
     handler,
