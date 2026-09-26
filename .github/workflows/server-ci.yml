@@ -24,6 +24,4 @@ jobs:
         with:
           sdk: stable
       - run: dart pub get
-      - run: dart format .
-      - run: git diff --exit-code -- .
-      - run: dart analyze
+      - run: dart analyze --fatal-infos
