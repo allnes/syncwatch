@@ -71,13 +71,13 @@ Future<void> main() async {
     InternetAddress.loopbackIPv4,
     port,
   );
-  stdout.writeln('SyncWatch backend listening on port ' + server.port.toString());
+  stdout.writeln('SyncWatch backend listening on port ${server.port}');
 }
 
 String _required(DotEnv env, String key) {
   final value = env[key]?.trim();
   if (value == null || value.isEmpty) {
-    throw StateError('Missing required environment variable: ' + key);
+    throw StateError('Missing required environment variable: $key');
   }
   return value;
 }
