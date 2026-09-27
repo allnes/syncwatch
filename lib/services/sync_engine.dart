@@ -11,6 +11,7 @@ class SharedMediaDescriptor {
 }
 
 typedef RemoteLibraryHandler = void Function(Set<String> movieIds);
+typedef PlaybackHandler = void Function(Map<String, dynamic> command);
 
 abstract class SyncEngine {
   Future<void> connect();
@@ -21,6 +22,7 @@ abstract class SyncEngine {
   Future<void> pause();
   Future<void> seekTo(Duration position);
   void setRemoteLibraryHandler(RemoteLibraryHandler? handler);
+  void setPlaybackHandler(PlaybackHandler? handler);
   Future<void> dispose();
 }
 
@@ -42,6 +44,7 @@ class LiveKitSyncEngine implements SyncEngine {
     print('[SyncWatch][SYNC][$now] $message');
   }
   RemoteLibraryHandler? _remoteLibraryHandler;
+  PlaybackHandler? _playbackHandler;
   EventsListener<RoomEvent>? _listener;
 
   Future<void> _publish(
@@ -81,6 +84,7 @@ class LiveKitSyncEngine implements SyncEngine {
               return;
             }
             if (revision is int) _lastRemoteRevision = revision;
+            _playbackHandler?.call(payload);
             return;
           }
           if (payload['kind'] != 'library') return;
@@ -146,6 +150,11 @@ class LiveKitSyncEngine implements SyncEngine {
   }
 
   @override
+  void setPlaybackHandler(PlaybackHandler? handler) {
+    _playbackHandler = handler;
+  }
+
+  @override
   Future<void> dispose() async {
     _listener?.dispose();
     _listener = null;
@@ -169,6 +178,8 @@ class MockSyncEngine implements SyncEngine {
   Future<void> seekTo(Duration position) async {}
   @override
   void setRemoteLibraryHandler(RemoteLibraryHandler? handler) {}
+  @override
+  void setPlaybackHandler(PlaybackHandler? handler) {}
   @override
   Future<void> dispose() async {}
 }
