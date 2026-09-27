@@ -60,6 +60,24 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
             ));
             debugPrint('[SyncWatch][TEST_PEER] TX library response items=${testLibrary.length}');
           }
+          if (payload is Map<String, dynamic> &&
+              payload['kind'] == 'playback') {
+            final type = payload['type'];
+            final session = payload['sessionId'];
+            final revision = payload['revision'];
+            if (session is String && revision is int) {
+              if (type == 'START' || type == 'STATE') {
+                playbackSessionId = session;
+                playbackRevision = revision;
+              } else if (session == playbackSessionId &&
+                  revision > playbackRevision) {
+                playbackRevision = revision;
+              }
+              if (type == 'END' && session == playbackSessionId) {
+                playbackSessionId = null;
+              }
+            }
+          }
           if (payload is Map<String, dynamic> && payload['kind'] == 'state_request') {
             final session = playbackSessionId;
             if (session != null) {
