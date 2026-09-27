@@ -43,9 +43,15 @@ class LiveKitCallEngine implements CallEngine {
   }
   bool get connected => _room != null;
 
+  void _log(String message) {
+    final now = DateTime.now().toIso8601String();
+    print('[SyncWatch][CALL][$now] $message');
+  }
+
   @override
   Future<void> join() async {
     if (_room != null) return;
+    _log('JOIN room=$roomName identity=$identity');
     final room = await connection.connect(
       roomName: roomName,
       identity: identity,
@@ -54,22 +60,26 @@ class LiveKitCallEngine implements CallEngine {
     _room = room;
     await room.localParticipant?.setMicrophoneEnabled(_microphoneEnabled);
     await room.localParticipant?.setCameraEnabled(_cameraEnabled);
+    _log('JOINED mic=$_microphoneEnabled camera=$_cameraEnabled videoTrack=${localVideoTrack != null}');
   }
 
   @override
   Future<void> setMicrophoneEnabled(bool enabled) async {
     _microphoneEnabled = enabled;
+    _log('MIC enabled=$enabled');
     await _room?.localParticipant?.setMicrophoneEnabled(enabled);
   }
 
   @override
   Future<void> setCameraEnabled(bool enabled) async {
     _cameraEnabled = enabled;
+    _log('CAMERA enabled=$enabled');
     await _room?.localParticipant?.setCameraEnabled(enabled);
   }
 
   @override
   Future<void> leave() async {
+    _log('LEAVE room=$roomName');
     _room = null;
     await connection.disconnect();
   }
