@@ -126,14 +126,14 @@ class LiveKitSyncEngine implements SyncEngine {
           if (payload['kind'] == 'playback') {
             final remoteSession = payload['sessionId'];
             final type = payload['type'];
-            if (type == 'START' && remoteSession is String) {
+            if ((type == 'START' || type == 'STATE') && remoteSession is String) {
               final localSession = _sessionId;
               if (localSession == null || remoteSession.compareTo(localSession) < 0) {
                 _sessionId = remoteSession;
                 _lastRemoteRevision = 0;
                 _log('SESSION accepted id=$remoteSession');
               } else if (remoteSession != localSession) {
-                _log('DROP competing START session=$remoteSession active=$localSession');
+                _log('DROP competing session=$remoteSession active=$localSession');
                 return;
               }
             } else if (_sessionId != null && remoteSession != _sessionId) {
