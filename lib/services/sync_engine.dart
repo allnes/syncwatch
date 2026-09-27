@@ -25,6 +25,8 @@ abstract class SyncEngine {
   Future<void> seekTo(Duration position);
   void setRemoteLibraryHandler(RemoteLibraryHandler? handler);
   void setPlaybackHandler(PlaybackHandler? handler);
+  void addPlaybackHandler(PlaybackHandler handler);
+  void removePlaybackHandler(PlaybackHandler handler);
   Future<void> mediaMissing(String mediaId);
   Future<void> requestPlaybackState();
   Future<void> endSession();
@@ -58,6 +60,7 @@ class LiveKitSyncEngine implements SyncEngine {
   }
   RemoteLibraryHandler? _remoteLibraryHandler;
   PlaybackHandler? _playbackHandler;
+  final Set<PlaybackHandler> _playbackHandlers = {};
   MediaMissingHandler? _mediaMissingHandler;
   RemoteSessionHandler? _remoteSessionHandler;
   final Set<RemoteSessionHandler> _remoteSessionHandlers = {};
@@ -128,6 +131,9 @@ class LiveKitSyncEngine implements SyncEngine {
             }
             if (revision is int) _lastRemoteRevision = revision;
             _playbackHandler?.call(payload);
+            for (final handler in _playbackHandlers.toList()) {
+              handler(payload);
+            }
             if (type == 'START' || type == 'STATE') {
               _remoteSessionHandler?.call(payload);
               for (final handler in _remoteSessionHandlers.toList()) {
@@ -268,6 +274,16 @@ class LiveKitSyncEngine implements SyncEngine {
   }
 
   @override
+  void addPlaybackHandler(PlaybackHandler handler) {
+    _playbackHandlers.add(handler);
+  }
+
+  @override
+  void removePlaybackHandler(PlaybackHandler handler) {
+    _playbackHandlers.remove(handler);
+  }
+
+  @override
   void setMediaMissingHandler(MediaMissingHandler? handler) {
     _mediaMissingHandler = handler;
   }
@@ -319,6 +335,10 @@ class MockSyncEngine implements SyncEngine {
   void setRemoteLibraryHandler(RemoteLibraryHandler? handler) {}
   @override
   void setPlaybackHandler(PlaybackHandler? handler) {}
+  @override
+  void addPlaybackHandler(PlaybackHandler handler) {}
+  @override
+  void removePlaybackHandler(PlaybackHandler handler) {}
   @override
   void setMediaMissingHandler(MediaMissingHandler? handler) {}
   @override
