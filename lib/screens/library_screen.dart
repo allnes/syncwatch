@@ -242,7 +242,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
     try {
       final frame = await track.mediaStreamTrack.captureFrame();
       final bytes = frame.asUint8List();
-      if (bytes.isEmpty) return;
+      if (bytes.length < 8) return;
+      final isPng = bytes[0] == 0x89 &&
+          bytes[1] == 0x50 &&
+          bytes[2] == 0x4E &&
+          bytes[3] == 0x47;
+      if (!isPng) {
+        debugPrint('[SyncWatch][CALL] PREVIEW unexpected frame format bytes=${bytes.length}');
+        return;
+      }
       await File(path).writeAsBytes(bytes, flush: true);
     } catch (_) {}
   }
