@@ -28,6 +28,7 @@ abstract class SyncEngine {
   void setRemoteLibraryHandler(RemoteLibraryHandler? handler);
   void addRemoteLibraryHandler(RemoteLibraryHandler handler);
   void removeRemoteLibraryHandler(RemoteLibraryHandler handler);
+  void setLibraryProvider(LibraryProvider? provider);
   void setPlaybackHandler(PlaybackHandler? handler);
   void addPlaybackHandler(PlaybackHandler handler);
   void removePlaybackHandler(PlaybackHandler handler);
@@ -67,6 +68,7 @@ class LiveKitSyncEngine implements SyncEngine {
   }
   RemoteLibraryHandler? _remoteLibraryHandler;
   final Set<RemoteLibraryHandler> _remoteLibraryHandlers = {};
+  LibraryProvider? _libraryProvider;
   PlaybackHandler? _playbackHandler;
   final Set<PlaybackHandler> _playbackHandlers = {};
   MediaMissingHandler? _mediaMissingHandler;
