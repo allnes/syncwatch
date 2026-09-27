@@ -19,6 +19,7 @@ abstract class SyncEngine {
   Future<void> connect();
   Future<void> setReady(bool ready);
   Future<void> publishLibrary(List<SharedMediaDescriptor> media);
+  Future<void> requestLibrary();
   Future<void> start(String mediaId, Duration position);
   Future<void> play();
   Future<void> pause();
@@ -106,6 +107,10 @@ class LiveKitSyncEngine implements SyncEngine {
           final payload = jsonDecode(utf8.decode(event.data));
           if (payload is! Map<String, dynamic>) return;
           _log('RX kind=${payload['kind']} from=${event.participant?.identity ?? 'server'} payload=${jsonEncode(payload)}');
+          if (payload['kind'] == 'library_request') {
+            _log('RX LIBRARY_REQUEST');
+            return;
+          }
           if (payload['kind'] == 'state_request') {
             if (_sessionId == null) {
               _log('RX STATE_REQUEST; no active session');
@@ -187,6 +192,18 @@ class LiveKitSyncEngine implements SyncEngine {
           }
         } catch (_) {}
       });
+  }
+
+  @override
+  Future<void> requestLibrary() async {
+    _log('TX LIBRARY_REQUEST');
+    await room.localParticipant?.publishData(
+      utf8.encode(jsonEncode({
+        'kind': 'library_request',
+        'sentAtMs': DateTime.now().millisecondsSinceEpoch,
+      })),
+      reliable: true,
+    );
   }
 
   @override
@@ -377,6 +394,8 @@ class MockSyncEngine implements SyncEngine {
   Future<void> setReady(bool ready) async {}
   @override
   Future<void> publishLibrary(List<SharedMediaDescriptor> media) async {}
+  @override
+  Future<void> requestLibrary() async {}
   @override
   Future<void> endSession() async {}
   @override
