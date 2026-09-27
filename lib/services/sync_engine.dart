@@ -43,13 +43,18 @@ class LiveKitSyncEngine implements SyncEngine {
   RemoteLibraryHandler? _remoteLibraryHandler;
   EventsListener<RoomEvent>? _listener;
 
-  Future<void> _publish(String type, {bool? playing}) async {
+  Future<void> _publish(
+    String type, {
+    bool? playing,
+    String? mediaIdOverride,
+    Duration? positionOverride,
+  }) async {
     final payload = <String, Object?>{
       'kind': 'playback',
       'type': type,
       'revision': ++_revision,
-      'mediaId': mediaId(),
-      'positionMs': position().inMilliseconds,
+      'mediaId': mediaIdOverride ?? mediaId(),
+      'positionMs': (positionOverride ?? position()).inMilliseconds,
       'playing': playing,
       'sentAtMs': DateTime.now().millisecondsSinceEpoch,
     };
@@ -108,8 +113,12 @@ class LiveKitSyncEngine implements SyncEngine {
   }
 
   @override
-  Future<void> start(String mediaId, Duration position) =>
-      _publish('START', playing: true);
+  Future<void> start(String mediaId, Duration position) => _publish(
+        'START',
+        playing: true,
+        mediaIdOverride: mediaId,
+        positionOverride: position,
+      );
 
   @override
   Future<void> play() => _publish('PLAY', playing: true);
@@ -118,7 +127,8 @@ class LiveKitSyncEngine implements SyncEngine {
   Future<void> pause() => _publish('PAUSE', playing: false);
 
   @override
-  Future<void> seekTo(Duration position) => _publish('SEEK');
+  Future<void> seekTo(Duration position) =>
+      _publish('SEEK', positionOverride: position);
 
   @override
   void setRemoteLibraryHandler(RemoteLibraryHandler? handler) {
