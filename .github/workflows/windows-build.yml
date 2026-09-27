@@ -41,3 +41,10 @@ jobs:
 
       - name: Build Windows debug
         run: flutter build windows --debug
+
+      - name: Verify executable
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "build\\windows\\x64\\runner\\Debug\\syncwatch.exe")) {
+            throw "syncwatch.exe was not produced"
+          }
