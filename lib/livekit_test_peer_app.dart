@@ -20,6 +20,7 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
   String status = 'Connecting…';
   String participants = '';
   final List<String> events = <String>[];
+  final Set<String> remoteMovieIds = <String>{};
 
   @override
   void initState() {
@@ -38,6 +39,15 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
       connectedRoom.createListener()..on<DataReceivedEvent>((event) {
         try {
           final decoded = utf8.decode(event.data);
+          final payload = jsonDecode(decoded);
+          if (payload is Map<String, dynamic> && payload['kind'] == 'library') {
+            final items = payload['items'];
+            if (items is List) {
+              remoteMovieIds
+                ..clear()
+                ..addAll(items.whereType<Map>().map((item) => item['movieId']).whereType<String>());
+            }
+          }
           if (!mounted) return;
           setState(() {
             events.insert(0, decoded);
@@ -95,6 +105,8 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 18),
+                Text('Remote library: ${remoteMovieIds.length} movies', style: const TextStyle(color: Colors.white54)),
+                const SizedBox(height: 12),
                 const Text('Data channel', style: TextStyle(color: Colors.white70)),
                 const SizedBox(height: 8),
                 for (final event in events)
