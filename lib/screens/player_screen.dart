@@ -98,8 +98,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   bool topControlsVisible = true;
   bool bottomControlsVisible = true;
   Offset _lastPointerPosition = Offset.zero;
-  bool youReady = true;
-  bool partnerReady = true;
   late int currentIndex;
   late MovieItem currentMovie;
   Set<String>? sharedMovieIds;
@@ -977,7 +975,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _readyStatusChip(),
                 SizedBox(width: compact ? 6 : 8),
                 if (widget.onShowCall != null)
                   IconButton(
@@ -1019,58 +1016,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         ],
       ),
     );
-  }
-
-  Widget _readyStatusChip() {
-    final readyCount = (youReady ? 1 : 0) + (partnerReady ? 1 : 0);
-    final statusText =
-        '$readyCount/2 ${widget.controller.t('ready').toLowerCase()}';
-
-    final tooltipText = [
-      '${widget.controller.t('you')} — ${youReady ? widget.controller.t('ready') : widget.controller.t('notReady')}',
-      '${widget.controller.t('friend')} — ${partnerReady ? widget.controller.t('ready') : widget.controller.t('notReady')}',
-    ].join('\n');
-
-    return Tooltip(
-      message: tooltipText,
-      waitDuration: const Duration(milliseconds: 300),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            readyCount == 2
-                ? Icons.circle
-                : Icons.radio_button_unchecked_rounded,
-            size: 8,
-            color: readyCount == 2 ? syncSuccess : _playerSecondary,
-          ),
-          const SizedBox(width: 5),
-          Text(
-            statusText,
-            style: const TextStyle(fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<Shadow> _subtitleOutlineShadows() {
-    final width = widget.controller.subtitleOutlineWidth;
-    if (width <= 0) return const [];
-
-    final color = Color(widget.controller.subtitleOutlineColorValue);
-    final d = width.clamp(0.5, 4.0).toDouble();
-    return [
-      Shadow(offset: Offset(-d, -d), blurRadius: 0.5, color: color),
-      Shadow(offset: Offset(d, -d), blurRadius: 0.5, color: color),
-      Shadow(offset: Offset(-d, d), blurRadius: 0.5, color: color),
-      Shadow(offset: Offset(d, d), blurRadius: 0.5, color: color),
-      Shadow(
-        offset: Offset(0, d),
-        blurRadius: 3,
-        color: color.withValues(alpha: 0.75),
-      ),
-    ];
   }
 
   Widget _applyVideoColorAdjustments(Widget child) {
