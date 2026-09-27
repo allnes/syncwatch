@@ -35,9 +35,8 @@ class LiveKitCallEngine implements CallEngine {
     final publications = _room?.localParticipant?.videoTrackPublications;
     if (publications == null) return null;
     for (final publication in publications) {
-      if (publication.source == TrackSource.camera &&
-          publication.track is LocalVideoTrack) {
-        return publication.track as LocalVideoTrack;
+      if (publication.source == TrackSource.camera) {
+        return publication.track;
       }
     }
     return null;
