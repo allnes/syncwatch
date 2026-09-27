@@ -275,7 +275,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     // Entering the player via Start/Continue Watching means playback should
     // begin immediately rather than opening on a paused first frame.
     await player.play();
-    await widget.syncEngine.play();
+    await widget.syncEngine.start(
+      currentMovie.movieId,
+      player.state.position,
+    );
   }
 
   Future<void> _applyInitialTracks() async {
