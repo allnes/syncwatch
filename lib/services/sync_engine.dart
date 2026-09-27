@@ -45,6 +45,7 @@ class LiveKitSyncEngine implements SyncEngine {
   bool? _playingOverride;
   int _revision = 0;
   int _lastRemoteRevision = 0;
+  String? _sessionId;
 
   void _log(String message) {
     final now = DateTime.now().toIso8601String();
@@ -63,6 +64,7 @@ class LiveKitSyncEngine implements SyncEngine {
   }) async {
     final payload = <String, Object?>{
       'kind': 'playback',
+      'sessionId': _sessionId,
       'type': type,
       'revision': ++_revision,
       'mediaId': mediaIdOverride ?? mediaId(),
@@ -96,6 +98,22 @@ class LiveKitSyncEngine implements SyncEngine {
             return;
           }
           if (payload['kind'] == 'playback') {
+            final remoteSession = payload['sessionId'];
+            final type = payload['type'];
+            if (type == 'START' && remoteSession is String) {
+              final localSession = _sessionId;
+              if (localSession == null || remoteSession.compareTo(localSession) < 0) {
+                _sessionId = remoteSession;
+                _lastRemoteRevision = 0;
+                _log('SESSION accepted id=$remoteSession');
+              } else if (remoteSession != localSession) {
+                _log('DROP competing START session=$remoteSession active=$localSession');
+                return;
+              }
+            } else if (_sessionId != null && remoteSession != _sessionId) {
+              _log('DROP foreign session=$remoteSession active=$_sessionId');
+              return;
+            }
             final revision = payload['revision'];
             if (revision is int && revision <= _lastRemoteRevision) {
               _log('DROP stale playback rev=$revision last=$_lastRemoteRevision');
@@ -146,6 +164,7 @@ class LiveKitSyncEngine implements SyncEngine {
 
   @override
   Future<void> start(String mediaId, Duration position) {
+    _sessionId ??= '${room.localParticipant?.identity ?? 'client'}-${DateTime.now().microsecondsSinceEpoch}';
     _playingOverride = true;
     return _publish(
         'START',
