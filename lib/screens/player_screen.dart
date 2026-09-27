@@ -73,6 +73,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   Timer? _previewDebounceTimer;
   double? _queuedSeekTarget;
   bool _seekInFlight = false;
+  bool _applyingRemoteCommand = false;
 
   Player? _previewPlayer;
   VideoController? _previewVideoController;
@@ -204,6 +205,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       }),
     );
 
+    widget.syncEngine.setPlaybackHandler((command) {
+      unawaited(_applyRemotePlaybackCommand(command));
+    });
     widget.syncEngine.setRemoteLibraryHandler((remoteIds) {
       if (!mounted) return;
       final localIds = widget.playlist.map((movie) => movie.movieId).toSet();
@@ -297,6 +301,40 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       currentMovie.movieId,
       player.state.position,
     );
+  }
+
+  Future<void> _applyRemotePlaybackCommand(
+    Map<String, dynamic> command,
+  ) async {
+    if (_applyingRemoteCommand) return;
+    final mediaId = command['mediaId'];
+    if (mediaId is! String || mediaId != currentMovie.movieId) return;
+    final type = command['type'];
+    final positionMs = command['positionMs'];
+    final target = positionMs is int
+        ? Duration(milliseconds: positionMs)
+        : player.state.position;
+
+    _applyingRemoteCommand = true;
+    try {
+      if (type == 'START' || type == 'SEEK') {
+        await player.seek(target);
+      }
+      if (type == 'START' || type == 'PLAY') {
+        if (type == 'PLAY') await player.seek(target);
+        await player.play();
+      } else if (type == 'PAUSE') {
+        await player.seek(target);
+        await player.pause();
+      }
+      if (mounted) {
+        setState(() {
+          positionSeconds = target.inMilliseconds / 1000.0;
+        });
+      }
+    } finally {
+      _applyingRemoteCommand = false;
+    }
   }
 
   Future<void> _applyInitialTracks() async {
@@ -1810,6 +1848,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
   Future<void> _togglePlayback() async {
     await player.playOrPause();
+    if (_applyingRemoteCommand) return;
     if (player.state.playing) {
       await widget.syncEngine.play();
     } else {
