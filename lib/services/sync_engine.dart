@@ -12,6 +12,7 @@ class SharedMediaDescriptor {
 
 typedef RemoteLibraryHandler = void Function(Set<String> movieIds);
 typedef PlaybackHandler = void Function(Map<String, dynamic> command);
+typedef MediaMissingHandler = void Function(String mediaId);
 
 abstract class SyncEngine {
   Future<void> connect();
@@ -23,6 +24,7 @@ abstract class SyncEngine {
   Future<void> seekTo(Duration position);
   void setRemoteLibraryHandler(RemoteLibraryHandler? handler);
   void setPlaybackHandler(PlaybackHandler? handler);
+  Future<void> mediaMissing(String mediaId);
   Future<void> dispose();
 }
 
@@ -135,6 +137,19 @@ class LiveKitSyncEngine implements SyncEngine {
       );
 
   @override
+  Future<void> mediaMissing(String mediaId) async {
+    _log('TX MEDIA_MISSING media=$mediaId');
+    await room.localParticipant?.publishData(
+      utf8.encode(jsonEncode({
+        'kind': 'media_missing',
+        'mediaId': mediaId,
+        'sentAtMs': DateTime.now().millisecondsSinceEpoch,
+      })),
+      reliable: true,
+    );
+  }
+
+  @override
   Future<void> play() => _publish('PLAY', playing: true);
 
   @override
@@ -170,6 +185,8 @@ class MockSyncEngine implements SyncEngine {
   Future<void> setReady(bool ready) async {}
   @override
   Future<void> publishLibrary(List<SharedMediaDescriptor> media) async {}
+  @override
+  Future<void> mediaMissing(String mediaId) async {}
   @override
   Future<void> play() async {}
   @override
