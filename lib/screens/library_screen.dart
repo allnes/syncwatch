@@ -650,20 +650,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 key: ValueKey(playerSessionId),
                 controller: widget.controller,
                 movie: movie,
-                syncEngine: callEngine.room == null
-                    ? MockSyncEngine()
-                    : LiveKitSyncEngine(
-                        room: callEngine.room!,
-                        mediaId: () => activePlayerMovie?.movieId ?? movie.movieId,
-                        isPlaying: () => showingPlayer,
-                        position: () => Duration(
-                          milliseconds: ((widget.controller.playbackPositionFor(
-                                        activePlayerMovie?.fullPath ?? movie.fullPath,
-                                      )) *
-                                  1000)
-                              .round(),
-                        ),
-                      ),
+                syncEngine: roomSyncEngine ?? MockSyncEngine(),
                 initialAudioTrack: activePlayerAudioTrack,
                 initialSubtitleTrack: activePlayerSubtitleTrack,
                 playlist: movies,
