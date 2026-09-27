@@ -6,6 +6,7 @@ abstract class CallEngine {
   Future<void> join();
   Future<void> setMicrophoneEnabled(bool enabled);
   Future<void> setCameraEnabled(bool enabled);
+  Room? get room;
   Future<void> leave();
 }
 
@@ -62,6 +63,8 @@ class LiveKitCallEngine implements CallEngine {
 }
 
 class MockCallEngine implements CallEngine {
+  @override
+  Room? get room => null;
   @override
   Future<void> join() async {}
 
