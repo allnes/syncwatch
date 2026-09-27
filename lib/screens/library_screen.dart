@@ -169,10 +169,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
       unawaited(process.stderr.drain<void>());
       callProcess = process;
       process.exitCode.then((_) async {
+        await roomSyncEngine?.dispose();
+        roomSyncEngine = null;
         await callEngine.leave();
         if (!mounted) return;
         setState(() {
           callActive = false;
+          remotePlaybackActive = false;
+          remotePlaybackMovieId = null;
+          remotePlaybackPositionMs = 0;
+          remotePlaybackSentAtMs = 0;
+          remotePlaybackPlaying = false;
           callProcess = null;
           callCommandFilePath = null;
           final previewPath = callPreviewFilePath;
