@@ -1,8 +1,64 @@
+import 'package:livekit_client/livekit_client.dart';
+
+import 'livekit_connection.dart';
+
 abstract class CallEngine {
   Future<void> join();
   Future<void> setMicrophoneEnabled(bool enabled);
   Future<void> setCameraEnabled(bool enabled);
   Future<void> leave();
+}
+
+class LiveKitCallEngine implements CallEngine {
+  LiveKitCallEngine({
+    required this.connection,
+    required this.roomName,
+    required this.identity,
+    required this.participantName,
+  });
+
+  final LiveKitConnection connection;
+  final String roomName;
+  final String identity;
+  final String participantName;
+
+  Room? _room;
+  bool _microphoneEnabled = true;
+  bool _cameraEnabled = true;
+
+  Room? get room => _room;
+  bool get connected => _room != null;
+
+  @override
+  Future<void> join() async {
+    if (_room != null) return;
+    final room = await connection.connect(
+      roomName: roomName,
+      identity: identity,
+      participantName: participantName,
+    );
+    _room = room;
+    await room.localParticipant?.setMicrophoneEnabled(_microphoneEnabled);
+    await room.localParticipant?.setCameraEnabled(_cameraEnabled);
+  }
+
+  @override
+  Future<void> setMicrophoneEnabled(bool enabled) async {
+    _microphoneEnabled = enabled;
+    await _room?.localParticipant?.setMicrophoneEnabled(enabled);
+  }
+
+  @override
+  Future<void> setCameraEnabled(bool enabled) async {
+    _cameraEnabled = enabled;
+    await _room?.localParticipant?.setCameraEnabled(enabled);
+  }
+
+  @override
+  Future<void> leave() async {
+    _room = null;
+    await connection.disconnect();
+  }
 }
 
 class MockCallEngine implements CallEngine {
