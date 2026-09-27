@@ -142,6 +142,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (roomDiagnostics.length > 40) roomDiagnostics.removeLast();
     roomActivity.insert(0, (text: message, time: DateTime.now()));
     if (roomActivity.length > 8) roomActivity.removeLast();
+    if (mounted) setState(() {});
   }
 
   Future<void> _showRoomDiagnostics() async {
