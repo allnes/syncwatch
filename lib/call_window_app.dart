@@ -2,12 +2,10 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:livekit_client/livekit_client.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
 import 'core/app_theme.dart';
-import 'services/livekit_connection.dart';
 
 class CallWindowApp extends StatelessWidget {
   const CallWindowApp({
@@ -55,49 +53,28 @@ class _CallWindowState extends State<_CallWindow> {
   bool microphoneEnabled = true;
   bool cameraEnabled = true;
   bool fullscreen = false;
-  late final LiveKitConnection liveKitConnection;
-  Room? liveKitRoom;
-  VideoTrack? localVideoTrack;
-  String? connectionError;
 
   @override
   void initState() {
     super.initState();
-    liveKitConnection = LiveKitConnection(backendUrl: 'http://127.0.0.1:8787');
     _startCommandListener();
-    unawaited(_connectLiveKit());
   }
 
   @override
   void dispose() {
     commandTimer?.cancel();
-    unawaited(liveKitConnection.disconnect());
     super.dispose();
   }
 
-  Future<void> _connectLiveKit() async {
+  Future<void> _writeMediaCommand() async {
+    final path = widget.commandFilePath;
+    if (path == null || path.isEmpty) return;
     try {
-      final room = await liveKitConnection.connect(
-        roomName: 'syncwatch-dev',
-        identity: 'syncwatch-call-window',
-        participantName: widget.controller.username,
+      await File(path).writeAsString(
+        'media:${microphoneEnabled ? 1 : 0}:${cameraEnabled ? 1 : 0}:${DateTime.now().microsecondsSinceEpoch}',
+        flush: true,
       );
-      await room.localParticipant?.setMicrophoneEnabled(microphoneEnabled);
-      await room.localParticipant?.setCameraEnabled(cameraEnabled);
-      final publication = room.localParticipant?.videoTrackPublications
-          .where((item) => item.source == TrackSource.camera)
-          .firstOrNull;
-      final track = publication?.track;
-      if (!mounted) return;
-      setState(() {
-        liveKitRoom = room;
-        localVideoTrack = track is VideoTrack ? track : null;
-        connectionError = null;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => connectionError = error.toString());
-    }
+    } catch (_) {}
   }
 
   void _startCommandListener() {
@@ -147,21 +124,13 @@ class _CallWindowState extends State<_CallWindow> {
                     colors: [Color(0xFF20486A), Color(0xFF0A1B2A)],
                   ),
                 ),
-                child: localVideoTrack != null && cameraEnabled
-                    ? VideoTrackRenderer(localVideoTrack!)
-                    : Center(
-                        child: connectionError == null
-                            ? const Icon(
-                                Icons.person_rounded,
-                                size: 82,
-                                color: Colors.white24,
-                              )
-                            : const Icon(
-                                Icons.videocam_off_rounded,
-                                size: 72,
-                                color: Colors.white38,
-                              ),
-                      ),
+                child: const Center(
+                  child: Icon(
+                    Icons.person_rounded,
+                    size: 82,
+                    color: Colors.white24,
+                  ),
+                ),
               ),
             ),
           ),
@@ -202,13 +171,9 @@ class _CallWindowState extends State<_CallWindow> {
                   icon: microphoneEnabled
                       ? Icons.mic_rounded
                       : Icons.mic_off_rounded,
-                  onPressed: () async {
-                    final enabled = !microphoneEnabled;
-                    await liveKitRoom?.localParticipant
-                        ?.setMicrophoneEnabled(enabled);
-                    if (mounted) {
-                      setState(() => microphoneEnabled = enabled);
-                    }
+                  onPressed: () {
+                    setState(() => microphoneEnabled = !microphoneEnabled);
+                    _writeMediaCommand();
                   },
                 ),
                 const SizedBox(width: 12),
@@ -219,23 +184,9 @@ class _CallWindowState extends State<_CallWindow> {
                   icon: cameraEnabled
                       ? Icons.videocam_rounded
                       : Icons.videocam_off_rounded,
-                  onPressed: () async {
-                    final enabled = !cameraEnabled;
-                    await liveKitRoom?.localParticipant
-                        ?.setCameraEnabled(enabled);
-                    final publication = liveKitRoom
-                        ?.localParticipant
-                        ?.videoTrackPublications
-                        .where((item) => item.source == TrackSource.camera)
-                        .firstOrNull;
-                    final track = publication?.track;
-                    if (mounted) {
-                      setState(() {
-                        cameraEnabled = enabled;
-                        localVideoTrack =
-                            track is VideoTrack ? track : localVideoTrack;
-                      });
-                    }
+                  onPressed: () {
+                    setState(() => cameraEnabled = !cameraEnabled);
+                    _writeMediaCommand();
                   },
                 ),
                 const SizedBox(width: 12),
