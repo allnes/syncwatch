@@ -103,6 +103,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   late MovieItem currentMovie;
   Set<String>? sharedMovieIds;
   String? syncNotice;
+  bool remoteSessionActive = false;
 
   int? _sharedNeighborIndex(int direction) {
     var index = currentIndex + direction;
@@ -206,6 +207,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       }),
     );
 
+    widget.syncEngine.setRemoteSessionHandler((state) {
+      if (!mounted) return;
+      setState(() => remoteSessionActive = state != null);
+    });
     widget.syncEngine.setMediaMissingHandler((mediaId) {
       if (!mounted) return;
       setState(() => syncNotice = 'У собеседника нет этого фильма');
