@@ -1587,6 +1587,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
 
     widget.controller.endPlaybackSession();
+    setState(() {
+      remotePlaybackActive = false;
+      remotePlaybackMovieId = null;
+      remotePlaybackPositionMs = 0;
+      remotePlaybackSentAtMs = 0;
+      remotePlaybackPlaying = false;
+    });
   }
 
   int _effectiveRemotePositionMs() {
