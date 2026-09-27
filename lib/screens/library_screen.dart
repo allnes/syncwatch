@@ -78,6 +78,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool roomReconnecting = false;
   bool playbackConnectionInterrupted = false;
   String? playbackConnectionMessage;
+  Timer? partnerResyncTimer;
   final List<String> roomDiagnostics = <String>[];
   final List<({String text, DateTime time})> roomActivity = [];
   int selectedAudioIndex = 0;
@@ -115,6 +116,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     trackMenuScrollController.dispose();
     callCommandTimer?.cancel();
     callPreviewTimer?.cancel();
+    partnerResyncTimer?.cancel();
     callProcess?.kill();
     final previewPath = callPreviewFilePath;
     if (previewPath != null) {
@@ -184,6 +186,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (sync != null) {
       await sync.requestPlaybackState();
       await sync.requestLibrary();
+    }
+    partnerResyncTimer?.cancel();
+    if (activePlayerMovie != null) {
+      partnerResyncTimer = Timer(const Duration(seconds: 5), () {
+        if (!mounted || !playbackConnectionInterrupted) return;
+        setState(() {
+          playbackConnectionMessage =
+              'Связь восстановлена, но активная сессия просмотра не найдена. Фильм остаётся на паузе.';
+        });
+        _roomLog('partner resync timeout; no active playback state');
+      });
     }
     _roomLog('partner resync requested');
   }
@@ -312,6 +325,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
       roomConnectionError = null;
       remotePlaybackActive = false;
       remotePlaybackMovieId = null;
+      partnerResyncTimer?.cancel();
+      partnerResyncTimer = null;
       playbackConnectionInterrupted = false;
       playbackConnectionMessage = null;
       partnerOnline = false;
@@ -1794,6 +1809,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
           : 0;
       remotePlaybackPlaying = state?['playing'] == true;
       if (state != null && partnerOnline) {
+        partnerResyncTimer?.cancel();
+        partnerResyncTimer = null;
         playbackConnectionInterrupted = false;
         playbackConnectionMessage = null;
         unawaited(_sendCallConnectionNotice(null));
