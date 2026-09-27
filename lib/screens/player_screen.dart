@@ -204,6 +204,11 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       }),
     );
 
+    widget.syncEngine.setRemoteLibraryHandler((remoteIds) {
+      if (!mounted) return;
+      final localIds = widget.playlist.map((movie) => movie.movieId).toSet();
+      setState(() => sharedMovieIds = localIds.intersection(remoteIds));
+    });
     _openMedia();
     widget.syncEngine.connect();
     if (widget.controller.autoReady) {
