@@ -208,13 +208,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     );
 
     widget.syncEngine.addRemoteSessionHandler(_onRemoteSession);
-    widget.syncEngine.setMediaMissingHandler((mediaId) {
-      if (!mounted) return;
-      setState(() => syncNotice = 'У собеседника нет этого фильма');
-      Timer(const Duration(seconds: 4), () {
-        if (mounted && syncNotice != null) setState(() => syncNotice = null);
-      });
-    });
+    widget.syncEngine.addMediaMissingHandler(_onMediaMissing);
     widget.syncEngine.addPlaybackHandler(_onPlaybackCommand);
     widget.syncEngine.addRemoteLibraryHandler(_onRemoteLibrary);
     _openMedia();
@@ -307,6 +301,14 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       currentMovie.movieId,
       player.state.position,
     );
+  }
+
+  void _onMediaMissing(String mediaId) {
+    if (!mounted) return;
+    setState(() => syncNotice = 'У собеседника нет этого фильма');
+    Timer(const Duration(seconds: 4), () {
+      if (mounted && syncNotice != null) setState(() => syncNotice = null);
+    });
   }
 
   void _onRemoteLibrary(Set<String> remoteIds) {
@@ -447,6 +449,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     widget.syncEngine.removeRemoteSessionHandler(_onRemoteSession);
     widget.syncEngine.removePlaybackHandler(_onPlaybackCommand);
     widget.syncEngine.removeRemoteLibraryHandler(_onRemoteLibrary);
+    widget.syncEngine.removeMediaMissingHandler(_onMediaMissing);
     // SyncEngine lifecycle is owned by LibraryScreen and shared with this player.
     _previewPlayer?.dispose();
     _previewVideoController = null;
