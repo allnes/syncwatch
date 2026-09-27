@@ -100,6 +100,19 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   bool partnerReady = true;
   late int currentIndex;
   late MovieItem currentMovie;
+  Set<String>? sharedMovieIds;
+
+  int? _sharedNeighborIndex(int direction) {
+    var index = currentIndex + direction;
+    while (index >= 0 && index < widget.playlist.length) {
+      final allowed = sharedMovieIds;
+      if (allowed == null || allowed.contains(widget.playlist[index].movieId)) {
+        return index;
+      }
+      index += direction;
+    }
+    return null;
+  }
 
   double positionSeconds = 0;
   double durationSeconds = 0;
