@@ -59,6 +59,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool callActive = false;
   Process? callProcess;
   String? callCommandFilePath;
+  String? callPreviewFilePath;
   Timer? callCommandTimer;
   String? lastCallCommand;
   bool metadataLoading = false;
@@ -126,6 +127,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       );
       await commandFile.writeAsString('ready:0', flush: true);
       callCommandFilePath = commandFile.path;
+      callPreviewFilePath = '${Directory.systemTemp.path}\\syncwatch_call_preview_$pid.jpg';
       lastCallCommand = 'ready:0';
       callCommandTimer?.cancel();
       callCommandTimer = Timer.periodic(
@@ -138,6 +140,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         [
           '--call-window',
           '--call-command-file=${commandFile.path}',
+          '--call-preview-file=${callPreviewFilePath!}',
         ],
         mode: ProcessStartMode.normal,
       );
@@ -151,6 +154,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           callActive = false;
           callProcess = null;
           callCommandFilePath = null;
+          callPreviewFilePath = null;
           callCommandTimer?.cancel();
           callCommandTimer = null;
         });
