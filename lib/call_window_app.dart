@@ -12,10 +12,12 @@ class CallWindowApp extends StatelessWidget {
     super.key,
     required this.controller,
     required this.commandFilePath,
+    required this.previewFilePath,
   });
 
   final AppController controller;
   final String? commandFilePath;
+  final String? previewFilePath;
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +30,7 @@ class CallWindowApp extends StatelessWidget {
       home: _CallWindow(
         controller: controller,
         commandFilePath: commandFilePath,
+        previewFilePath: previewFilePath,
       ),
     );
   }
@@ -37,10 +40,12 @@ class _CallWindow extends StatefulWidget {
   const _CallWindow({
     required this.controller,
     required this.commandFilePath,
+    required this.previewFilePath,
   });
 
   final AppController controller;
   final String? commandFilePath;
+  final String? previewFilePath;
 
   @override
   State<_CallWindow> createState() => _CallWindowState();
@@ -48,6 +53,8 @@ class _CallWindow extends StatefulWidget {
 
 class _CallWindowState extends State<_CallWindow> {
   Timer? commandTimer;
+  Timer? previewTimer;
+  int previewVersion = 0;
   String? lastCommand;
 
   bool microphoneEnabled = true;
@@ -58,11 +65,21 @@ class _CallWindowState extends State<_CallWindow> {
   void initState() {
     super.initState();
     _startCommandListener();
+    previewTimer = Timer.periodic(
+      const Duration(milliseconds: 250),
+      (_) {
+        final path = widget.previewFilePath;
+        if (path != null && File(path).existsSync() && mounted) {
+          setState(() => previewVersion++);
+        }
+      },
+    );
   }
 
   @override
   void dispose() {
     commandTimer?.cancel();
+    previewTimer?.cancel();
     super.dispose();
   }
 
@@ -124,13 +141,22 @@ class _CallWindowState extends State<_CallWindow> {
                     colors: [Color(0xFF20486A), Color(0xFF0A1B2A)],
                   ),
                 ),
-                child: const Center(
-                  child: Icon(
-                    Icons.person_rounded,
-                    size: 82,
-                    color: Colors.white24,
-                  ),
-                ),
+                child: cameraEnabled &&
+                        widget.previewFilePath != null &&
+                        File(widget.previewFilePath!).existsSync()
+                    ? Image.file(
+                        File(widget.previewFilePath!),
+                        key: ValueKey(previewVersion),
+                        fit: BoxFit.cover,
+                        gaplessPlayback: true,
+                      )
+                    : const Center(
+                        child: Icon(
+                          Icons.person_rounded,
+                          size: 82,
+                          color: Colors.white24,
+                        ),
+                      ),
               ),
             ),
           ),
