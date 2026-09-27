@@ -21,6 +21,10 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
   String participants = '';
   final List<String> events = <String>[];
   final Set<String> remoteMovieIds = <String>{};
+  final List<Map<String, String>> testLibrary = const [
+    {'movieId': 'alien 1979 directors cut', 'fingerprint': '6994000:1920×1080'},
+    {'movieId': 'dune 2021 2160p hevc', 'fingerprint': '9326000:3840×2160'},
+  ];
   EventsListener<RoomEvent>? roomEvents;
 
   @override
@@ -59,6 +63,15 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
         } catch (_) {}
       });
       room = connectedRoom;
+      await connectedRoom.localParticipant?.publishData(
+        utf8.encode(jsonEncode({
+          'kind': 'library',
+          'items': testLibrary,
+          'sentAtMs': DateTime.now().millisecondsSinceEpoch,
+        })),
+        reliable: true,
+      );
+      debugPrint('[SyncWatch][TEST_PEER] TX library items=${testLibrary.length}');
       debugPrint('[SyncWatch][TEST_PEER] CONNECTED room=syncwatch-dev identity=partner-bot');
       _refresh();
     } catch (error) {
