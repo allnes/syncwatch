@@ -420,6 +420,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         await player.seek(target);
         await player.pause();
       }
+      if (type == 'STATE') {
+        _wasPlayingBeforeConnectionLoss = false;
+      }
       if (mounted) {
         setState(() {
           positionSeconds = target.inMilliseconds / 1000.0;
