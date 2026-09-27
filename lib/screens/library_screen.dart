@@ -143,7 +143,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       );
       await commandFile.writeAsString('ready:0', flush: true);
       callCommandFilePath = commandFile.path;
-      callPreviewFilePath = '${Directory.systemTemp.path}\\syncwatch_call_preview_$pid.jpg';
+      callPreviewFilePath = '${Directory.systemTemp.path}\\syncwatch_call_preview_$pid.png';
       callPreviewTimer?.cancel();
       callPreviewTimer = Timer.periodic(
         const Duration(milliseconds: 350),
