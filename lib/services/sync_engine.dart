@@ -3,9 +3,17 @@ import 'dart:typed_data';
 
 import 'package:livekit_client/livekit_client.dart';
 
+class SharedMediaDescriptor {
+  const SharedMediaDescriptor({required this.movieId, required this.fingerprint});
+  final String movieId;
+  final String fingerprint;
+  Map<String, String> toJson() => {'movieId': movieId, 'fingerprint': fingerprint};
+}
+
 abstract class SyncEngine {
   Future<void> connect();
   Future<void> setReady(bool ready);
+  Future<void> publishLibrary(List<SharedMediaDescriptor> media);
   Future<void> start(String mediaId, Duration position);
   Future<void> play();
   Future<void> pause();
@@ -45,6 +53,18 @@ class LiveKitSyncEngine implements SyncEngine {
   Future<void> connect() async {}
 
   @override
+  Future<void> publishLibrary(List<SharedMediaDescriptor> media) async {
+    await room.localParticipant?.publishData(
+      Uint8List.fromList(utf8.encode(jsonEncode({
+        'kind': 'library',
+        'items': media.map((item) => item.toJson()).toList(),
+        'sentAtMs': DateTime.now().millisecondsSinceEpoch,
+      }))),
+      reliable: true,
+    );
+  }
+
+  @override
   Future<void> setReady(bool ready) async {
     await room.localParticipant?.publishData(
       Uint8List.fromList(utf8.encode(jsonEncode({
@@ -80,6 +100,8 @@ class MockSyncEngine implements SyncEngine {
   Future<void> connect() async {}
   @override
   Future<void> setReady(bool ready) async {}
+  @override
+  Future<void> publishLibrary(List<SharedMediaDescriptor> media) async {}
   @override
   Future<void> play() async {}
   @override
