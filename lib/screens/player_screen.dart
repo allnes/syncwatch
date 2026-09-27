@@ -215,9 +215,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         if (mounted && syncNotice != null) setState(() => syncNotice = null);
       });
     });
-    widget.syncEngine.setPlaybackHandler((command) {
-      unawaited(_applyRemotePlaybackCommand(command));
-    });
+    widget.syncEngine.addPlaybackHandler(_onPlaybackCommand);
     widget.syncEngine.setRemoteLibraryHandler((remoteIds) {
       if (!mounted) return;
       final localIds = widget.playlist.map((movie) => movie.movieId).toSet();
@@ -313,6 +311,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       currentMovie.movieId,
       player.state.position,
     );
+  }
+
+  void _onPlaybackCommand(Map<String, dynamic> command) {
+    unawaited(_applyRemotePlaybackCommand(command));
   }
 
   void _onRemoteSession(Map<String, dynamic>? state) {
@@ -441,6 +443,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       persist: true,
     );
     widget.syncEngine.removeRemoteSessionHandler(_onRemoteSession);
+    widget.syncEngine.removePlaybackHandler(_onPlaybackCommand);
     // SyncEngine lifecycle is owned by LibraryScreen and shared with this player.
     _previewPlayer?.dispose();
     _previewVideoController = null;
