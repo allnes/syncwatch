@@ -250,12 +250,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Future<void> _publishLibraryToRoom() async {
     final room = callEngine.room;
     if (room == null) return;
-    final sync = LiveKitSyncEngine(
-      room: room,
-      mediaId: () => selected?.movieId ?? '',
-      position: () => Duration.zero,
-      isPlaying: () => showingPlayer,
-    );
+    final sync = roomSyncEngine;
+    if (sync == null) return;
     await sync.publishLibrary([
       for (final movie in movies)
         SharedMediaDescriptor(
