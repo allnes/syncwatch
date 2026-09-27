@@ -170,8 +170,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
       roomConnected = false;
       roomConnecting = false;
       roomConnectionError = null;
-      youReady = false;
-      partnerReady = false;
       remotePlaybackActive = false;
       remotePlaybackMovieId = null;
     });
@@ -808,7 +806,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 : widget.controller.t('callInactive'),
           ),
           const SizedBox(width: 22),
-          _readyStatusChip(),
           const SizedBox(width: 12),
           if (callActive)
             IconButton(
@@ -1541,7 +1538,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
           const SizedBox(height: 14),
           _activityRow(widget.controller.t('friendJoined'), '20:15'),
-          _activityRow(widget.controller.t('friendReady'), '20:16'),
           _activityRow(widget.controller.t('movieSelected'), '20:17'),
         ],
       ),
