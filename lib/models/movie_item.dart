@@ -20,6 +20,21 @@ class MovieItem {
   final List<String> audioTrackNames;
   final List<String> subtitleTrackNames;
   final bool isFolderMovie;
+
+  // Logical identity used when comparing libraries across computers.
+  String get movieId {
+    var value = fileName.toLowerCase();
+    final dot = value.lastIndexOf('.');
+    if (dot > 0) value = value.substring(0, dot);
+    for (final separator in ['.', '_', '-']) {
+      value = value.replaceAll(separator, ' ');
+    }
+    return value.split(' ').where((part) => part.isNotEmpty).join(' ');
+  }
+
+  // Describes the local edition without exposing the local file path.
+  String get mediaFingerprint =>
+      '${duration.inMilliseconds}:${resolution.toLowerCase()}';
 }
 
 const demoMovies = <MovieItem>[
