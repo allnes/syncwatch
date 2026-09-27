@@ -197,7 +197,9 @@ class LiveKitSyncEngine implements SyncEngine {
           for (final handler in _remoteLibraryHandlers.toList()) {
             handler(ids);
           }
-        } catch (_) {}
+        } catch (error) {
+          _log('RX error=$error');
+        }
       });
   }
 
