@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:livekit_client/livekit_client.dart';
 
 import '../app.dart';
 import '../core/app_theme.dart';
@@ -61,6 +62,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String? callCommandFilePath;
   String? callPreviewFilePath;
   Timer? callCommandTimer;
+  Timer? callPreviewTimer;
   String? lastCallCommand;
   bool metadataLoading = false;
   String? metadataPath;
@@ -98,6 +100,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   void dispose() {
     trackMenuScrollController.dispose();
     callCommandTimer?.cancel();
+    callPreviewTimer?.cancel();
     callProcess?.kill();
     final commandPath = callCommandFilePath;
     if (commandPath != null) {
@@ -128,6 +131,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
       await commandFile.writeAsString('ready:0', flush: true);
       callCommandFilePath = commandFile.path;
       callPreviewFilePath = '${Directory.systemTemp.path}\\syncwatch_call_preview_$pid.jpg';
+      callPreviewTimer?.cancel();
+      callPreviewTimer = Timer.periodic(
+        const Duration(milliseconds: 350),
+        (_) => unawaited(_refreshCallPreview()),
+      );
       lastCallCommand = 'ready:0';
       callCommandTimer?.cancel();
       callCommandTimer = Timer.periodic(
@@ -157,6 +165,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
           callPreviewFilePath = null;
           callCommandTimer?.cancel();
           callCommandTimer = null;
+          callPreviewTimer?.cancel();
+          callPreviewTimer = null;
         });
       });
     } catch (_) {
@@ -191,6 +201,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
     } catch (_) {}
   }
 
+
+  Future<void> _refreshCallPreview() async {
+    if (!cameraEnabled) return;
+    final track = callEngine.localVideoTrack;
+    final path = callPreviewFilePath;
+    if (track == null || path == null) return;
+    try {
+      final frame = await track.captureFrame();
+      if (frame == null) return;
+      await File(path).writeAsBytes(frame, flush: true);
+    } catch (_) {}
+  }
 
   Future<void> _publishLibraryToRoom() async {
     final room = callEngine.room;
