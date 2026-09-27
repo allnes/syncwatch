@@ -1999,7 +1999,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
     try {
       await player.seek(duration);
-      await widget.syncEngine.seekTo(duration);
+      if (!_applyingRemoteCommand) {
+        await widget.syncEngine.seekTo(duration);
+      }
     } finally {
       _seekInFlight = false;
 
