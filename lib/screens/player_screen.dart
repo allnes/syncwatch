@@ -222,7 +222,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       setState(() => sharedMovieIds = localIds.intersection(remoteIds));
     });
     _openMedia();
-    widget.syncEngine.connect();
+    widget.syncEngine.connect().then((_) {
+      unawaited(widget.syncEngine.requestPlaybackState());
+    });
     if (widget.controller.autoReady) {
       widget.syncEngine.setReady(true);
     }
@@ -346,7 +348,15 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
     _applyingRemoteCommand = true;
     try {
-      if (type == 'START' || type == 'SEEK') {
+      if (type == 'STATE') {
+        await player.seek(target);
+        final remotePlaying = command['playing'];
+        if (remotePlaying == true) {
+          await player.play();
+        } else if (remotePlaying == false) {
+          await player.pause();
+        }
+      } else if (type == 'START' || type == 'SEEK') {
         await player.seek(target);
       }
       if (type == 'START' || type == 'PLAY') {
