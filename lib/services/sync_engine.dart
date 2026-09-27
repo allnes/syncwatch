@@ -98,7 +98,9 @@ class LiveKitSyncEngine implements SyncEngine {
 
   @override
   Future<void> connect() async {
-    _listener ??= room.createListener()
+    if (_listener != null) return;
+    _log('LISTENER attach');
+    _listener = room.createListener()
       ..on<DataReceivedEvent>((event) {
         try {
           final payload = jsonDecode(utf8.decode(event.data));
@@ -352,6 +354,7 @@ class LiveKitSyncEngine implements SyncEngine {
 
   @override
   Future<void> dispose() async {
+    _log('LISTENER dispose');
     _listener?.dispose();
     _listener = null;
     _remoteLibraryHandler = null;
