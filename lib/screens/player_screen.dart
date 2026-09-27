@@ -308,7 +308,27 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   ) async {
     if (_applyingRemoteCommand) return;
     final mediaId = command['mediaId'];
-    if (mediaId is! String || mediaId != currentMovie.movieId) return;
+    if (mediaId is! String) return;
+    if (mediaId != currentMovie.movieId) {
+      if (command['type'] != 'START') return;
+      final index = widget.playlist.indexWhere((movie) => movie.movieId == mediaId);
+      if (index < 0) {
+        debugPrint('[SyncWatch][SYNC] MEDIA_MISSING media=$mediaId');
+        return;
+      }
+      final nextMovie = widget.playlist[index];
+      setState(() {
+        currentIndex = index;
+        currentMovie = nextMovie;
+        positionSeconds = 0;
+        durationSeconds = 0;
+      });
+      widget.onMovieChanged?.call(nextMovie);
+      await player.open(
+        Media(Uri.file(nextMovie.fullPath).toString()),
+        play: false,
+      );
+    }
     final type = command['type'];
     final positionMs = command['positionMs'];
     final target = positionMs is int
