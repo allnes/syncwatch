@@ -169,12 +169,6 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setAutoReady(bool value) {
-    autoReady = value;
-    _setBool('autoReady', value);
-    notifyListeners();
-  }
-
   void setDucking(bool value) {
     ducking = value;
     _setBool('ducking', value);
