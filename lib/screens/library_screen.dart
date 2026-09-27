@@ -9,6 +9,7 @@ import '../app.dart';
 import '../core/app_theme.dart';
 import '../models/movie_item.dart';
 import '../services/call_engine.dart';
+import '../services/livekit_connection.dart';
 import '../services/sync_engine.dart';
 import 'player_screen.dart';
 import 'settings_screen.dart';
@@ -64,7 +65,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool cameraEnabled = true;
   bool youReady = true;
   bool partnerReady = true;
-  final CallEngine callEngine = MockCallEngine();
+  late final CallEngine callEngine;
   int selectedAudioIndex = 0;
   int selectedSubtitleIndex = 0;
   String? expandedTrackMenu;
@@ -81,6 +82,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
   @override
   void initState() {
     super.initState();
+    callEngine = LiveKitCallEngine(
+      connection: LiveKitConnection(backendUrl: 'http://127.0.0.1:8787'),
+      roomName: 'syncwatch-dev',
+      identity: 'syncwatch-user',
+      participantName: 'SyncWatch User',
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) => _scanLibrary());
   }
 
