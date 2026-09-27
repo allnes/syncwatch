@@ -10,6 +10,8 @@ class SharedMediaDescriptor {
   Map<String, String> toJson() => {'movieId': movieId, 'fingerprint': fingerprint};
 }
 
+typedef RemoteLibraryHandler = void Function(Set<String> movieIds);
+
 abstract class SyncEngine {
   Future<void> connect();
   Future<void> setReady(bool ready);
@@ -18,6 +20,7 @@ abstract class SyncEngine {
   Future<void> play();
   Future<void> pause();
   Future<void> seekTo(Duration position);
+  void setRemoteLibraryHandler(RemoteLibraryHandler? handler);
   Future<void> dispose();
 }
 
@@ -32,6 +35,8 @@ class LiveKitSyncEngine implements SyncEngine {
   final String Function() mediaId;
   final Duration Function() position;
   int _revision = 0;
+  RemoteLibraryHandler? _remoteLibraryHandler;
+  EventsListener<RoomEvent>? _listener;
 
   Future<void> _publish(String type, {bool? playing}) async {
     final payload = <String, Object?>{
@@ -50,7 +55,23 @@ class LiveKitSyncEngine implements SyncEngine {
   }
 
   @override
-  Future<void> connect() async {}
+  Future<void> connect() async {
+    _listener ??= room.createListener()
+      ..on<DataReceivedEvent>((event) {
+        try {
+          final payload = jsonDecode(utf8.decode(event.data));
+          if (payload is! Map<String, dynamic> || payload['kind'] != 'library') return;
+          final items = payload['items'];
+          if (items is! List) return;
+          final ids = items
+              .whereType<Map>()
+              .map((item) => item['movieId'])
+              .whereType<String>()
+              .toSet();
+          _remoteLibraryHandler?.call(ids);
+        } catch (_) {}
+      });
+  }
 
   @override
   Future<void> publishLibrary(List<SharedMediaDescriptor> media) async {
@@ -90,7 +111,15 @@ class LiveKitSyncEngine implements SyncEngine {
   Future<void> seekTo(Duration position) => _publish('SEEK');
 
   @override
-  Future<void> dispose() async {}
+  void setRemoteLibraryHandler(RemoteLibraryHandler? handler) {
+    _remoteLibraryHandler = handler;
+  }
+
+  @override
+  Future<void> dispose() async {
+    await _listener?.dispose();
+    _listener = null;
+  }
 }
 
 class MockSyncEngine implements SyncEngine {
@@ -108,6 +137,8 @@ class MockSyncEngine implements SyncEngine {
   Future<void> pause() async {}
   @override
   Future<void> seekTo(Duration position) async {}
+  @override
+  void setRemoteLibraryHandler(RemoteLibraryHandler? handler) {}
   @override
   Future<void> dispose() async {}
 }
