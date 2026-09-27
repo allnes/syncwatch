@@ -248,9 +248,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
       isPlaying: () => showingPlayer,
     );
     sync.setRemoteSessionHandler(_handleRemoteSession);
+    sync.setLibraryProvider(() => [
+      for (final movie in movies)
+        SharedMediaDescriptor(
+          movieId: movie.movieId,
+          fingerprint: movie.mediaFingerprint,
+        ),
+    ]);
     await sync.connect();
     roomSyncEngine = sync;
     await sync.requestPlaybackState();
+    await sync.requestLibrary();
   }
 
   Future<void> _refreshCallPreview() async {
