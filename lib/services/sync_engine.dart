@@ -391,6 +391,7 @@ class LiveKitSyncEngine implements SyncEngine {
     _mediaMissingHandler = null;
     _remoteSessionHandler = null;
     _remoteLibraryHandlers.clear();
+    _libraryProvider = null;
     _playbackHandlers.clear();
     _mediaMissingHandlers.clear();
     _remoteSessionHandlers.clear();
