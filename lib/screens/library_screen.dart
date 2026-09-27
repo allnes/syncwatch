@@ -1574,7 +1574,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _endActivePlaybackSession() async {
-    if (activePlayerMovie == null) return;
+    if (activePlayerMovie == null && !remotePlaybackActive) return;
+    await roomSyncEngine?.endSession();
 
     if (mounted) {
       setState(() {
