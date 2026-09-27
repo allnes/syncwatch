@@ -76,6 +76,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   EventsListener<RoomEvent>? roomPresenceListener;
   bool partnerOnline = false;
   bool roomReconnecting = false;
+  bool playbackConnectionInterrupted = false;
+  String? playbackConnectionMessage;
   final List<String> roomDiagnostics = <String>[];
   final List<({String text, DateTime time})> roomActivity = [];
   int selectedAudioIndex = 0;
@@ -182,12 +184,24 @@ class _LibraryScreenState extends State<LibraryScreen> {
       ..on<ParticipantDisconnectedEvent>((event) {
         _roomLog('participant left identity=${event.participant.identity}');
         if (!mounted) return;
-        setState(() => partnerOnline = room.remoteParticipants.isNotEmpty);
+        setState(() {
+          partnerOnline = room.remoteParticipants.isNotEmpty;
+          if (!partnerOnline && activePlayerMovie != null) {
+            playbackConnectionInterrupted = true;
+            playbackConnectionMessage = 'Собеседник отключился. Воспроизведение приостановлено.';
+          }
+        });
       })
       ..on<RoomReconnectingEvent>((_) {
         _roomLog('RECONNECTING');
         if (!mounted) return;
-        setState(() => roomReconnecting = true);
+        setState(() {
+          roomReconnecting = true;
+          if (activePlayerMovie != null) {
+            playbackConnectionInterrupted = true;
+            playbackConnectionMessage = 'Переподключение… Воспроизведение приостановлено.';
+          }
+        });
       })
       ..on<RoomReconnectedEvent>((_) {
         _roomLog('RECONNECTED');
@@ -196,6 +210,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
           roomReconnecting = false;
           roomConnected = true;
           partnerOnline = room.remoteParticipants.isNotEmpty;
+          playbackConnectionInterrupted = false;
+          playbackConnectionMessage = null;
         });
       })
       ..on<RoomDisconnectedEvent>((event) {
@@ -207,6 +223,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
           roomReconnecting = false;
           partnerOnline = false;
           roomConnectionError = event.reason?.toString();
+          if (activePlayerMovie != null) {
+            playbackConnectionInterrupted = true;
+            playbackConnectionMessage = 'Соединение потеряно. Подключитесь к комнате снова.';
+          }
         });
       });
     partnerOnline = room.remoteParticipants.isNotEmpty;
@@ -259,6 +279,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
       roomConnectionError = null;
       remotePlaybackActive = false;
       remotePlaybackMovieId = null;
+      playbackConnectionInterrupted = false;
+      playbackConnectionMessage = null;
       partnerOnline = false;
       roomReconnecting = false;
     });
@@ -841,6 +863,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 onReturnHome: _showLibraryFromPlayer,
                 onMovieChanged: _handlePlayerMovieChanged,
                 onEndWatching: () => _endActivePlaybackSession(broadcast: false),
+                connectionInterrupted: playbackConnectionInterrupted,
+                connectionMessage: playbackConnectionMessage,
                 active: showingPlayer,
               );
 
