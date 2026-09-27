@@ -117,7 +117,7 @@ class LiveKitSyncEngine implements SyncEngine {
 
   @override
   Future<void> dispose() async {
-    await _listener?.dispose();
+    _listener?.dispose();
     _listener = null;
   }
 }
