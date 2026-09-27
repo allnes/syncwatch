@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
@@ -18,6 +19,7 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
   Room? room;
   String status = 'Connecting…';
   String participants = '';
+  final List<String> events = <String>[];
 
   @override
   void initState() {
@@ -33,6 +35,16 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
         participantName: 'PartnerBot',
       );
       connectedRoom.addListener(_refresh);
+      connectedRoom.createListener()..on<DataReceivedEvent>((event) {
+        try {
+          final decoded = utf8.decode(event.data);
+          if (!mounted) return;
+          setState(() {
+            events.insert(0, decoded);
+            if (events.length > 8) events.removeLast();
+          });
+        } catch (_) {}
+      });
       room = connectedRoom;
       _refresh();
     } catch (error) {
@@ -82,6 +94,11 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
                   style: const TextStyle(color: Colors.white54),
                   textAlign: TextAlign.center,
                 ),
+                const SizedBox(height: 18),
+                const Text('Data channel', style: TextStyle(color: Colors.white70)),
+                const SizedBox(height: 8),
+                for (final event in events)
+                  Text(event, style: const TextStyle(color: Colors.white54, fontSize: 11), textAlign: TextAlign.center),
               ],
             ),
           ),
