@@ -24,6 +24,8 @@ abstract class SyncEngine {
   Future<void> pause();
   Future<void> seekTo(Duration position);
   void setRemoteLibraryHandler(RemoteLibraryHandler? handler);
+  void addRemoteLibraryHandler(RemoteLibraryHandler handler);
+  void removeRemoteLibraryHandler(RemoteLibraryHandler handler);
   void setPlaybackHandler(PlaybackHandler? handler);
   void addPlaybackHandler(PlaybackHandler handler);
   void removePlaybackHandler(PlaybackHandler handler);
@@ -59,6 +61,7 @@ class LiveKitSyncEngine implements SyncEngine {
     print('[SyncWatch][SYNC][$now] $message');
   }
   RemoteLibraryHandler? _remoteLibraryHandler;
+  final Set<RemoteLibraryHandler> _remoteLibraryHandlers = {};
   PlaybackHandler? _playbackHandler;
   final Set<PlaybackHandler> _playbackHandlers = {};
   MediaMissingHandler? _mediaMissingHandler;
@@ -160,6 +163,9 @@ class LiveKitSyncEngine implements SyncEngine {
               .whereType<String>()
               .toSet();
           _remoteLibraryHandler?.call(ids);
+          for (final handler in _remoteLibraryHandlers.toList()) {
+            handler(ids);
+          }
         } catch (_) {}
       });
   }
@@ -269,6 +275,16 @@ class LiveKitSyncEngine implements SyncEngine {
   }
 
   @override
+  void addRemoteLibraryHandler(RemoteLibraryHandler handler) {
+    _remoteLibraryHandlers.add(handler);
+  }
+
+  @override
+  void removeRemoteLibraryHandler(RemoteLibraryHandler handler) {
+    _remoteLibraryHandlers.remove(handler);
+  }
+
+  @override
   void setPlaybackHandler(PlaybackHandler? handler) {
     _playbackHandler = handler;
   }
@@ -333,6 +349,10 @@ class MockSyncEngine implements SyncEngine {
   Future<void> seekTo(Duration position) async {}
   @override
   void setRemoteLibraryHandler(RemoteLibraryHandler? handler) {}
+  @override
+  void addRemoteLibraryHandler(RemoteLibraryHandler handler) {}
+  @override
+  void removeRemoteLibraryHandler(RemoteLibraryHandler handler) {}
   @override
   void setPlaybackHandler(PlaybackHandler? handler) {}
   @override
