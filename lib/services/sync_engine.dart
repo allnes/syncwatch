@@ -128,7 +128,8 @@ class LiveKitSyncEngine implements SyncEngine {
             final type = payload['type'];
             if ((type == 'START' || type == 'STATE') && remoteSession is String) {
               final localSession = _sessionId;
-              if (localSession == null || remoteSession.compareTo(localSession) < 0) {
+              if (localSession == null ||
+                  (type == 'START' && remoteSession.compareTo(localSession) < 0)) {
                 _sessionId = remoteSession;
                 _lastRemoteRevision = 0;
                 _log('SESSION accepted id=$remoteSession');
