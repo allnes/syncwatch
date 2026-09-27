@@ -58,8 +58,20 @@ class LiveKitCallEngine implements CallEngine {
       participantName: participantName,
     );
     _room = room;
-    await room.localParticipant?.setMicrophoneEnabled(_microphoneEnabled);
-    await room.localParticipant?.setCameraEnabled(_cameraEnabled);
+    try {
+      await room.localParticipant?.setMicrophoneEnabled(_microphoneEnabled);
+      _log('MIC publish ok enabled=$_microphoneEnabled');
+    } catch (error) {
+      _log('MIC publish failed error=$error');
+      rethrow;
+    }
+    try {
+      await room.localParticipant?.setCameraEnabled(_cameraEnabled);
+      _log('CAMERA publish ok enabled=$_cameraEnabled');
+    } catch (error) {
+      _log('CAMERA publish failed error=$error');
+      rethrow;
+    }
     final publications = room.localParticipant?.videoTrackPublications ?? const [];
     _log('JOINED mic=$_microphoneEnabled camera=$_cameraEnabled videoPublications=${publications.length} videoTrack=${localVideoTrack != null}');
   }
@@ -75,7 +87,13 @@ class LiveKitCallEngine implements CallEngine {
   Future<void> setCameraEnabled(bool enabled) async {
     _cameraEnabled = enabled;
     _log('CAMERA enabled=$enabled');
-    await _room?.localParticipant?.setCameraEnabled(enabled);
+    try {
+      await _room?.localParticipant?.setCameraEnabled(enabled);
+      _log('CAMERA toggle ok enabled=$enabled');
+    } catch (error) {
+      _log('CAMERA toggle failed error=$error');
+      rethrow;
+    }
   }
 
   @override
