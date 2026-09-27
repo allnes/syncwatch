@@ -110,7 +110,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     var index = currentIndex + direction;
     while (index >= 0 && index < widget.playlist.length) {
       final allowed = sharedMovieIds;
-      if (allowed == null || allowed.contains(widget.playlist[index].movieId)) {
+      if (allowed == null) return null;
+      if (allowed.contains(widget.playlist[index].movieId)) {
         return index;
       }
       index += direction;
