@@ -1,6 +1,7 @@
 abstract class SyncEngine {
   Future<void> connect();
   Future<void> setReady(bool ready);
+  Future<void> start(String mediaId, Duration position);
   Future<void> play();
   Future<void> pause();
   Future<void> seekTo(Duration position);
@@ -8,6 +9,8 @@ abstract class SyncEngine {
 }
 
 class MockSyncEngine implements SyncEngine {
+  @override
+  Future<void> start(String mediaId, Duration position) async {}
   @override
   Future<void> connect() async {}
 
