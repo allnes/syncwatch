@@ -1529,7 +1529,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               const Spacer(),
               Icon(Icons.circle,
                   size: 9,
-                  color: roomConnected ? syncSuccess : Colors.white38),
+                  color: roomConnected && !roomReconnecting ? syncSuccess : Colors.white38),
               const SizedBox(width: 6),
               Text(status, style: TextStyle(color: _secondaryText)),
             ],
@@ -1586,7 +1586,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: !roomConnected
+                  onPressed: !roomConnected || roomReconnecting
                       ? null
                       : callActive
                           ? _focusCallWindow
