@@ -71,6 +71,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool youReady = true;
   bool partnerReady = true;
   late final CallEngine callEngine;
+  LiveKitSyncEngine? roomSyncEngine;
   int selectedAudioIndex = 0;
   int selectedSubtitleIndex = 0;
   String? expandedTrackMenu;
@@ -111,6 +112,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         File(commandPath).deleteSync();
       } catch (_) {}
     }
+    roomSyncEngine?.dispose();
     if (callActive) {
       callEngine.leave();
     }
@@ -179,6 +181,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
     if (!mounted) return;
     setState(() => callActive = true);
+    await _attachRoomSync();
     await _publishLibraryToRoom();
   }
 
@@ -204,6 +207,30 @@ class _LibraryScreenState extends State<LibraryScreen> {
     } catch (_) {}
   }
 
+
+  Future<void> _attachRoomSync() async {
+    final room = callEngine.room;
+    if (room == null) return;
+    await roomSyncEngine?.dispose();
+    final sync = LiveKitSyncEngine(
+      room: room,
+      mediaId: () => activePlayerMovie?.movieId ?? remotePlaybackMovieId ?? '',
+      position: () => Duration(
+        milliseconds: activePlayerMovie == null
+            ? remotePlaybackPositionMs
+            : (widget.controller.playbackPositionFor(
+                        activePlayerMovie!.fullPath,
+                      ) *
+                    1000)
+                .round(),
+      ),
+      isPlaying: () => showingPlayer,
+    );
+    sync.setRemoteSessionHandler(_handleRemoteSession);
+    await sync.connect();
+    roomSyncEngine = sync;
+    await sync.requestPlaybackState();
+  }
 
   Future<void> _refreshCallPreview() async {
     if (!cameraEnabled) return;
