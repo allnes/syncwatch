@@ -28,6 +28,9 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
   EventsListener<RoomEvent>? roomEvents;
   int playbackRevision = 0;
   String? playbackSessionId;
+  String playbackMediaId = '';
+  int playbackPositionMs = 0;
+  bool playbackPlaying = false;
 
   @override
   void initState() {
@@ -73,6 +76,12 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
                   revision > playbackRevision) {
                 playbackRevision = revision;
               }
+              final media = payload['mediaId'];
+              final position = payload['positionMs'];
+              final playing = payload['playing'];
+              if (media is String) playbackMediaId = media;
+              if (position is int) playbackPositionMs = position;
+              if (playing is bool) playbackPlaying = playing;
               if (type == 'END' && session == playbackSessionId) {
                 playbackSessionId = null;
               }
@@ -87,9 +96,9 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
                   'type': 'STATE',
                   'sessionId': session,
                   'revision': ++playbackRevision,
-                  'mediaId': 'alien 1979 directors cut',
-                  'positionMs': 0,
-                  'playing': false,
+                  'mediaId': playbackMediaId,
+                  'positionMs': playbackPositionMs,
+                  'playing': playbackPlaying,
                   'sentAtMs': DateTime.now().millisecondsSinceEpoch,
                 })),
                 reliable: true,
