@@ -185,12 +185,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
       await sync.requestPlaybackState();
       await sync.requestLibrary();
     }
-    if (!mounted) return;
-    setState(() {
-      playbackConnectionInterrupted = false;
-      playbackConnectionMessage = null;
-    });
-    await _sendCallConnectionNotice(null);
     _roomLog('partner resync requested');
   }
 
@@ -1799,6 +1793,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ? state!['sentAtMs'] as int
           : 0;
       remotePlaybackPlaying = state?['playing'] == true;
+      if (state != null && partnerOnline) {
+        playbackConnectionInterrupted = false;
+        playbackConnectionMessage = null;
+        unawaited(_sendCallConnectionNotice(null));
+      }
     });
   }
 
