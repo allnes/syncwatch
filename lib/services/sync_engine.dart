@@ -214,6 +214,7 @@ class LiveKitSyncEngine implements SyncEngine {
         mediaIdOverride: mediaId,
         positionOverride: position,
       );
+  }
 
   @override
   Future<void> endSession() async {
@@ -265,7 +266,10 @@ class LiveKitSyncEngine implements SyncEngine {
   }
 
   @override
-  Future<void> play() => _publish('PLAY', playing: true);
+  Future<void> play() {
+    _playingOverride = true;
+    return _publish('PLAY', playing: true);
+  }
 
   @override
   Future<void> pause() {
