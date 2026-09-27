@@ -74,6 +74,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   double? _queuedSeekTarget;
   bool _seekInFlight = false;
   bool _applyingRemoteCommand = false;
+  int _remoteCommandSerial = 0;
 
   Player? _previewPlayer;
   VideoController? _previewVideoController;
@@ -318,7 +319,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   }
 
   void _onPlaybackCommand(Map<String, dynamic> command) {
-    unawaited(_applyRemotePlaybackCommand(command));
+    final serial = ++_remoteCommandSerial;
+    unawaited(_applyRemotePlaybackCommand(command, serial));
   }
 
   void _onRemoteSession(Map<String, dynamic>? state) {
@@ -328,8 +330,13 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
   Future<void> _applyRemotePlaybackCommand(
     Map<String, dynamic> command,
+    int serial,
   ) async {
-    if (_applyingRemoteCommand) return;
+    while (_applyingRemoteCommand) {
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      if (serial != _remoteCommandSerial) return;
+    }
+    if (serial != _remoteCommandSerial) return;
     final mediaId = command['mediaId'];
     if (mediaId is! String) return;
     if (mediaId != currentMovie.movieId) {
