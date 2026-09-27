@@ -171,6 +171,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
+  Future<void> _sendCallConnectionNotice(String? message) async {
+    final path = callCommandFilePath;
+    if (!callActive || path == null) return;
+    try {
+      await File(path).writeAsString(
+        'connection:${message ?? 'ok'}',
+        flush: true,
+      );
+    } catch (_) {}
+  }
+
   void _attachRoomPresence() {
     final room = callEngine.room;
     if (room == null) return;
@@ -183,6 +194,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       })
       ..on<ParticipantDisconnectedEvent>((event) {
         _roomLog('participant left identity=${event.participant.identity}');
+        unawaited(_sendCallConnectionNotice('Собеседник отключился. Ожидаем повторного подключения…'));
         if (!mounted) return;
         setState(() {
           partnerOnline = room.remoteParticipants.isNotEmpty;
@@ -194,6 +206,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       })
       ..on<RoomReconnectingEvent>((_) {
         _roomLog('RECONNECTING');
+        unawaited(_sendCallConnectionNotice('Переподключение…'));
         if (!mounted) return;
         setState(() {
           roomReconnecting = true;
@@ -205,6 +218,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       })
       ..on<RoomReconnectedEvent>((_) {
         _roomLog('RECONNECTED');
+        unawaited(_sendCallConnectionNotice(null));
         if (!mounted) return;
         setState(() {
           roomReconnecting = false;
@@ -216,6 +230,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       })
       ..on<RoomDisconnectedEvent>((event) {
         _roomLog('DISCONNECTED reason=${event.reason}');
+        unawaited(_sendCallConnectionNotice('Соединение потеряно. Подключитесь к комнате снова.'));
         if (!mounted) return;
         setState(() {
           roomConnected = false;
