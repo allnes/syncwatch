@@ -1544,6 +1544,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: _secondaryText, fontSize: 12)),
           ],
+          if (roomConnectionError != null || roomDiagnostics.isNotEmpty)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _showRoomDiagnostics,
+                icon: const Icon(Icons.bug_report_outlined, size: 16),
+                label: const Text('Подробнее'),
+              ),
+            ),
           const SizedBox(height: 8),
           if (roomConnected) ...[
             _memberRow(widget.controller.t('you'), true),
