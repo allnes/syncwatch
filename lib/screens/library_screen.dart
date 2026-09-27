@@ -83,6 +83,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String activePlayerSubtitleTrack = '';
   int playerSessionId = 0;
   bool showingPlayer = false;
+  bool remotePlaybackActive = false;
+  String? remotePlaybackMovieId;
+  int remotePlaybackPositionMs = 0;
 
   @override
   void initState() {
@@ -1052,7 +1055,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
               onPressed: () => _openPlayer(movie),
               icon: const Icon(Icons.play_arrow_rounded),
               label: Text(
-                _isLivePlaybackMovie(movie)
+                (_isLivePlaybackMovie(movie) ||
+                        (remotePlaybackActive && remotePlaybackMovieId == movie.movieId))
                     ? widget.controller.t('continueWatching')
                     : widget.controller.t('startWatching'),
               ),
@@ -1501,6 +1505,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ),
       ],
     );
+  }
+
+  void _handleRemoteSession(Map<String, dynamic>? state) {
+    if (!mounted) return;
+    setState(() {
+      remotePlaybackActive = state != null;
+      remotePlaybackMovieId = state?['mediaId'] as String?;
+      remotePlaybackPositionMs = state?['positionMs'] is int
+          ? state!['positionMs'] as int
+          : 0;
+    });
   }
 
   Future<void> _endActivePlaybackSession() async {
