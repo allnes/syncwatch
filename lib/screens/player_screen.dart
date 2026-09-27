@@ -30,6 +30,8 @@ class PlayerScreen extends StatefulWidget {
     this.onReturnHome,
     this.onMovieChanged,
     this.onEndWatching,
+    this.connectionInterrupted = false,
+    this.connectionMessage,
     this.active = true,
   });
 
@@ -44,6 +46,8 @@ class PlayerScreen extends StatefulWidget {
   final Future<void> Function()? onReturnHome;
   final ValueChanged<MovieItem>? onMovieChanged;
   final Future<void> Function()? onEndWatching;
+  final bool connectionInterrupted;
+  final String? connectionMessage;
   final bool active;
 
   @override
@@ -74,6 +78,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   double? _queuedSeekTarget;
   bool _seekInFlight = false;
   bool _applyingRemoteCommand = false;
+  bool _pausedForConnectionLoss = false;
   int _remoteCommandSerial = 0;
 
   Player? _previewPlayer;
@@ -218,9 +223,27 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     });
   }
 
+  Future<void> _handleConnectionInterruption() async {
+    if (!widget.connectionInterrupted || _pausedForConnectionLoss) return;
+    _pausedForConnectionLoss = true;
+    await player.pause();
+    widget.controller.updatePlaybackPosition(
+      currentMovie.fullPath,
+      player.state.position.inMilliseconds / 1000.0,
+      persist: true,
+    );
+    debugPrint('[SyncWatch][SYNC] local playback paused for connection loss');
+  }
+
   @override
   void didUpdateWidget(covariant PlayerScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!oldWidget.connectionInterrupted && widget.connectionInterrupted) {
+      unawaited(_handleConnectionInterruption());
+    } else if (oldWidget.connectionInterrupted && !widget.connectionInterrupted) {
+      _pausedForConnectionLoss = false;
+      unawaited(widget.syncEngine.requestPlaybackState());
+    }
 
     if (oldWidget.active == widget.active) return;
 
@@ -504,6 +527,28 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             },
             child: Stack(
               children: [
+                if (widget.connectionInterrupted)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: ColoredBox(
+                        color: Colors.black54,
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: Colors.black87,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              widget.connectionMessage ?? 'Соединение потеряно. Воспроизведение приостановлено.',
+                              style: const TextStyle(color: Colors.white, fontSize: 16),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 if (syncNotice != null)
                   Positioned(
                     top: 86,
