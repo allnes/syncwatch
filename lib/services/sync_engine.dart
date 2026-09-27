@@ -25,6 +25,7 @@ abstract class SyncEngine {
   void setRemoteLibraryHandler(RemoteLibraryHandler? handler);
   void setPlaybackHandler(PlaybackHandler? handler);
   Future<void> mediaMissing(String mediaId);
+  Future<void> requestPlaybackState();
   void setMediaMissingHandler(MediaMissingHandler? handler);
   Future<void> dispose();
 }
@@ -81,6 +82,11 @@ class LiveKitSyncEngine implements SyncEngine {
           final payload = jsonDecode(utf8.decode(event.data));
           if (payload is! Map<String, dynamic>) return;
           _log('RX kind=${payload['kind']} from=${event.participant?.identity ?? 'server'} payload=${jsonEncode(payload)}');
+          if (payload['kind'] == 'state_request') {
+            _log('RX STATE_REQUEST; replying with current playback state');
+            _publish('STATE', playing: null);
+            return;
+          }
           if (payload['kind'] == 'media_missing') {
             final missingId = payload['mediaId'];
             if (missingId is String) _mediaMissingHandler?.call(missingId);
@@ -144,6 +150,18 @@ class LiveKitSyncEngine implements SyncEngine {
       );
 
   @override
+  Future<void> requestPlaybackState() async {
+    _log('TX STATE_REQUEST');
+    await room.localParticipant?.publishData(
+      utf8.encode(jsonEncode({
+        'kind': 'state_request',
+        'sentAtMs': DateTime.now().millisecondsSinceEpoch,
+      })),
+      reliable: true,
+    );
+  }
+
+  @override
   Future<void> mediaMissing(String mediaId) async {
     _log('TX MEDIA_MISSING media=$mediaId');
     await room.localParticipant?.publishData(
@@ -197,6 +215,8 @@ class MockSyncEngine implements SyncEngine {
   Future<void> setReady(bool ready) async {}
   @override
   Future<void> publishLibrary(List<SharedMediaDescriptor> media) async {}
+  @override
+  Future<void> requestPlaybackState() async {}
   @override
   Future<void> mediaMissing(String mediaId) async {}
   @override
