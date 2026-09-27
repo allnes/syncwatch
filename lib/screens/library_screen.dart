@@ -1461,83 +1461,105 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _roomCard() {
+    final status = roomConnecting
+        ? 'Подключение…'
+        : roomConnected
+            ? 'Подключено'
+            : roomConnectionError != null
+                ? 'Ошибка подключения'
+                : 'Не подключено';
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: _panelDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            widget.controller.t('roomStatus'),
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 7),
           Row(
             children: [
-              Icon(
-                Icons.groups_2_rounded,
-                color: _isLight ? syncAccent : syncAccentSoft,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  widget.controller.roomName,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-              _readyStatusChip(compact: true),
+              Text(widget.controller.t('roomStatus'),
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+              const Spacer(),
+              Icon(Icons.circle,
+                  size: 9,
+                  color: roomConnected ? syncSuccess : Colors.white38),
+              const SizedBox(width: 6),
+              Text(status, style: TextStyle(color: _secondaryText)),
             ],
           ),
+          const SizedBox(height: 7),
+          Text(widget.controller.roomName,
+              style: const TextStyle(fontWeight: FontWeight.w700)),
+          if (roomConnectionError != null) ...[
+            const SizedBox(height: 6),
+            Text(roomConnectionError!,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: _secondaryText, fontSize: 12)),
+          ],
           const SizedBox(height: 8),
-          _memberRow(widget.controller.t('you')),
-          const SizedBox(height: 5),
-          _memberRow(widget.controller.t('friend')),
+          if (roomConnected) ...[
+            _readyStatusChip(compact: true),
+            const SizedBox(height: 7),
+            _memberRow(widget.controller.t('you'), youReady),
+            const SizedBox(height: 5),
+            _memberRow(widget.controller.t('friend'), partnerReady),
+          ],
           const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(40),
-                padding: const EdgeInsets.symmetric(vertical: 9),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: roomConnecting
+                      ? null
+                      : roomConnected
+                          ? _disconnectRoom
+                          : _connectRoom,
+                  icon: Icon(roomConnected
+                      ? Icons.link_off_rounded
+                      : Icons.link_rounded),
+                  label: Text(roomConnected ? 'Отключиться' : 'Подключиться'),
+                ),
               ),
-              onPressed: callActive ? _focusCallWindow : _startCall,
-              icon: Icon(
-                callActive
-                    ? Icons.open_in_new_rounded
-                    : Icons.video_call_rounded,
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: !roomConnected
+                      ? null
+                      : callActive
+                          ? _focusCallWindow
+                          : _startCall,
+                  icon: Icon(callActive
+                      ? Icons.open_in_new_rounded
+                      : Icons.video_call_rounded),
+                  label: Text(callActive
+                      ? widget.controller.t('goToCall')
+                      : widget.controller.t('startCall')),
+                ),
               ),
-              label: Text(
-                callActive
-                    ? widget.controller.t('goToCall')
-                    : widget.controller.t('startCall'),
-              ),
-            ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _memberRow(String name) {
+  Widget _memberRow(String name, bool ready) {
     return Row(
       children: [
         CircleAvatar(
           radius: 12,
-          backgroundColor:
-              _isLight ? syncLightBackgroundDeep : syncSurfaceRaised,
-          child: Icon(
-            Icons.person_rounded,
-            size: 14,
-            color: _isLight ? syncAccent : Colors.white70,
-          ),
+          backgroundColor: _isLight ? syncLightBackgroundDeep : syncSurfaceRaised,
+          child: Icon(Icons.person_rounded,
+              size: 14, color: _isLight ? syncAccent : Colors.white70),
         ),
         const SizedBox(width: 9),
         Text(name),
         const Spacer(),
-        const Icon(Icons.circle, color: syncSuccess, size: 9),
+        Icon(ready ? Icons.circle : Icons.radio_button_unchecked_rounded,
+            color: ready ? syncSuccess : Colors.white38, size: 9),
         const SizedBox(width: 6),
         Text(
-          widget.controller.t('ready'),
+          ready ? widget.controller.t('ready') : widget.controller.t('notReady'),
           style: TextStyle(color: _secondaryText),
         ),
       ],
