@@ -25,6 +25,7 @@ abstract class SyncEngine {
   void setRemoteLibraryHandler(RemoteLibraryHandler? handler);
   void setPlaybackHandler(PlaybackHandler? handler);
   Future<void> mediaMissing(String mediaId);
+  void setMediaMissingHandler(MediaMissingHandler? handler);
   Future<void> dispose();
 }
 
@@ -47,6 +48,7 @@ class LiveKitSyncEngine implements SyncEngine {
   }
   RemoteLibraryHandler? _remoteLibraryHandler;
   PlaybackHandler? _playbackHandler;
+  MediaMissingHandler? _mediaMissingHandler;
   EventsListener<RoomEvent>? _listener;
 
   Future<void> _publish(
@@ -79,6 +81,11 @@ class LiveKitSyncEngine implements SyncEngine {
           final payload = jsonDecode(utf8.decode(event.data));
           if (payload is! Map<String, dynamic>) return;
           _log('RX kind=${payload['kind']} from=${event.participant?.identity ?? 'server'} payload=${jsonEncode(payload)}');
+          if (payload['kind'] == 'media_missing') {
+            final missingId = payload['mediaId'];
+            if (missingId is String) _mediaMissingHandler?.call(missingId);
+            return;
+          }
           if (payload['kind'] == 'playback') {
             final revision = payload['revision'];
             if (revision is int && revision <= _lastRemoteRevision) {
@@ -170,6 +177,11 @@ class LiveKitSyncEngine implements SyncEngine {
   }
 
   @override
+  void setMediaMissingHandler(MediaMissingHandler? handler) {
+    _mediaMissingHandler = handler;
+  }
+
+  @override
   Future<void> dispose() async {
     _listener?.dispose();
     _listener = null;
@@ -197,6 +209,8 @@ class MockSyncEngine implements SyncEngine {
   void setRemoteLibraryHandler(RemoteLibraryHandler? handler) {}
   @override
   void setPlaybackHandler(PlaybackHandler? handler) {}
+  @override
+  void setMediaMissingHandler(MediaMissingHandler? handler) {}
   @override
   Future<void> dispose() async {}
 }
