@@ -28,6 +28,7 @@ class LiveKitCallEngine implements CallEngine {
   bool _microphoneEnabled = true;
   bool _cameraEnabled = true;
 
+  @override
   Room? get room => _room;
   @override
   VideoTrack? get localVideoTrack {
