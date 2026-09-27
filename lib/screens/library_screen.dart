@@ -77,6 +77,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool partnerOnline = false;
   bool roomReconnecting = false;
   final List<String> roomDiagnostics = <String>[];
+  final List<({String text, DateTime time})> roomActivity = [];
   int selectedAudioIndex = 0;
   int selectedSubtitleIndex = 0;
   String? expandedTrackMenu;
@@ -139,6 +140,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
     debugPrint('[SyncWatch][ROOM] $message');
     roomDiagnostics.insert(0, line);
     if (roomDiagnostics.length > 40) roomDiagnostics.removeLast();
+    roomActivity.insert(0, (text: message, time: DateTime.now()));
+    if (roomActivity.length > 8) roomActivity.removeLast();
   }
 
   Future<void> _showRoomDiagnostics() async {
@@ -1641,22 +1644,30 @@ class _LibraryScreenState extends State<LibraryScreen> {
             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 14),
-          _activityRow(widget.controller.t('friendJoined'), '20:15'),
-          _activityRow(widget.controller.t('movieSelected'), '20:17'),
+          if (roomActivity.isEmpty)
+            Text('Событий пока нет', style: TextStyle(color: _secondaryText))
+          else
+            for (final event in roomActivity.take(5))
+              _activityRow(event.text, event.time),
         ],
       ),
     );
   }
 
-  Widget _activityRow(String text, String time) {
+  Widget _activityRow(String text, DateTime time) {
+    final hh = time.hour.toString().padLeft(2, '0');
+    final mm = time.minute.toString().padLeft(2, '0');
+    final ss = time.second.toString().padLeft(2, '0');
     return Padding(
       padding: const EdgeInsets.only(bottom: 11),
       child: Row(
         children: [
           const Icon(Icons.circle, size: 8, color: syncSuccess),
           const SizedBox(width: 10),
-          Expanded(child: Text(text)),
-          Text(time, style: TextStyle(color: _secondaryText)),
+          Expanded(
+            child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+          Text('$hh:$mm:$ss', style: TextStyle(color: _secondaryText)),
         ],
       ),
     );
