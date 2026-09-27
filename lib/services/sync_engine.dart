@@ -328,6 +328,11 @@ class LiveKitSyncEngine implements SyncEngine {
   }
 
   @override
+  void setLibraryProvider(LibraryProvider? provider) {
+    _libraryProvider = provider;
+  }
+
+  @override
   void setPlaybackHandler(PlaybackHandler? handler) {
     _playbackHandler = handler;
   }
@@ -417,6 +422,8 @@ class MockSyncEngine implements SyncEngine {
   void addRemoteLibraryHandler(RemoteLibraryHandler handler) {}
   @override
   void removeRemoteLibraryHandler(RemoteLibraryHandler handler) {}
+  @override
+  void setLibraryProvider(LibraryProvider? provider) {}
   @override
   void setPlaybackHandler(PlaybackHandler? handler) {}
   @override
