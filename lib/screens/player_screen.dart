@@ -314,6 +314,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       final index = widget.playlist.indexWhere((movie) => movie.movieId == mediaId);
       if (index < 0) {
         debugPrint('[SyncWatch][SYNC] MEDIA_MISSING media=$mediaId');
+        await widget.syncEngine.mediaMissing(mediaId);
         return;
       }
       final nextMovie = widget.playlist[index];
