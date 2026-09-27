@@ -195,7 +195,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
           callPreviewTimer = null;
         });
       });
-    } catch (_) {
+    } catch (error) {
+      debugPrint('[SyncWatch][CALL] START failed error=$error');
+      await roomSyncEngine?.dispose();
+      roomSyncEngine = null;
       await callEngine.leave();
       rethrow;
     }
