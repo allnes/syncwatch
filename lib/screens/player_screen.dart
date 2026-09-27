@@ -79,7 +79,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   bool _seekInFlight = false;
   bool _applyingRemoteCommand = false;
   bool _pausedForConnectionLoss = false;
-  bool _wasPlayingBeforeConnectionLoss = false;
   int _remoteCommandSerial = 0;
 
   Player? _previewPlayer;
@@ -227,7 +226,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   Future<void> _handleConnectionInterruption() async {
     if (!widget.connectionInterrupted || _pausedForConnectionLoss) return;
     _pausedForConnectionLoss = true;
-    _wasPlayingBeforeConnectionLoss = player.state.playing;
     await player.pause();
     widget.controller.updatePlaybackPosition(
       currentMovie.fullPath,
@@ -419,9 +417,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       } else if (type == 'PAUSE') {
         await player.seek(target);
         await player.pause();
-      }
-      if (type == 'STATE') {
-        _wasPlayingBeforeConnectionLoss = false;
       }
       if (mounted) {
         setState(() {
