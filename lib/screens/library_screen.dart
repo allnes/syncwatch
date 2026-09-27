@@ -87,6 +87,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool remotePlaybackActive = false;
   String? remotePlaybackMovieId;
   int remotePlaybackPositionMs = 0;
+  int remotePlaybackSentAtMs = 0;
+  bool remotePlaybackPlaying = false;
 
   @override
   void initState() {
@@ -1006,7 +1008,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (continuingRemote) {
       widget.controller.updatePlaybackPosition(
         movie.fullPath,
-        remotePlaybackPositionMs / 1000.0,
+        (_effectiveRemotePositionMs()) / 1000.0,
         persist: true,
       );
     }
@@ -1552,6 +1554,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
       remotePlaybackPositionMs = state?['positionMs'] is int
           ? state!['positionMs'] as int
           : 0;
+      remotePlaybackSentAtMs = state?['sentAtMs'] is int
+          ? state!['sentAtMs'] as int
+          : 0;
+      remotePlaybackPlaying = state?['playing'] == true;
     });
   }
 
@@ -1569,6 +1575,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
 
     widget.controller.endPlaybackSession();
+  }
+
+  int _effectiveRemotePositionMs() {
+    var position = remotePlaybackPositionMs;
+    if (remotePlaybackPlaying && remotePlaybackSentAtMs > 0) {
+      final elapsed = DateTime.now().millisecondsSinceEpoch - remotePlaybackSentAtMs;
+      if (elapsed > 0) position += elapsed;
+    }
+    return position;
   }
 
   Future<void> _openPlayer(MovieItem movie) async {
