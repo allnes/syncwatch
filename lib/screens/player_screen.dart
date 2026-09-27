@@ -438,7 +438,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       positionSeconds,
       persist: true,
     );
-    widget.syncEngine.dispose();
+    // SyncEngine lifecycle is owned by LibraryScreen and shared with this player.
     _previewPlayer?.dispose();
     _previewVideoController = null;
     player.dispose();
