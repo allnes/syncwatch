@@ -61,6 +61,7 @@ class _CallWindowState extends State<_CallWindow> {
   bool microphoneEnabled = true;
   bool cameraEnabled = true;
   bool fullscreen = false;
+  String? connectionNotice;
 
   @override
   void initState() {
@@ -117,6 +118,12 @@ class _CallWindowState extends State<_CallWindow> {
       if (command == lastCommand) return;
       lastCommand = command;
 
+      if (command.startsWith('connection:')) {
+        final value = command.substring('connection:'.length);
+        if (mounted) setState(() => connectionNotice = value == 'ok' ? null : value);
+        return;
+      }
+
       if (command.startsWith('restore:')) {
         await windowManager.show();
         await windowManager.setAlwaysOnTop(true);
@@ -131,6 +138,19 @@ class _CallWindowState extends State<_CallWindow> {
       backgroundColor: const Color(0xFF0B1C2B),
       body: Stack(
         children: [
+          if (connectionNotice != null)
+            Positioned.fill(
+              child: ColoredBox(
+                color: Colors.black54,
+                child: Center(
+                  child: Text(
+                    connectionNotice!,
+                    style: const TextStyle(color: Colors.white, fontSize: 15),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ),
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
