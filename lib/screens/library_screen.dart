@@ -108,6 +108,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
     callCommandTimer?.cancel();
     callPreviewTimer?.cancel();
     callProcess?.kill();
+    final previewPath = callPreviewFilePath;
+    if (previewPath != null) {
+      try {
+        File(previewPath).deleteSync();
+      } catch (_) {}
+    }
     final commandPath = callCommandFilePath;
     if (commandPath != null) {
       try {
@@ -169,6 +175,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
           callActive = false;
           callProcess = null;
           callCommandFilePath = null;
+          final previewPath = callPreviewFilePath;
+          if (previewPath != null) {
+            try {
+              File(previewPath).deleteSync();
+            } catch (_) {}
+          }
           callPreviewFilePath = null;
           callCommandTimer?.cancel();
           callCommandTimer = null;
