@@ -162,6 +162,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
     if (!mounted) return;
     setState(() => callActive = true);
+    await _publishLibraryToRoom();
   }
 
   Future<void> _pollCallCommand() async {
@@ -184,6 +185,24 @@ class _LibraryScreenState extends State<LibraryScreen> {
         cameraEnabled = camera;
       });
     } catch (_) {}
+  }
+
+
+  Future<void> _publishLibraryToRoom() async {
+    final room = callEngine.room;
+    if (room == null) return;
+    final sync = LiveKitSyncEngine(
+      room: room,
+      mediaId: () => selected?.movieId ?? '',
+      position: () => Duration.zero,
+    );
+    await sync.publishLibrary([
+      for (final movie in movies)
+        SharedMediaDescriptor(
+          movieId: movie.movieId,
+          fingerprint: movie.mediaFingerprint,
+        ),
+    ]);
   }
 
   Future<void> _focusCallWindow() async {
