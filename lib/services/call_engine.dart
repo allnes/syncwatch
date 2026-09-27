@@ -25,8 +25,8 @@ class LiveKitCallEngine implements CallEngine {
   final String participantName;
 
   Room? _room;
-  bool _microphoneEnabled = true;
-  bool _cameraEnabled = true;
+  bool _microphoneEnabled = false;
+  bool _cameraEnabled = false;
 
   @override
   Room? get room => _room;
