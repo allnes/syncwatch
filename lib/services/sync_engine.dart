@@ -35,6 +35,11 @@ class LiveKitSyncEngine implements SyncEngine {
   final String Function() mediaId;
   final Duration Function() position;
   int _revision = 0;
+
+  void _log(String message) {
+    final now = DateTime.now().toIso8601String();
+    print('[SyncWatch][SYNC][$now] $message');
+  }
   RemoteLibraryHandler? _remoteLibraryHandler;
   EventsListener<RoomEvent>? _listener;
 
@@ -48,6 +53,7 @@ class LiveKitSyncEngine implements SyncEngine {
       'playing': playing,
       'sentAtMs': DateTime.now().millisecondsSinceEpoch,
     };
+    _log('TX $type rev=${payload['revision']} media=${payload['mediaId']} posMs=${payload['positionMs']} playing=${payload['playing']}');
     await room.localParticipant?.publishData(
       Uint8List.fromList(utf8.encode(jsonEncode(payload))),
       reliable: true,
@@ -60,7 +66,9 @@ class LiveKitSyncEngine implements SyncEngine {
       ..on<DataReceivedEvent>((event) {
         try {
           final payload = jsonDecode(utf8.decode(event.data));
-          if (payload is! Map<String, dynamic> || payload['kind'] != 'library') return;
+          if (payload is! Map<String, dynamic>) return;
+          _log('RX kind=${payload['kind']} from=${event.participant?.identity ?? 'server'} payload=${jsonEncode(payload)}');
+          if (payload['kind'] != 'library') return;
           final items = payload['items'];
           if (items is! List) return;
           final ids = items
@@ -75,6 +83,7 @@ class LiveKitSyncEngine implements SyncEngine {
 
   @override
   Future<void> publishLibrary(List<SharedMediaDescriptor> media) async {
+    _log('TX library items=${media.length}');
     await room.localParticipant?.publishData(
       Uint8List.fromList(utf8.encode(jsonEncode({
         'kind': 'library',
@@ -87,6 +96,7 @@ class LiveKitSyncEngine implements SyncEngine {
 
   @override
   Future<void> setReady(bool ready) async {
+    _log('TX ready=$ready');
     await room.localParticipant?.publishData(
       Uint8List.fromList(utf8.encode(jsonEncode({
         'kind': 'ready',
