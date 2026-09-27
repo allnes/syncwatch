@@ -129,7 +129,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     roomPresenceListener?.dispose();
     roomPresenceListener = null;
     roomSyncEngine?.dispose();
-    if (callActive) {
+    if (roomConnected || callActive) {
       callEngine.leave();
     }
     super.dispose();
@@ -279,7 +279,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       final commandFile = File(
         '${Directory.systemTemp.path}\\syncwatch_call_$pid.cmd',
       );
-      await commandFile.writeAsString('ready:0', flush: true);
+      await commandFile.writeAsString('idle:0', flush: true);
       callCommandFilePath = commandFile.path;
       callPreviewFilePath = '${Directory.systemTemp.path}\\syncwatch_call_preview_$pid.png';
       callPreviewTimer?.cancel();
@@ -287,7 +287,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         const Duration(milliseconds: 350),
         (_) => unawaited(_refreshCallPreview()),
       );
-      lastCallCommand = 'ready:0';
+      lastCallCommand = 'idle:0';
       callCommandTimer?.cancel();
       callCommandTimer = Timer.periodic(
         const Duration(milliseconds: 120),
@@ -330,16 +330,23 @@ class _LibraryScreenState extends State<LibraryScreen> {
       });
     } catch (error) {
       debugPrint('[SyncWatch][CALL] START failed error=$error');
-      await roomSyncEngine?.dispose();
-      roomSyncEngine = null;
-      await callEngine.leave();
+      await callEngine.setMicrophoneEnabled(false);
+      await callEngine.setCameraEnabled(false);
+      if (mounted) {
+        setState(() {
+          callActive = false;
+          callProcess = null;
+          callCommandTimer?.cancel();
+          callCommandTimer = null;
+          callPreviewTimer?.cancel();
+          callPreviewTimer = null;
+        });
+      }
       rethrow;
     }
 
     if (!mounted) return;
     setState(() => callActive = true);
-    await _attachRoomSync();
-    await _publishLibraryToRoom();
   }
 
   Future<void> _pollCallCommand() async {
