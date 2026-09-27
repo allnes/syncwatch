@@ -13,6 +13,7 @@ class SharedMediaDescriptor {
 typedef RemoteLibraryHandler = void Function(Set<String> movieIds);
 typedef PlaybackHandler = void Function(Map<String, dynamic> command);
 typedef MediaMissingHandler = void Function(String mediaId);
+typedef RemoteSessionHandler = void Function(Map<String, dynamic>? state);
 
 abstract class SyncEngine {
   Future<void> connect();
@@ -28,6 +29,7 @@ abstract class SyncEngine {
   Future<void> requestPlaybackState();
   Future<void> endSession();
   void setMediaMissingHandler(MediaMissingHandler? handler);
+  void setRemoteSessionHandler(RemoteSessionHandler? handler);
   Future<void> dispose();
 }
 
@@ -55,6 +57,7 @@ class LiveKitSyncEngine implements SyncEngine {
   RemoteLibraryHandler? _remoteLibraryHandler;
   PlaybackHandler? _playbackHandler;
   MediaMissingHandler? _mediaMissingHandler;
+  RemoteSessionHandler? _remoteSessionHandler;
   EventsListener<RoomEvent>? _listener;
 
   Future<void> _publish(
@@ -122,7 +125,11 @@ class LiveKitSyncEngine implements SyncEngine {
             }
             if (revision is int) _lastRemoteRevision = revision;
             _playbackHandler?.call(payload);
+            if (type == 'START' || type == 'STATE') {
+              _remoteSessionHandler?.call(payload);
+            }
             if (type == 'END') {
+              _remoteSessionHandler?.call(null);
               _sessionId = null;
               _lastRemoteRevision = 0;
               _playingOverride = false;
@@ -257,6 +264,11 @@ class LiveKitSyncEngine implements SyncEngine {
   }
 
   @override
+  void setRemoteSessionHandler(RemoteSessionHandler? handler) {
+    _remoteSessionHandler = handler;
+  }
+
+  @override
   Future<void> dispose() async {
     _listener?.dispose();
     _listener = null;
@@ -290,6 +302,8 @@ class MockSyncEngine implements SyncEngine {
   void setPlaybackHandler(PlaybackHandler? handler) {}
   @override
   void setMediaMissingHandler(MediaMissingHandler? handler) {}
+  @override
+  void setRemoteSessionHandler(RemoteSessionHandler? handler) {}
   @override
   Future<void> dispose() async {}
 }
