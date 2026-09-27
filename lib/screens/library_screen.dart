@@ -224,6 +224,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
         setState(() => partnerOnline = true);
       })
       ..on<ParticipantDisconnectedEvent>((event) {
+        partnerResyncTimer?.cancel();
+        partnerResyncTimer = null;
         _roomLog('participant left identity=${event.participant.identity}');
         unawaited(_sendCallConnectionNotice('Собеседник отключился. Ожидаем повторного подключения…'));
         if (!mounted) return;
@@ -260,6 +262,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
         });
       })
       ..on<RoomDisconnectedEvent>((event) {
+        partnerResyncTimer?.cancel();
+        partnerResyncTimer = null;
         _roomLog('DISCONNECTED reason=${event.reason}');
         unawaited(_sendCallConnectionNotice('Соединение потеряно. Подключитесь к комнате снова.'));
         if (!mounted) return;
