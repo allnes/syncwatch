@@ -207,10 +207,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       }),
     );
 
-    widget.syncEngine.setRemoteSessionHandler((state) {
-      if (!mounted) return;
-      setState(() => remoteSessionActive = state != null);
-    });
+    widget.syncEngine.addRemoteSessionHandler(_onRemoteSession);
     widget.syncEngine.setMediaMissingHandler((mediaId) {
       if (!mounted) return;
       setState(() => syncNotice = 'У собеседника нет этого фильма');
@@ -316,6 +313,11 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       currentMovie.movieId,
       player.state.position,
     );
+  }
+
+  void _onRemoteSession(Map<String, dynamic>? state) {
+    if (!mounted) return;
+    setState(() => remoteSessionActive = state != null);
   }
 
   Future<void> _applyRemotePlaybackCommand(
@@ -438,6 +440,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       positionSeconds,
       persist: true,
     );
+    widget.syncEngine.removeRemoteSessionHandler(_onRemoteSession);
     // SyncEngine lifecycle is owned by LibraryScreen and shared with this player.
     _previewPlayer?.dispose();
     _previewVideoController = null;
