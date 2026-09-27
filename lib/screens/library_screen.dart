@@ -73,6 +73,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool cameraEnabled = true;
   late final CallEngine callEngine;
   LiveKitSyncEngine? roomSyncEngine;
+  EventsListener<RoomEvent>? roomPresenceListener;
+  bool partnerOnline = false;
+  bool roomReconnecting = false;
   int selectedAudioIndex = 0;
   int selectedSubtitleIndex = 0;
   String? expandedTrackMenu;
@@ -121,11 +124,56 @@ class _LibraryScreenState extends State<LibraryScreen> {
         File(commandPath).deleteSync();
       } catch (_) {}
     }
+    roomPresenceListener?.dispose();
+    roomPresenceListener = null;
     roomSyncEngine?.dispose();
     if (callActive) {
       callEngine.leave();
     }
     super.dispose();
+  }
+
+  void _attachRoomPresence() {
+    final room = callEngine.room;
+    if (room == null) return;
+    roomPresenceListener?.dispose();
+    roomPresenceListener = room.createListener()
+      ..on<ParticipantConnectedEvent>((event) {
+        debugPrint('[SyncWatch][ROOM] participant joined identity=${event.participant.identity}');
+        if (!mounted) return;
+        setState(() => partnerOnline = true);
+      })
+      ..on<ParticipantDisconnectedEvent>((event) {
+        debugPrint('[SyncWatch][ROOM] participant left identity=${event.participant.identity}');
+        if (!mounted) return;
+        setState(() => partnerOnline = room.remoteParticipants.isNotEmpty);
+      })
+      ..on<RoomReconnectingEvent>((_) {
+        debugPrint('[SyncWatch][ROOM] RECONNECTING');
+        if (!mounted) return;
+        setState(() => roomReconnecting = true);
+      })
+      ..on<RoomReconnectedEvent>((_) {
+        debugPrint('[SyncWatch][ROOM] RECONNECTED');
+        if (!mounted) return;
+        setState(() {
+          roomReconnecting = false;
+          roomConnected = true;
+          partnerOnline = room.remoteParticipants.isNotEmpty;
+        });
+      })
+      ..on<RoomDisconnectedEvent>((event) {
+        debugPrint('[SyncWatch][ROOM] DISCONNECTED reason=${event.reason}');
+        if (!mounted) return;
+        setState(() {
+          roomConnected = false;
+          roomConnecting = false;
+          roomReconnecting = false;
+          partnerOnline = false;
+          roomConnectionError = event.reason?.toString();
+        });
+      });
+    partnerOnline = room.remoteParticipants.isNotEmpty;
   }
 
   Future<void> _connectRoom() async {
@@ -143,6 +191,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         roomConnecting = false;
       });
       debugPrint('[SyncWatch][ROOM] CONNECTED');
+      _attachRoomPresence();
       await _attachRoomSync();
       await _publishLibraryToRoom();
     } catch (error) {
@@ -162,6 +211,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
       callProcess?.kill();
       callActive = false;
     }
+    roomPresenceListener?.dispose();
+    roomPresenceListener = null;
     await roomSyncEngine?.dispose();
     roomSyncEngine = null;
     await callEngine.leave();
@@ -172,6 +223,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
       roomConnectionError = null;
       remotePlaybackActive = false;
       remotePlaybackMovieId = null;
+      partnerOnline = false;
+      roomReconnecting = false;
     });
     debugPrint('[SyncWatch][ROOM] DISCONNECTED; READY reset');
   }
@@ -1424,7 +1477,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Widget _roomCard() {
     final status = roomConnecting
         ? 'Подключение…'
-        : roomConnected
+        : roomReconnecting
+            ? 'Переподключение…'
+            : roomConnected
             ? 'Подключено'
             : roomConnectionError != null
                 ? 'Ошибка подключения'
@@ -1461,7 +1516,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           if (roomConnected) ...[
             _memberRow(widget.controller.t('you'), true),
             const SizedBox(height: 5),
-            _memberRow(widget.controller.t('friend'), false),
+            _memberRow(widget.controller.t('friend'), partnerOnline),
           ],
           const SizedBox(height: 8),
           Row(
