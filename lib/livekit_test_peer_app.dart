@@ -21,6 +21,7 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
   String participants = '';
   final List<String> events = <String>[];
   final Set<String> remoteMovieIds = <String>{};
+  EventsListener<RoomEvent>? roomEvents;
 
   @override
   void initState() {
@@ -36,7 +37,8 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
         participantName: 'PartnerBot',
       );
       connectedRoom.addListener(_refresh);
-      connectedRoom.createListener()..on<DataReceivedEvent>((event) {
+      roomEvents = connectedRoom.createListener()
+        ..on<DataReceivedEvent>((event) {
         try {
           final decoded = utf8.decode(event.data);
           final payload = jsonDecode(decoded);
@@ -76,6 +78,8 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
   @override
   void dispose() {
     room?.removeListener(_refresh);
+    roomEvents?.dispose();
+    roomEvents = null;
     unawaited(connection.disconnect());
     super.dispose();
   }
