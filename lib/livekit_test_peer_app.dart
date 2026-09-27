@@ -84,6 +84,9 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
               if (playing is bool) playbackPlaying = playing;
               if (type == 'END' && session == playbackSessionId) {
                 playbackSessionId = null;
+                playbackMediaId = '';
+                playbackPositionMs = 0;
+                playbackPlaying = false;
               }
             }
           }
