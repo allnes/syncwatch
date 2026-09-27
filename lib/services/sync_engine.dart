@@ -15,11 +15,9 @@ typedef LibraryProvider = List<SharedMediaDescriptor> Function();
 typedef PlaybackHandler = void Function(Map<String, dynamic> command);
 typedef MediaMissingHandler = void Function(String mediaId);
 typedef RemoteSessionHandler = void Function(Map<String, dynamic>? state);
-typedef ReadyHandler = void Function(bool ready);
 
 abstract class SyncEngine {
   Future<void> connect();
-  Future<void> setReady(bool ready);
   Future<void> publishLibrary(List<SharedMediaDescriptor> media);
   Future<void> requestLibrary();
   Future<void> start(String mediaId, Duration position);
@@ -30,8 +28,6 @@ abstract class SyncEngine {
   void addRemoteLibraryHandler(RemoteLibraryHandler handler);
   void removeRemoteLibraryHandler(RemoteLibraryHandler handler);
   void setLibraryProvider(LibraryProvider? provider);
-  void addReadyHandler(ReadyHandler handler);
-  void removeReadyHandler(ReadyHandler handler);
   void setPlaybackHandler(PlaybackHandler? handler);
   void addPlaybackHandler(PlaybackHandler handler);
   void removePlaybackHandler(PlaybackHandler handler);
@@ -72,7 +68,6 @@ class LiveKitSyncEngine implements SyncEngine {
   RemoteLibraryHandler? _remoteLibraryHandler;
   final Set<RemoteLibraryHandler> _remoteLibraryHandlers = {};
   LibraryProvider? _libraryProvider;
-  final Set<ReadyHandler> _readyHandlers = {};
   PlaybackHandler? _playbackHandler;
   final Set<PlaybackHandler> _playbackHandlers = {};
   MediaMissingHandler? _mediaMissingHandler;
@@ -114,16 +109,6 @@ class LiveKitSyncEngine implements SyncEngine {
           final payload = jsonDecode(utf8.decode(event.data));
           if (payload is! Map<String, dynamic>) return;
           _log('RX kind=${payload['kind']} from=${event.participant?.identity ?? 'server'} payload=${jsonEncode(payload)}');
-          if (payload['kind'] == 'ready') {
-            final ready = payload['ready'];
-            if (ready is bool) {
-              _log('RX READY from=${event.participant?.identity ?? 'unknown'} ready=$ready');
-              for (final handler in _readyHandlers.toList()) {
-                handler(ready);
-              }
-            }
-            return;
-          }
           if (payload['kind'] == 'library_request') {
             _log('RX LIBRARY_REQUEST');
             final provider = _libraryProvider;
@@ -243,19 +228,6 @@ class LiveKitSyncEngine implements SyncEngine {
   }
 
   @override
-  Future<void> setReady(bool ready) async {
-    _log('TX ready=$ready');
-    await room.localParticipant?.publishData(
-      Uint8List.fromList(utf8.encode(jsonEncode({
-        'kind': 'ready',
-        'ready': ready,
-        'sentAtMs': DateTime.now().millisecondsSinceEpoch,
-      }))),
-      reliable: true,
-    );
-  }
-
-  @override
   Future<void> start(String mediaId, Duration position) {
     _sessionId ??= '${room.localParticipant?.identity ?? 'client'}-${DateTime.now().microsecondsSinceEpoch}';
     _playingOverride = true;
@@ -353,16 +325,6 @@ class LiveKitSyncEngine implements SyncEngine {
   }
 
   @override
-  void addReadyHandler(ReadyHandler handler) {
-    _readyHandlers.add(handler);
-  }
-
-  @override
-  void removeReadyHandler(ReadyHandler handler) {
-    _readyHandlers.remove(handler);
-  }
-
-  @override
   void setPlaybackHandler(PlaybackHandler? handler) {
     _playbackHandler = handler;
   }
@@ -418,7 +380,6 @@ class LiveKitSyncEngine implements SyncEngine {
     _remoteSessionHandler = null;
     _remoteLibraryHandlers.clear();
     _libraryProvider = null;
-    _readyHandlers.clear();
     _playbackHandlers.clear();
     _mediaMissingHandlers.clear();
     _remoteSessionHandlers.clear();
@@ -430,8 +391,6 @@ class MockSyncEngine implements SyncEngine {
   Future<void> start(String mediaId, Duration position) async {}
   @override
   Future<void> connect() async {}
-  @override
-  Future<void> setReady(bool ready) async {}
   @override
   Future<void> publishLibrary(List<SharedMediaDescriptor> media) async {}
   @override
@@ -456,10 +415,6 @@ class MockSyncEngine implements SyncEngine {
   void removeRemoteLibraryHandler(RemoteLibraryHandler handler) {}
   @override
   void setLibraryProvider(LibraryProvider? provider) {}
-  @override
-  void addReadyHandler(ReadyHandler handler) {}
-  @override
-  void removeReadyHandler(ReadyHandler handler) {}
   @override
   void setPlaybackHandler(PlaybackHandler? handler) {}
   @override
