@@ -208,9 +208,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final path = callPreviewFilePath;
     if (track == null || path == null) return;
     try {
-      final frame = await track.captureFrame();
-      if (frame == null) return;
-      await File(path).writeAsBytes(frame, flush: true);
+      final frame = await track.mediaStreamTrack.captureFrame();
+      final bytes = frame.asUint8List();
+      if (bytes.isEmpty) return;
+      await File(path).writeAsBytes(bytes, flush: true);
     } catch (_) {}
   }
 
