@@ -348,6 +348,13 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
     _applyingRemoteCommand = true;
     try {
+      if (type == 'END') {
+        await player.pause();
+        if (widget.onEndWatching != null) {
+          await widget.onEndWatching!();
+        }
+        return;
+      }
       if (type == 'STATE') {
         await player.seek(target);
         final remotePlaying = command['playing'];
