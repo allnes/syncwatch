@@ -59,6 +59,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool callActive = false;
   Process? callProcess;
   String? callCommandFilePath;
+  Timer? callCommandTimer;
+  String? lastCallCommand;
   bool metadataLoading = false;
   String? metadataPath;
   bool microphoneEnabled = true;
@@ -94,6 +96,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   @override
   void dispose() {
     trackMenuScrollController.dispose();
+    callCommandTimer?.cancel();
     callProcess?.kill();
     final commandPath = callCommandFilePath;
     if (commandPath != null) {
@@ -123,6 +126,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
       );
       await commandFile.writeAsString('ready:0', flush: true);
       callCommandFilePath = commandFile.path;
+      lastCallCommand = 'ready:0';
+      callCommandTimer?.cancel();
+      callCommandTimer = Timer.periodic(
+        const Duration(milliseconds: 120),
+        (_) => unawaited(_pollCallCommand()),
+      );
 
       final process = await Process.start(
         Platform.resolvedExecutable,
@@ -142,6 +151,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
           callActive = false;
           callProcess = null;
           callCommandFilePath = null;
+          callCommandTimer?.cancel();
+          callCommandTimer = null;
         });
       });
     } catch (_) {
@@ -151,6 +162,28 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
     if (!mounted) return;
     setState(() => callActive = true);
+  }
+
+  Future<void> _pollCallCommand() async {
+    final path = callCommandFilePath;
+    if (path == null) return;
+    try {
+      final command = await File(path).readAsString();
+      if (command == lastCallCommand) return;
+      lastCallCommand = command;
+      if (!command.startsWith('media:')) return;
+      final parts = command.split(':');
+      if (parts.length < 3) return;
+      final mic = parts[1] == '1';
+      final camera = parts[2] == '1';
+      await callEngine.setMicrophoneEnabled(mic);
+      await callEngine.setCameraEnabled(camera);
+      if (!mounted) return;
+      setState(() {
+        microphoneEnabled = mic;
+        cameraEnabled = camera;
+      });
+    } catch (_) {}
   }
 
   Future<void> _focusCallWindow() async {
