@@ -145,7 +145,10 @@ class LiveKitSyncEngine implements SyncEngine {
               _log('DROP stale playback rev=$revision last=$_lastRemoteRevision');
               return;
             }
-            if (revision is int) _lastRemoteRevision = revision;
+            if (revision is int) {
+              _lastRemoteRevision = revision;
+              if (revision > _revision) _revision = revision;
+            }
             _playbackHandler?.call(payload);
             for (final handler in _playbackHandlers.toList()) {
               handler(payload);
