@@ -218,9 +218,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     widget.syncEngine.connect().then((_) {
       unawaited(widget.syncEngine.requestPlaybackState());
     });
-    if (widget.controller.autoReady) {
-      widget.syncEngine.setReady(true);
-    }
   }
 
   @override
