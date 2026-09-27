@@ -76,6 +76,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   EventsListener<RoomEvent>? roomPresenceListener;
   bool partnerOnline = false;
   bool roomReconnecting = false;
+  final List<String> roomDiagnostics = <String>[];
   int selectedAudioIndex = 0;
   int selectedSubtitleIndex = 0;
   String? expandedTrackMenu;
@@ -133,28 +134,59 @@ class _LibraryScreenState extends State<LibraryScreen> {
     super.dispose();
   }
 
+  void _roomLog(String message) {
+    final line = '${DateTime.now().toIso8601String()} $message';
+    debugPrint('[SyncWatch][ROOM] $message');
+    roomDiagnostics.insert(0, line);
+    if (roomDiagnostics.length > 40) roomDiagnostics.removeLast();
+  }
+
+  Future<void> _showRoomDiagnostics() async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Диагностика подключения'),
+        content: SizedBox(
+          width: 620,
+          child: SelectableText(
+            roomDiagnostics.isEmpty
+                ? 'Событий подключения пока нет.'
+                : roomDiagnostics.reversed.join('\n'),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Закрыть'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _attachRoomPresence() {
     final room = callEngine.room;
     if (room == null) return;
     roomPresenceListener?.dispose();
     roomPresenceListener = room.createListener()
       ..on<ParticipantConnectedEvent>((event) {
-        debugPrint('[SyncWatch][ROOM] participant joined identity=${event.participant.identity}');
+        _roomLog('participant joined identity=${event.participant.identity}');
         if (!mounted) return;
         setState(() => partnerOnline = true);
       })
       ..on<ParticipantDisconnectedEvent>((event) {
-        debugPrint('[SyncWatch][ROOM] participant left identity=${event.participant.identity}');
+        _roomLog('participant left identity=${event.participant.identity}');
         if (!mounted) return;
         setState(() => partnerOnline = room.remoteParticipants.isNotEmpty);
       })
       ..on<RoomReconnectingEvent>((_) {
-        debugPrint('[SyncWatch][ROOM] RECONNECTING');
+        _roomLog('RECONNECTING');
         if (!mounted) return;
         setState(() => roomReconnecting = true);
       })
       ..on<RoomReconnectedEvent>((_) {
-        debugPrint('[SyncWatch][ROOM] RECONNECTED');
+        _roomLog('RECONNECTED');
         if (!mounted) return;
         setState(() {
           roomReconnecting = false;
@@ -163,7 +195,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         });
       })
       ..on<RoomDisconnectedEvent>((event) {
-        debugPrint('[SyncWatch][ROOM] DISCONNECTED reason=${event.reason}');
+        _roomLog('DISCONNECTED reason=${event.reason}');
         if (!mounted) return;
         setState(() {
           roomConnected = false;
@@ -182,7 +214,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       roomConnecting = true;
       roomConnectionError = null;
     });
-    debugPrint('[SyncWatch][ROOM] CONNECT requested');
+    _roomLog('CONNECT requested');
     try {
       await callEngine.join();
       if (!mounted) return;
@@ -190,12 +222,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
         roomConnected = true;
         roomConnecting = false;
       });
-      debugPrint('[SyncWatch][ROOM] CONNECTED');
+      _roomLog('CONNECTED');
       _attachRoomPresence();
       await _attachRoomSync();
       await _publishLibraryToRoom();
     } catch (error) {
-      debugPrint('[SyncWatch][ROOM] CONNECT failed error=$error');
+      _roomLog('CONNECT failed error=$error');
       if (!mounted) return;
       setState(() {
         roomConnected = false;
@@ -206,7 +238,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _disconnectRoom() async {
-    debugPrint('[SyncWatch][ROOM] DISCONNECT requested');
+    _roomLog('DISCONNECT requested');
     if (callActive) {
       callProcess?.kill();
       callActive = false;
@@ -226,7 +258,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       partnerOnline = false;
       roomReconnecting = false;
     });
-    debugPrint('[SyncWatch][ROOM] DISCONNECTED; READY reset');
+    _roomLog('DISCONNECTED');
   }
 
   Future<void> _startCall() async {
