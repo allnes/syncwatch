@@ -11,6 +11,7 @@ class SharedMediaDescriptor {
 }
 
 typedef RemoteLibraryHandler = void Function(Set<String> movieIds);
+typedef LibraryProvider = List<SharedMediaDescriptor> Function();
 typedef PlaybackHandler = void Function(Map<String, dynamic> command);
 typedef MediaMissingHandler = void Function(String mediaId);
 typedef RemoteSessionHandler = void Function(Map<String, dynamic>? state);
