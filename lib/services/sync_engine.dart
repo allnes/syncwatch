@@ -35,6 +35,7 @@ class LiveKitSyncEngine implements SyncEngine {
   final String Function() mediaId;
   final Duration Function() position;
   int _revision = 0;
+  int _lastRemoteRevision = 0;
 
   void _log(String message) {
     final now = DateTime.now().toIso8601String();
@@ -73,6 +74,15 @@ class LiveKitSyncEngine implements SyncEngine {
           final payload = jsonDecode(utf8.decode(event.data));
           if (payload is! Map<String, dynamic>) return;
           _log('RX kind=${payload['kind']} from=${event.participant?.identity ?? 'server'} payload=${jsonEncode(payload)}');
+          if (payload['kind'] == 'playback') {
+            final revision = payload['revision'];
+            if (revision is int && revision <= _lastRemoteRevision) {
+              _log('DROP stale playback rev=$revision last=$_lastRemoteRevision');
+              return;
+            }
+            if (revision is int) _lastRemoteRevision = revision;
+            return;
+          }
           if (payload['kind'] != 'library') return;
           final items = payload['items'];
           if (items is! List) return;
