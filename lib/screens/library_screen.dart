@@ -689,7 +689,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 onShowCall: callActive ? _focusCallWindow : null,
                 onReturnHome: _showLibraryFromPlayer,
                 onMovieChanged: _handlePlayerMovieChanged,
-                onEndWatching: _endActivePlaybackSession,
+                onEndWatching: () => _endActivePlaybackSession(broadcast: false),
                 active: showingPlayer,
               );
 
@@ -1573,9 +1573,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
     });
   }
 
-  Future<void> _endActivePlaybackSession() async {
+  Future<void> _endActivePlaybackSession({bool broadcast = true}) async {
     if (activePlayerMovie == null && !remotePlaybackActive) return;
-    await roomSyncEngine?.endSession();
+    if (broadcast) await roomSyncEngine?.endSession();
 
     if (mounted) {
       setState(() {
