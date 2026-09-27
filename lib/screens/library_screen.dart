@@ -1001,6 +1001,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _movieDetails(MovieItem movie) {
+    final continuingRemote = remotePlaybackActive &&
+        remotePlaybackMovieId == movie.movieId;
+    if (continuingRemote) {
+      widget.controller.updatePlaybackPosition(
+        movie.fullPath,
+        remotePlaybackPositionMs / 1000.0,
+        persist: true,
+      );
+    }
+
     final audioNames = movie.audioTrackNames.isEmpty
         ? ['…']
         : movie.audioTrackNames;
