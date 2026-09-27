@@ -26,6 +26,7 @@ abstract class SyncEngine {
   void setPlaybackHandler(PlaybackHandler? handler);
   Future<void> mediaMissing(String mediaId);
   Future<void> requestPlaybackState();
+  Future<void> endSession();
   void setMediaMissingHandler(MediaMissingHandler? handler);
   Future<void> dispose();
 }
@@ -121,6 +122,11 @@ class LiveKitSyncEngine implements SyncEngine {
             }
             if (revision is int) _lastRemoteRevision = revision;
             _playbackHandler?.call(payload);
+            if (type == 'END') {
+              _sessionId = null;
+              _lastRemoteRevision = 0;
+              _playingOverride = false;
+            }
             return;
           }
           if (payload['kind'] != 'library') return;
@@ -172,6 +178,30 @@ class LiveKitSyncEngine implements SyncEngine {
         mediaIdOverride: mediaId,
         positionOverride: position,
       );
+
+  @override
+  Future<void> endSession() async {
+    final active = _sessionId;
+    if (active == null) return;
+    _log('TX END session=$active');
+    await room.localParticipant?.publishData(
+      utf8.encode(jsonEncode({
+        'kind': 'playback',
+        'type': 'END',
+        'sessionId': active,
+        'revision': ++_revision,
+        'mediaId': mediaId(),
+        'positionMs': position().inMilliseconds,
+        'playing': false,
+        'sentAtMs': DateTime.now().millisecondsSinceEpoch,
+      })),
+      reliable: true,
+    );
+    _sessionId = null;
+    _revision = 0;
+    _lastRemoteRevision = 0;
+    _playingOverride = false;
+  }
 
   @override
   Future<void> requestPlaybackState() async {
@@ -242,6 +272,8 @@ class MockSyncEngine implements SyncEngine {
   Future<void> setReady(bool ready) async {}
   @override
   Future<void> publishLibrary(List<SharedMediaDescriptor> media) async {}
+  @override
+  Future<void> endSession() async {}
   @override
   Future<void> requestPlaybackState() async {}
   @override
