@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:http/http.dart' as http;
-import 'package:livekit_client/livekit_client.dart';
 
 Future<void> main(List<String> arguments) async {
   final parser = ArgParser()
@@ -45,14 +44,8 @@ Future<void> main(List<String> arguments) async {
     'Token length: ${(token['participant_token'] as String).length}',
   );
 
-  final room = Room();
-  await room.connect(
-    token['server_url'] as String,
-    token['participant_token'] as String,
+  stdout.writeln(
+    'PartnerBot credentials verified. Media-room emulation runs as a Flutter '
+    'desktop test client, not from this Dart CLI.',
   );
-  stdout.writeln('PartnerBot connected to LiveKit room.');
-  stdout.writeln('Press Ctrl+C to disconnect.');
-  await ProcessSignal.sigint.watch().first;
-  await room.disconnect();
-  await room.dispose();
 }
