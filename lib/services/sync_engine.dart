@@ -112,6 +112,10 @@ class LiveKitSyncEngine implements SyncEngine {
           _log('RX kind=${payload['kind']} from=${event.participant?.identity ?? 'server'} payload=${jsonEncode(payload)}');
           if (payload['kind'] == 'library_request') {
             _log('RX LIBRARY_REQUEST');
+            final provider = _libraryProvider;
+            if (provider != null) {
+              publishLibrary(provider());
+            }
             return;
           }
           if (payload['kind'] == 'state_request') {
