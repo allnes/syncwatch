@@ -64,7 +64,6 @@ class AppController extends ChangeNotifier {
     themeMode = _prefs?.getString('themeMode') ?? themeMode;
 
     skipSeconds = _prefs?.getInt('skipSeconds') ?? skipSeconds;
-    autoReady = _prefs?.getBool('autoReady') ?? autoReady;
     ducking = _prefs?.getBool('ducking') ?? ducking;
     scanSubfolders = _prefs?.getBool('scanSubfolders') ?? scanSubfolders;
     automaticRefresh =
