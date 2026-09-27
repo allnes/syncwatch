@@ -35,11 +35,13 @@ class LiveKitSyncEngine implements SyncEngine {
     required this.room,
     required this.mediaId,
     required this.position,
+    required this.isPlaying,
   });
 
   final Room room;
   final String Function() mediaId;
   final Duration Function() position;
+  final bool Function() isPlaying;
   int _revision = 0;
   int _lastRemoteRevision = 0;
 
@@ -84,7 +86,7 @@ class LiveKitSyncEngine implements SyncEngine {
           _log('RX kind=${payload['kind']} from=${event.participant?.identity ?? 'server'} payload=${jsonEncode(payload)}');
           if (payload['kind'] == 'state_request') {
             _log('RX STATE_REQUEST; replying with current playback state');
-            _publish('STATE', playing: null);
+            _publish('STATE', playing: isPlaying());
             return;
           }
           if (payload['kind'] == 'media_missing') {
