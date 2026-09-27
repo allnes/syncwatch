@@ -130,6 +130,21 @@ class _LibraryScreenState extends State<LibraryScreen> {
     super.dispose();
   }
 
+  void _handlePartnerReady(bool ready) {
+    if (!mounted) return;
+    debugPrint('[SyncWatch][ROOM] READY remote=$ready');
+    setState(() => partnerReady = ready);
+  }
+
+  Future<void> _toggleReady() async {
+    if (!roomConnected || roomSyncEngine == null) return;
+    final next = !youReady;
+    await roomSyncEngine!.setReady(next);
+    if (!mounted) return;
+    debugPrint('[SyncWatch][ROOM] READY local=$next');
+    setState(() => youReady = next);
+  }
+
   Future<void> _connectRoom() async {
     if (roomConnected || roomConnecting) return;
     setState(() {
@@ -303,6 +318,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       isPlaying: () => showingPlayer,
     );
     sync.setRemoteSessionHandler(_handleRemoteSession);
+    sync.addReadyHandler(_handlePartnerReady);
     sync.setLibraryProvider(() => [
       for (final movie in movies)
         SharedMediaDescriptor(
@@ -1498,7 +1514,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ],
           const SizedBox(height: 8),
           if (roomConnected) ...[
-            _readyStatusChip(compact: true),
+            Row(
+              children: [
+                _readyStatusChip(compact: true),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: _toggleReady,
+                  icon: Icon(youReady ? Icons.check_circle : Icons.check_circle_outline),
+                  label: Text(youReady ? 'Не готов' : 'Готов'),
+                ),
+              ],
+            ),
             const SizedBox(height: 7),
             _memberRow(widget.controller.t('you'), youReady),
             const SizedBox(height: 5),
