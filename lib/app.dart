@@ -15,7 +15,6 @@ class AppController extends ChangeNotifier {
   String themeMode = 'dark';
 
   int skipSeconds = 10;
-  bool autoReady = true;
   bool ducking = false;
   bool scanSubfolders = true;
   bool automaticRefresh = false;
