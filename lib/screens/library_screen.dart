@@ -58,6 +58,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String searchQuery = '';
   bool scanning = false;
   bool callActive = false;
+  bool roomConnected = false;
+  bool roomConnecting = false;
+  String? roomConnectionError;
   Process? callProcess;
   String? callCommandFilePath;
   String? callPreviewFilePath;
@@ -68,8 +71,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String? metadataPath;
   bool microphoneEnabled = true;
   bool cameraEnabled = true;
-  bool youReady = true;
-  bool partnerReady = true;
+  bool youReady = false;
+  bool partnerReady = false;
   late final CallEngine callEngine;
   LiveKitSyncEngine? roomSyncEngine;
   int selectedAudioIndex = 0;
@@ -127,13 +130,67 @@ class _LibraryScreenState extends State<LibraryScreen> {
     super.dispose();
   }
 
+  Future<void> _connectRoom() async {
+    if (roomConnected || roomConnecting) return;
+    setState(() {
+      roomConnecting = true;
+      roomConnectionError = null;
+      youReady = false;
+      partnerReady = false;
+    });
+    debugPrint('[SyncWatch][ROOM] CONNECT requested');
+    try {
+      await callEngine.join();
+      if (!mounted) return;
+      setState(() {
+        roomConnected = true;
+        roomConnecting = false;
+      });
+      debugPrint('[SyncWatch][ROOM] CONNECTED');
+      await _attachRoomSync();
+      await _publishLibraryToRoom();
+    } catch (error) {
+      debugPrint('[SyncWatch][ROOM] CONNECT failed error=$error');
+      if (!mounted) return;
+      setState(() {
+        roomConnected = false;
+        roomConnecting = false;
+        roomConnectionError = error.toString();
+        youReady = false;
+        partnerReady = false;
+      });
+    }
+  }
+
+  Future<void> _disconnectRoom() async {
+    debugPrint('[SyncWatch][ROOM] DISCONNECT requested');
+    if (callActive) {
+      callProcess?.kill();
+      callActive = false;
+    }
+    await roomSyncEngine?.dispose();
+    roomSyncEngine = null;
+    await callEngine.leave();
+    if (!mounted) return;
+    setState(() {
+      roomConnected = false;
+      roomConnecting = false;
+      roomConnectionError = null;
+      youReady = false;
+      partnerReady = false;
+      remotePlaybackActive = false;
+      remotePlaybackMovieId = null;
+    });
+    debugPrint('[SyncWatch][ROOM] DISCONNECTED; READY reset');
+  }
+
   Future<void> _startCall() async {
     if (callActive) {
       await _focusCallWindow();
       return;
     }
 
-    await callEngine.join();
+    if (!roomConnected) return;
     await callEngine.setMicrophoneEnabled(microphoneEnabled);
     await callEngine.setCameraEnabled(cameraEnabled);
 
@@ -169,17 +226,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
       unawaited(process.stderr.drain<void>());
       callProcess = process;
       process.exitCode.then((_) async {
-        await roomSyncEngine?.dispose();
-        roomSyncEngine = null;
-        await callEngine.leave();
+        await callEngine.setMicrophoneEnabled(false);
+        await callEngine.setCameraEnabled(false);
         if (!mounted) return;
         setState(() {
           callActive = false;
-          remotePlaybackActive = false;
-          remotePlaybackMovieId = null;
-          remotePlaybackPositionMs = 0;
-          remotePlaybackSentAtMs = 0;
-          remotePlaybackPlaying = false;
+
           callProcess = null;
           callCommandFilePath = null;
           final previewPath = callPreviewFilePath;
