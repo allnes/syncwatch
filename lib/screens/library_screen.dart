@@ -1555,6 +1555,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
             ),
           const SizedBox(height: 8),
           if (roomConnected) ...[
+            Text(
+              '${partnerOnline ? 2 : 1}/2 подключено',
+              style: TextStyle(
+                color: _secondaryText,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 7),
             _memberRow(widget.controller.t('you'), true),
             const SizedBox(height: 5),
             _memberRow(widget.controller.t('friend'), partnerOnline),
