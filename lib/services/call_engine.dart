@@ -7,6 +7,7 @@ abstract class CallEngine {
   Future<void> setMicrophoneEnabled(bool enabled);
   Future<void> setCameraEnabled(bool enabled);
   Room? get room;
+  VideoTrack? get localVideoTrack;
   Future<void> leave();
 }
 
@@ -28,6 +29,18 @@ class LiveKitCallEngine implements CallEngine {
   bool _cameraEnabled = true;
 
   Room? get room => _room;
+  @override
+  VideoTrack? get localVideoTrack {
+    final publications = _room?.localParticipant?.videoTrackPublications;
+    if (publications == null) return null;
+    for (final publication in publications) {
+      if (publication.source == TrackSource.camera &&
+          publication.track is VideoTrack) {
+        return publication.track as VideoTrack;
+      }
+    }
+    return null;
+  }
   bool get connected => _room != null;
 
   @override
@@ -65,6 +78,8 @@ class LiveKitCallEngine implements CallEngine {
 class MockCallEngine implements CallEngine {
   @override
   Room? get room => null;
+  @override
+  VideoTrack? get localVideoTrack => null;
   @override
   Future<void> join() async {}
 
