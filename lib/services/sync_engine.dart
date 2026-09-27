@@ -345,6 +345,14 @@ class LiveKitSyncEngine implements SyncEngine {
   Future<void> dispose() async {
     _listener?.dispose();
     _listener = null;
+    _remoteLibraryHandler = null;
+    _playbackHandler = null;
+    _mediaMissingHandler = null;
+    _remoteSessionHandler = null;
+    _remoteLibraryHandlers.clear();
+    _playbackHandlers.clear();
+    _mediaMissingHandlers.clear();
+    _remoteSessionHandlers.clear();
   }
 }
 
