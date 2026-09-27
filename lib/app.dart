@@ -303,10 +303,8 @@ class AppController extends ChangeNotifier {
 
   void resetPlaybackSettings() {
     skipSeconds = 10;
-    autoReady = true;
     timelinePreview = true;
     _setInt('skipSeconds', skipSeconds);
-    _setBool('autoReady', autoReady);
     _setBool('timelinePreview', timelinePreview);
     notifyListeners();
   }
