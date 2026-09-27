@@ -222,6 +222,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       room: room,
       mediaId: () => selected?.movieId ?? '',
       position: () => Duration.zero,
+      isPlaying: () => showingPlayer,
     );
     await sync.publishLibrary([
       for (final movie in movies)
@@ -626,6 +627,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     : LiveKitSyncEngine(
                         room: callEngine.room!,
                         mediaId: () => activePlayerMovie?.movieId ?? movie.movieId,
+                        isPlaying: () => showingPlayer,
                         position: () => Duration(
                           milliseconds: ((widget.controller.playbackPositionFor(
                                         activePlayerMovie?.fullPath ?? movie.fullPath,
