@@ -26,6 +26,8 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
     {'movieId': 'dune 2021 2160p hevc', 'fingerprint': '9326000:3840×2160'},
   ];
   EventsListener<RoomEvent>? roomEvents;
+  int playbackRevision = 0;
+  String? playbackSessionId;
 
   @override
   void initState() {
@@ -57,6 +59,24 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
               reliable: true,
             ));
             debugPrint('[SyncWatch][TEST_PEER] TX library response items=${testLibrary.length}');
+          }
+          if (payload is Map<String, dynamic> && payload['kind'] == 'state_request') {
+            final session = playbackSessionId;
+            if (session != null) {
+              unawaited(connectedRoom.localParticipant?.publishData(
+                utf8.encode(jsonEncode({
+                  'kind': 'playback',
+                  'type': 'STATE',
+                  'sessionId': session,
+                  'revision': ++playbackRevision,
+                  'mediaId': 'alien 1979 directors cut',
+                  'positionMs': 0,
+                  'playing': false,
+                  'sentAtMs': DateTime.now().millisecondsSinceEpoch,
+                })),
+                reliable: true,
+              ));
+            }
           }
           if (payload is Map<String, dynamic> && payload['kind'] == 'library') {
             final items = payload['items'];
