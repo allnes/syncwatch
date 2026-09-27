@@ -27,6 +27,13 @@ Future<void> main(List<String> args) async {
     final commandFilePath = commandArg.isEmpty
         ? null
         : commandArg.substring('--call-command-file='.length);
+    final previewArg = args.firstWhere(
+      (arg) => arg.startsWith('--call-preview-file='),
+      orElse: () => '',
+    );
+    final previewFilePath = previewArg.isEmpty
+        ? null
+        : previewArg.substring('--call-preview-file='.length);
 
     const options = WindowOptions(
       size: Size(260, 180),
@@ -42,6 +49,7 @@ Future<void> main(List<String> args) async {
       CallWindowApp(
         controller: controller,
         commandFilePath: commandFilePath,
+        previewFilePath: previewFilePath,
       ),
     );
 
