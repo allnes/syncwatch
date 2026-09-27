@@ -33,6 +33,8 @@ abstract class SyncEngine {
   Future<void> requestPlaybackState();
   Future<void> endSession();
   void setMediaMissingHandler(MediaMissingHandler? handler);
+  void addMediaMissingHandler(MediaMissingHandler handler);
+  void removeMediaMissingHandler(MediaMissingHandler handler);
   void setRemoteSessionHandler(RemoteSessionHandler? handler);
   void addRemoteSessionHandler(RemoteSessionHandler handler);
   void removeRemoteSessionHandler(RemoteSessionHandler handler);
@@ -65,6 +67,7 @@ class LiveKitSyncEngine implements SyncEngine {
   PlaybackHandler? _playbackHandler;
   final Set<PlaybackHandler> _playbackHandlers = {};
   MediaMissingHandler? _mediaMissingHandler;
+  final Set<MediaMissingHandler> _mediaMissingHandlers = {};
   RemoteSessionHandler? _remoteSessionHandler;
   final Set<RemoteSessionHandler> _remoteSessionHandlers = {};
   EventsListener<RoomEvent>? _listener;
@@ -107,7 +110,12 @@ class LiveKitSyncEngine implements SyncEngine {
           }
           if (payload['kind'] == 'media_missing') {
             final missingId = payload['mediaId'];
-            if (missingId is String) _mediaMissingHandler?.call(missingId);
+            if (missingId is String) {
+              _mediaMissingHandler?.call(missingId);
+              for (final handler in _mediaMissingHandlers.toList()) {
+                handler(missingId);
+              }
+            }
             return;
           }
           if (payload['kind'] == 'playback') {
@@ -305,6 +313,16 @@ class LiveKitSyncEngine implements SyncEngine {
   }
 
   @override
+  void addMediaMissingHandler(MediaMissingHandler handler) {
+    _mediaMissingHandlers.add(handler);
+  }
+
+  @override
+  void removeMediaMissingHandler(MediaMissingHandler handler) {
+    _mediaMissingHandlers.remove(handler);
+  }
+
+  @override
   void setRemoteSessionHandler(RemoteSessionHandler? handler) {
     _remoteSessionHandler = handler;
   }
@@ -361,6 +379,10 @@ class MockSyncEngine implements SyncEngine {
   void removePlaybackHandler(PlaybackHandler handler) {}
   @override
   void setMediaMissingHandler(MediaMissingHandler? handler) {}
+  @override
+  void addMediaMissingHandler(MediaMissingHandler handler) {}
+  @override
+  void removeMediaMissingHandler(MediaMissingHandler handler) {}
   @override
   void setRemoteSessionHandler(RemoteSessionHandler? handler) {}
   @override
