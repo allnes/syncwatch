@@ -102,6 +102,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   late int currentIndex;
   late MovieItem currentMovie;
   Set<String>? sharedMovieIds;
+  String? syncNotice;
 
   int? _sharedNeighborIndex(int direction) {
     var index = currentIndex + direction;
@@ -205,6 +206,13 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       }),
     );
 
+    widget.syncEngine.setMediaMissingHandler((mediaId) {
+      if (!mounted) return;
+      setState(() => syncNotice = 'У собеседника нет этого фильма');
+      Timer(const Duration(seconds: 4), () {
+        if (mounted && syncNotice != null) setState(() => syncNotice = null);
+      });
+    });
     widget.syncEngine.setPlaybackHandler((command) {
       unawaited(_applyRemotePlaybackCommand(command));
     });
@@ -453,6 +461,28 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             },
             child: Stack(
               children: [
+                if (syncNotice != null)
+                  Positioned(
+                    top: 86,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Material(
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.circular(10),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 9,
+                          ),
+                          child: Text(
+                            syncNotice!,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 if (_previewVideoController != null)
                   Positioned(
                     left: 0,
