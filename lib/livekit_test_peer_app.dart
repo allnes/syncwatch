@@ -46,6 +46,18 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
         try {
           final decoded = utf8.decode(event.data);
           final payload = jsonDecode(decoded);
+          if (payload is Map<String, dynamic> &&
+              payload['kind'] == 'library_request') {
+            unawaited(connectedRoom.localParticipant?.publishData(
+              utf8.encode(jsonEncode({
+                'kind': 'library',
+                'items': testLibrary,
+                'sentAtMs': DateTime.now().millisecondsSinceEpoch,
+              })),
+              reliable: true,
+            ));
+            debugPrint('[SyncWatch][TEST_PEER] TX library response items=${testLibrary.length}');
+          }
           if (payload is Map<String, dynamic> && payload['kind'] == 'library') {
             final items = payload['items'];
             if (items is List) {
