@@ -80,7 +80,13 @@ class LiveKitCallEngine implements CallEngine {
   Future<void> setMicrophoneEnabled(bool enabled) async {
     _microphoneEnabled = enabled;
     _log('MIC enabled=$enabled');
-    await _room?.localParticipant?.setMicrophoneEnabled(enabled);
+    try {
+      await _room?.localParticipant?.setMicrophoneEnabled(enabled);
+      _log('MIC toggle ok enabled=$enabled');
+    } catch (error) {
+      _log('MIC toggle failed error=$error');
+      rethrow;
+    }
   }
 
   @override
