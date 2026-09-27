@@ -42,6 +42,7 @@ class LiveKitSyncEngine implements SyncEngine {
   final String Function() mediaId;
   final Duration Function() position;
   final bool Function() isPlaying;
+  bool? _playingOverride;
   int _revision = 0;
   int _lastRemoteRevision = 0;
 
@@ -66,7 +67,7 @@ class LiveKitSyncEngine implements SyncEngine {
       'revision': ++_revision,
       'mediaId': mediaIdOverride ?? mediaId(),
       'positionMs': (positionOverride ?? position()).inMilliseconds,
-      'playing': playing,
+      'playing': playing ?? _playingOverride ?? isPlaying(),
       'sentAtMs': DateTime.now().millisecondsSinceEpoch,
     };
     _log('TX $type rev=${payload['revision']} media=${payload['mediaId']} posMs=${payload['positionMs']} playing=${payload['playing']}');
@@ -86,7 +87,7 @@ class LiveKitSyncEngine implements SyncEngine {
           _log('RX kind=${payload['kind']} from=${event.participant?.identity ?? 'server'} payload=${jsonEncode(payload)}');
           if (payload['kind'] == 'state_request') {
             _log('RX STATE_REQUEST; replying with current playback state');
-            _publish('STATE', playing: isPlaying());
+            _publish('STATE', playing: _playingOverride ?? isPlaying());
             return;
           }
           if (payload['kind'] == 'media_missing') {
@@ -144,7 +145,9 @@ class LiveKitSyncEngine implements SyncEngine {
   }
 
   @override
-  Future<void> start(String mediaId, Duration position) => _publish(
+  Future<void> start(String mediaId, Duration position) {
+    _playingOverride = true;
+    return _publish(
         'START',
         playing: true,
         mediaIdOverride: mediaId,
@@ -180,7 +183,10 @@ class LiveKitSyncEngine implements SyncEngine {
   Future<void> play() => _publish('PLAY', playing: true);
 
   @override
-  Future<void> pause() => _publish('PAUSE', playing: false);
+  Future<void> pause() {
+    _playingOverride = false;
+    return _publish('PAUSE', playing: false);
+  }
 
   @override
   Future<void> seekTo(Duration position) =>
