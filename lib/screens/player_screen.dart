@@ -104,6 +104,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   late MovieItem currentMovie;
   Set<String>? sharedMovieIds;
   String? syncNotice;
+  bool remoteLibraryReceived = false;
   bool remoteSessionActive = false;
 
   int? _sharedNeighborIndex(int direction) {
@@ -318,7 +319,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   void _onRemoteLibrary(Set<String> remoteIds) {
     if (!mounted) return;
     final localIds = widget.playlist.map((movie) => movie.movieId).toSet();
-    setState(() => sharedMovieIds = localIds.intersection(remoteIds));
+    setState(() {
+      remoteLibraryReceived = true;
+      sharedMovieIds = localIds.intersection(remoteIds);
+    });
   }
 
   void _onPlaybackCommand(Map<String, dynamic> command) {
