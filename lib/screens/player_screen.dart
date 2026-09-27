@@ -1308,8 +1308,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                     _fileControl(
                       tooltip: widget.controller.t('previousFile'),
                       icon: Icons.skip_previous_rounded,
-                      onPressed: currentIndex > 0
-                          ? () => _switchToIndex(currentIndex - 1)
+                      onPressed: _sharedNeighborIndex(-1) != null
+                          ? () => _switchToIndex(_sharedNeighborIndex(-1)!)
                           : null,
                     ),
                     const SizedBox(width: 14),
@@ -1334,8 +1334,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                     _fileControl(
                       tooltip: widget.controller.t('nextFile'),
                       icon: Icons.skip_next_rounded,
-                      onPressed: currentIndex < widget.playlist.length - 1
-                          ? () => _switchToIndex(currentIndex + 1)
+                      onPressed: _sharedNeighborIndex(1) != null
+                          ? () => _switchToIndex(_sharedNeighborIndex(1)!)
                           : null,
                     ),
                   ],
