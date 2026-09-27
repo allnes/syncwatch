@@ -267,6 +267,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
         _roomLog('DISCONNECTED reason=${event.reason}');
         unawaited(_sendCallConnectionNotice('Соединение потеряно. Подключитесь к комнате снова.'));
         if (!mounted) return;
+        unawaited(roomSyncEngine?.dispose());
+        roomSyncEngine = null;
+        roomPresenceListener?.dispose();
+        roomPresenceListener = null;
         setState(() {
           roomConnected = false;
           roomConnecting = false;
