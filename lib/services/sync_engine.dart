@@ -30,6 +30,8 @@ abstract class SyncEngine {
   Future<void> endSession();
   void setMediaMissingHandler(MediaMissingHandler? handler);
   void setRemoteSessionHandler(RemoteSessionHandler? handler);
+  void addRemoteSessionHandler(RemoteSessionHandler handler);
+  void removeRemoteSessionHandler(RemoteSessionHandler handler);
   Future<void> dispose();
 }
 
@@ -58,6 +60,7 @@ class LiveKitSyncEngine implements SyncEngine {
   PlaybackHandler? _playbackHandler;
   MediaMissingHandler? _mediaMissingHandler;
   RemoteSessionHandler? _remoteSessionHandler;
+  final Set<RemoteSessionHandler> _remoteSessionHandlers = {};
   EventsListener<RoomEvent>? _listener;
 
   Future<void> _publish(
@@ -127,9 +130,15 @@ class LiveKitSyncEngine implements SyncEngine {
             _playbackHandler?.call(payload);
             if (type == 'START' || type == 'STATE') {
               _remoteSessionHandler?.call(payload);
+              for (final handler in _remoteSessionHandlers.toList()) {
+                handler(payload);
+              }
             }
             if (type == 'END') {
               _remoteSessionHandler?.call(null);
+              for (final handler in _remoteSessionHandlers.toList()) {
+                handler(null);
+              }
               _sessionId = null;
               _lastRemoteRevision = 0;
               _playingOverride = false;
@@ -269,6 +278,16 @@ class LiveKitSyncEngine implements SyncEngine {
   }
 
   @override
+  void addRemoteSessionHandler(RemoteSessionHandler handler) {
+    _remoteSessionHandlers.add(handler);
+  }
+
+  @override
+  void removeRemoteSessionHandler(RemoteSessionHandler handler) {
+    _remoteSessionHandlers.remove(handler);
+  }
+
+  @override
   Future<void> dispose() async {
     _listener?.dispose();
     _listener = null;
@@ -304,6 +323,10 @@ class MockSyncEngine implements SyncEngine {
   void setMediaMissingHandler(MediaMissingHandler? handler) {}
   @override
   void setRemoteSessionHandler(RemoteSessionHandler? handler) {}
+  @override
+  void addRemoteSessionHandler(RemoteSessionHandler handler) {}
+  @override
+  void removeRemoteSessionHandler(RemoteSessionHandler handler) {}
   @override
   Future<void> dispose() async {}
 }
