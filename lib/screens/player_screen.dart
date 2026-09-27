@@ -803,6 +803,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   }
 
   Future<void> _endWatchingFromPlayer() async {
+    await widget.syncEngine.endSession();
     widget.controller.updatePlaybackPosition(
       currentMovie.fullPath,
       player.state.position.inMilliseconds / 1000.0,
