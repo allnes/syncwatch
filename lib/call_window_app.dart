@@ -55,6 +55,7 @@ class _CallWindowState extends State<_CallWindow> {
   Timer? commandTimer;
   Timer? previewTimer;
   int previewVersion = 0;
+  DateTime? lastPreviewModified;
   String? lastCommand;
 
   bool microphoneEnabled = true;
@@ -69,8 +70,14 @@ class _CallWindowState extends State<_CallWindow> {
       const Duration(milliseconds: 250),
       (_) {
         final path = widget.previewFilePath;
-        if (path != null && File(path).existsSync() && mounted) {
-          setState(() => previewVersion++);
+        if (path != null && mounted) {
+          final file = File(path);
+          if (!file.existsSync()) return;
+          final modified = file.lastModifiedSync();
+          if (modified != lastPreviewModified) {
+            lastPreviewModified = modified;
+            setState(() => previewVersion++);
+          }
         }
       },
     );
