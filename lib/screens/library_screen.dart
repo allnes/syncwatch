@@ -171,6 +171,29 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
+  Future<void> _handlePartnerReturned() async {
+    if (!mounted) return;
+    setState(() {
+      partnerOnline = true;
+      playbackConnectionMessage = activePlayerMovie == null
+          ? null
+          : 'Собеседник вернулся. Восстанавливаем синхронизацию…';
+    });
+    await _sendCallConnectionNotice('Собеседник вернулся. Восстанавливаем соединение…');
+    final sync = roomSyncEngine;
+    if (sync != null) {
+      await sync.requestPlaybackState();
+      await sync.requestLibrary();
+    }
+    if (!mounted) return;
+    setState(() {
+      playbackConnectionInterrupted = false;
+      playbackConnectionMessage = null;
+    });
+    await _sendCallConnectionNotice(null);
+    _roomLog('partner resync requested');
+  }
+
   Future<void> _sendCallConnectionNotice(String? message) async {
     final path = callCommandFilePath;
     if (!callActive || path == null) return;
@@ -189,6 +212,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     roomPresenceListener = room.createListener()
       ..on<ParticipantConnectedEvent>((event) {
         _roomLog('participant joined identity=${event.participant.identity}');
+        unawaited(_handlePartnerReturned());
         if (!mounted) return;
         setState(() => partnerOnline = true);
       })
