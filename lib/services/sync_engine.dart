@@ -57,6 +57,7 @@ class LiveKitSyncEngine implements SyncEngine {
   int _revision = 0;
   int _lastRemoteRevision = 0;
   String? _sessionId;
+  bool get hasActiveSession => _sessionId != null;
 
   void _log(String message) {
     final now = DateTime.now().toIso8601String();
@@ -104,6 +105,10 @@ class LiveKitSyncEngine implements SyncEngine {
           if (payload is! Map<String, dynamic>) return;
           _log('RX kind=${payload['kind']} from=${event.participant?.identity ?? 'server'} payload=${jsonEncode(payload)}');
           if (payload['kind'] == 'state_request') {
+            if (_sessionId == null) {
+              _log('RX STATE_REQUEST; no active session');
+              return;
+            }
             _log('RX STATE_REQUEST; replying with current playback state');
             _publish('STATE', playing: _playingOverride ?? isPlaying());
             return;
