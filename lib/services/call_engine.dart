@@ -60,7 +60,8 @@ class LiveKitCallEngine implements CallEngine {
     _room = room;
     await room.localParticipant?.setMicrophoneEnabled(_microphoneEnabled);
     await room.localParticipant?.setCameraEnabled(_cameraEnabled);
-    _log('JOINED mic=$_microphoneEnabled camera=$_cameraEnabled videoTrack=${localVideoTrack != null}');
+    final publications = room.localParticipant?.videoTrackPublications ?? const [];
+    _log('JOINED mic=$_microphoneEnabled camera=$_cameraEnabled videoPublications=${publications.length} videoTrack=${localVideoTrack != null}');
   }
 
   @override
