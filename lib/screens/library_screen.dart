@@ -271,7 +271,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
         return;
       }
       await File(path).writeAsBytes(bytes, flush: true);
-    } catch (_) {}
+    } catch (error) {
+      debugPrint('[SyncWatch][CALL] PREVIEW capture failed: $error');
+    }
   }
 
   Future<void> _publishLibraryToRoom() async {
