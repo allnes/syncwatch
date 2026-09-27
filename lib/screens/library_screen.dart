@@ -71,8 +71,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String? metadataPath;
   bool microphoneEnabled = true;
   bool cameraEnabled = true;
-  bool youReady = false;
-  bool partnerReady = false;
   late final CallEngine callEngine;
   LiveKitSyncEngine? roomSyncEngine;
   int selectedAudioIndex = 0;
@@ -130,28 +128,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
     super.dispose();
   }
 
-  void _handlePartnerReady(bool ready) {
-    if (!mounted) return;
-    debugPrint('[SyncWatch][ROOM] READY remote=$ready');
-    setState(() => partnerReady = ready);
-  }
-
-  Future<void> _toggleReady() async {
-    if (!roomConnected || roomSyncEngine == null) return;
-    final next = !youReady;
-    await roomSyncEngine!.setReady(next);
-    if (!mounted) return;
-    debugPrint('[SyncWatch][ROOM] READY local=$next');
-    setState(() => youReady = next);
-  }
-
   Future<void> _connectRoom() async {
     if (roomConnected || roomConnecting) return;
     setState(() {
       roomConnecting = true;
       roomConnectionError = null;
-      youReady = false;
-      partnerReady = false;
     });
     debugPrint('[SyncWatch][ROOM] CONNECT requested');
     try {
@@ -171,8 +152,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
         roomConnected = false;
         roomConnecting = false;
         roomConnectionError = error.toString();
-        youReady = false;
-        partnerReady = false;
       });
     }
   }
@@ -318,7 +297,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
       isPlaying: () => showingPlayer,
     );
     sync.setRemoteSessionHandler(_handleRemoteSession);
-    sync.addReadyHandler(_handlePartnerReady);
     sync.setLibraryProvider(() => [
       for (final movie in movies)
         SharedMediaDescriptor(
@@ -1446,36 +1424,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
-  Widget _readyStatusChip({bool compact = false}) {
-    final readyCount = (youReady ? 1 : 0) + (partnerReady ? 1 : 0);
-    final statusText =
-        '$readyCount/2 ${widget.controller.t('ready').toLowerCase()}';
-
-    final tooltipText = [
-      '${widget.controller.t('you')} — ${youReady ? widget.controller.t('ready') : widget.controller.t('notReady')}',
-      '${widget.controller.t('friend')} — ${partnerReady ? widget.controller.t('ready') : widget.controller.t('notReady')}',
-    ].join('\n');
-
-    return Tooltip(
-      message: tooltipText,
-      waitDuration: const Duration(milliseconds: 300),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            readyCount == 2
-                ? Icons.circle
-                : Icons.radio_button_unchecked_rounded,
-            size: compact ? 8 : 10,
-            color: readyCount == 2 ? syncSuccess : Colors.white54,
-          ),
-          SizedBox(width: compact ? 5 : 7),
-          Text(statusText),
-        ],
-      ),
-    );
-  }
-
   Widget _roomCard() {
     final status = roomConnecting
         ? 'Подключение…'
@@ -1514,21 +1462,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ],
           const SizedBox(height: 8),
           if (roomConnected) ...[
-            Row(
-              children: [
-                _readyStatusChip(compact: true),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: _toggleReady,
-                  icon: Icon(youReady ? Icons.check_circle : Icons.check_circle_outline),
-                  label: Text(youReady ? 'Не готов' : 'Готов'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 7),
-            _memberRow(widget.controller.t('you'), youReady),
+            _memberRow(widget.controller.t('you'), true),
             const SizedBox(height: 5),
-            _memberRow(widget.controller.t('friend'), partnerReady),
+            _memberRow(widget.controller.t('friend'), false),
           ],
           const SizedBox(height: 8),
           Row(
@@ -1569,7 +1505,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
-  Widget _memberRow(String name, bool ready) {
+  Widget _memberRow(String name, bool online) {
     return Row(
       children: [
         CircleAvatar(
@@ -1581,11 +1517,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
         const SizedBox(width: 9),
         Text(name),
         const Spacer(),
-        Icon(ready ? Icons.circle : Icons.radio_button_unchecked_rounded,
-            color: ready ? syncSuccess : Colors.white38, size: 9),
+        Icon(online ? Icons.circle : Icons.radio_button_unchecked_rounded,
+            color: online ? syncSuccess : Colors.white38, size: 9),
         const SizedBox(width: 6),
         Text(
-          ready ? widget.controller.t('ready') : widget.controller.t('notReady'),
+          online ? 'В сети' : 'Не подключён',
           style: TextStyle(color: _secondaryText),
         ),
       ],
