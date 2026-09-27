@@ -51,6 +51,7 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
             }
           }
           if (!mounted) return;
+          debugPrint('[SyncWatch][TEST_PEER] RX $decoded');
           setState(() {
             events.insert(0, decoded);
             if (events.length > 8) events.removeLast();
@@ -58,6 +59,7 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
         } catch (_) {}
       });
       room = connectedRoom;
+      debugPrint('[SyncWatch][TEST_PEER] CONNECTED room=syncwatch-dev identity=partner-bot');
       _refresh();
     } catch (error) {
       if (mounted) setState(() => status = 'ERROR: $error');
