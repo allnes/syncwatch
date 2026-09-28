@@ -120,14 +120,14 @@ if (!(Test-Path $pluginCpp)) {
 $p = Get-Content $pluginCpp -Raw
 
 if ($p -notmatch "SyncWatch frameless resize hit-test") {
-  $oldHit = @'
-        } else if (message == WM_NCHITTEST) {
-            if (!window->is_resizable_) {
-                return HTNOWHERE;
-            }
-'@
+  $hitStart = $p.IndexOf('} else if (message == WM_NCHITTEST) {')
+  $hitEnd = $p.IndexOf('} else if (message == WM_GETMINMAXINFO) {', $hitStart)
+  if ($hitStart -lt 0 -or $hitEnd -lt 0) {
+    throw "Could not locate multiview_desktop WM_NCHITTEST/WM_GETMINMAXINFO region."
+  }
+
   $newHit = @'
-        } else if (message == WM_NCHITTEST) {
+} else if (message == WM_NCHITTEST) {
             if (!window->is_resizable_) {
                 return HTCLIENT;
             }
@@ -155,11 +155,8 @@ if ($p -notmatch "SyncWatch frameless resize hit-test") {
                 if (bottom) return HTBOTTOM;
                 return HTCLIENT;
             }
-'@
-  if (!$p.Contains($oldHit)) {
-    throw "Could not locate multiview_desktop WM_NCHITTEST block."
-  }
-  $p = $p.Replace($oldHit, $newHit)
+        '@
+  $p = $p.Substring(0, $hitStart) + $newHit + $p.Substring($hitEnd)
 }
 
 if ($p -notmatch "SyncWatch refresh native frame") {
