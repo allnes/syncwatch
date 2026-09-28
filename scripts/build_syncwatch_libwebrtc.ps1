@@ -56,4 +56,20 @@ New-Item -ItemType Directory -Force -Path $out | Out-Null
 Copy-Item out/Windows-x64/libwebrtc.dll $out -Force
 Copy-Item out/Windows-x64/libwebrtc.dll.lib $out -Force
 
+$pubCache = Join-Path $env:LOCALAPPDATA "Pub\\Cache\\hosted\\pub.dev"
+$webrtcPackage = Get-ChildItem $pubCache -Directory -Filter "flutter_webrtc-1.6.2+hotfix.3" | Select-Object -First 1
+if ($webrtcPackage) {
+  $pluginLib = Join-Path $webrtcPackage.FullName "third_party\\libwebrtc\\lib"
+  New-Item -ItemType Directory -Force -Path $pluginLib | Out-Null
+  Copy-Item (Join-Path $out "libwebrtc.dll") $pluginLib -Force
+  Copy-Item (Join-Path $out "libwebrtc.dll.lib") $pluginLib -Force
+  $pluginBuildCache = Join-Path $repoRoot "build\\windows\\x64\\plugins\\flutter_webrtc"
+  if (Test-Path $pluginBuildCache) {
+    Remove-Item $pluginBuildCache -Recurse -Force
+  }
+  Write-Host "Installed custom libwebrtc into $pluginLib"
+} else {
+  Write-Warning "flutter_webrtc-1.6.2+hotfix.3 was not found in the Pub cache. Run flutter pub get, then copy the DLL and import library manually from $out."
+}
+
 Write-Host "Custom SyncWatch libwebrtc built at $out"
