@@ -1678,21 +1678,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 child: SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                        onPressed: roomConnecting
-                            ? null
-                            : roomConnected
-                                ? _disconnectRoom
-                                : _connectRoom,
-                        icon: Icon(
-                          roomConnected
-                              ? Icons.link_off_rounded
-                              : Icons.link_rounded,
-                        ),
-                        label: Text(
-                          roomConnected ? 'Отключиться' : 'Подключиться',
-                        ),
-                      ),
+                    onPressed: roomConnecting
+                        ? null
+                        : roomConnected
+                            ? _disconnectRoom
+                            : _connectRoom,
+                    icon: Icon(
+                      roomConnected
+                          ? Icons.link_off_rounded
+                          : Icons.link_rounded,
                     ),
+                    label: Text(
+                      roomConnected ? 'Отключиться' : 'Подключиться',
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
