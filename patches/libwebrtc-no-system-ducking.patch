@@ -1,0 +1,43 @@
+diff --git a/modules/audio_device/win/core_audio_base_win.cc b/modules/audio_device/win/core_audio_base_win.cc
+--- a/modules/audio_device/win/core_audio_base_win.cc
++++ b/modules/audio_device/win/core_audio_base_win.cc
+@@
+   if (low_latency_support) {
+@@
+   } else {
+@@
+     if (FAILED(core_audio_utility::SharedModeInitialize(
+             audio_client.Get(), &format_, audio_samples_event_,
+             requested_buffer_size, sample_rate_.has_value(),
+             &endpoint_buffer_size_frames_))) {
+       return false;
+     }
+   }
++
++  // SyncWatch owns its in-app ducking policy. A WebRTC communications render
++  // stream must never cause Windows to attenuate unrelated applications.
++  // Keep AudioCategory_Communications (AEC/communications processing) and opt
++  // only this render stream out of causing system ducking.
++  if (IsOutput()) {
++    ComPtr<IAudioClientDuckingControl> ducking_control;
++    const HRESULT ducking_hr = audio_client->GetService(
++        __uuidof(IAudioClientDuckingControl),
++        reinterpret_cast<void**>(ducking_control.GetAddressOf()));
++    if (SUCCEEDED(ducking_hr) && ducking_control) {
++      const HRESULT set_ducking_hr =
++          ducking_control->SetDuckingOptionsForCurrentStream(
++              AUDIO_DUCKING_OPTIONS_DO_NOT_DUCK_OTHER_STREAMS);
++      if (FAILED(set_ducking_hr)) {
++        RTC_LOG(LS_WARNING)
++            << "IAudioClientDuckingControl::SetDuckingOptionsForCurrentStream "
++               "failed: "
++            << core_audio_utility::ErrorToString(set_ducking_hr);
++      }
++    } else {
++      RTC_LOG(LS_WARNING)
++          << "IAudioClientDuckingControl unavailable: "
++          << core_audio_utility::ErrorToString(ducking_hr);
++    }
++  }
+ 
+   // Check device period and the preferred buffer size and log a warning if
