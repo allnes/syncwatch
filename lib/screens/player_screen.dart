@@ -1127,6 +1127,22 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     return result;
   }
 
+  List<Shadow> _subtitleOutlineShadows() {
+    final width = widget.controller.subtitleOutlineWidth;
+    if (width <= 0) return const <Shadow>[];
+    final color = Color(widget.controller.subtitleOutlineColorValue);
+    return <Shadow>[
+      Shadow(offset: Offset(-width, -width), color: color),
+      Shadow(offset: Offset(width, -width), color: color),
+      Shadow(offset: Offset(-width, width), color: color),
+      Shadow(offset: Offset(width, width), color: color),
+      Shadow(offset: Offset(0, -width), color: color),
+      Shadow(offset: Offset(0, width), color: color),
+      Shadow(offset: Offset(-width, 0), color: color),
+      Shadow(offset: Offset(width, 0), color: color),
+    ];
+  }
+
   double _subtitleBottomPadding(double videoHeight) {
     final offset = widget.controller.subtitleVerticalOffset;
     final isTop = widget.controller.subtitlePosition == 'top';
