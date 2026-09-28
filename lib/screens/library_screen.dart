@@ -60,7 +60,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool roomConnected = false;
   bool roomConnecting = false;
   String? roomConnectionError;
-  VideoTrack? callVideoTrack;
+  VideoTrack? remoteCallVideoTrack;
   EventsListener<RoomEvent>? callTrackListener;
   bool metadataLoading = false;
   String? metadataPath;
@@ -329,7 +329,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (!mounted) return;
     setState(() {
       callActive = true;
-      callVideoTrack = _preferredCallVideoTrack();
+      remoteCallVideoTrack = _remoteVideoTrack();
     });
     _roomLog('CALL started');
   }
@@ -341,7 +341,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (!mounted) return;
     setState(() {
       callActive = false;
-      callVideoTrack = null;
+      remoteCallVideoTrack = null;
     });
     _roomLog('CALL ended');
   }
@@ -353,25 +353,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
     callTrackListener = room.createListener()
       ..on<TrackSubscribedEvent>((event) {
         if (event.track is! VideoTrack || !mounted) return;
-        setState(() => callVideoTrack = event.track as VideoTrack);
+        setState(() => remoteCallVideoTrack = event.track as VideoTrack);
         _roomLog(
           'CALL remote video subscribed identity=${event.participant.identity}',
         );
       })
       ..on<TrackUnsubscribedEvent>((event) {
         if (event.track is! VideoTrack || !mounted) return;
-        if (identical(callVideoTrack, event.track)) {
-          setState(() => callVideoTrack = _preferredCallVideoTrack());
+        if (identical(remoteCallVideoTrack, event.track)) {
+          setState(() => remoteCallVideoTrack = _remoteVideoTrack());
         }
       })
-      ..on<LocalTrackPublishedEvent>((event) {
-        if (event.publication.track is! VideoTrack || !mounted) return;
-        if (_remoteVideoTrack() == null) {
-          setState(
-            () => callVideoTrack = event.publication.track as VideoTrack,
-          );
-        }
-      });
+      ;
   }
 
   VideoTrack? _remoteVideoTrack() {
@@ -388,9 +381,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return null;
   }
 
-  VideoTrack? _preferredCallVideoTrack() =>
-      _remoteVideoTrack() ?? callEngine.localVideoTrack;
-
   Future<void> _toggleCallMicrophone() async {
     final next = !microphoneEnabled;
     await callEngine.setMicrophoneEnabled(next);
@@ -403,7 +393,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (!mounted) return;
     setState(() {
       cameraEnabled = next;
-      callVideoTrack = next ? _preferredCallVideoTrack() : _remoteVideoTrack();
+      remoteCallVideoTrack = _remoteVideoTrack();
     });
   }
 
@@ -1494,12 +1484,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _callOverlay() {
-    final track = callVideoTrack;
+    final remoteTrack = remoteCallVideoTrack ?? _remoteVideoTrack();
+    final localTrack = cameraEnabled ? callEngine.localVideoTrack : null;
+
     return Positioned(
       right: 24,
       top: 96,
-      width: 320,
-      height: 220,
+      width: 420,
+      height: 280,
       child: Material(
         elevation: 16,
         clipBehavior: Clip.antiAlias,
@@ -1508,21 +1500,54 @@ class _LibraryScreenState extends State<LibraryScreen> {
         child: Stack(
           children: [
             Positioned.fill(
-              child: track == null
-                  ? const Center(
-                      child: Icon(
-                        Icons.person_rounded,
-                        size: 82,
-                        color: Colors.white24,
+              child: remoteTrack == null
+                  ? Container(
+                      color: const Color(0xFF0B1C2B),
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.person_rounded,
+                            size: 86,
+                            color: Colors.white24,
+                          ),
+                          SizedBox(height: 10),
+                          Text(
+                            'Камера собеседника выключена',
+                            style: TextStyle(color: Colors.white54),
+                          ),
+                        ],
                       ),
                     )
                   : VideoTrackRenderer(
-                      track,
+                      remoteTrack,
                       fit: VideoViewFit.cover,
-                      mirrorMode: track is LocalVideoTrack
-                          ? VideoViewMirrorMode.mirror
-                          : VideoViewMirrorMode.off,
+                      mirrorMode: VideoViewMirrorMode.off,
                     ),
+            ),
+            Positioned(
+              right: 12,
+              bottom: 64,
+              width: 112,
+              height: 76,
+              child: Material(
+                elevation: 8,
+                clipBehavior: Clip.antiAlias,
+                borderRadius: BorderRadius.circular(10),
+                color: const Color(0xFF182634),
+                child: localTrack == null
+                    ? const Center(
+                        child: Icon(
+                          Icons.videocam_off_rounded,
+                          color: Colors.white38,
+                        ),
+                      )
+                    : VideoTrackRenderer(
+                        localTrack,
+                        fit: VideoViewFit.cover,
+                        mirrorMode: VideoViewMirrorMode.mirror,
+                      ),
+              ),
             ),
             Positioned(
               left: 0,
