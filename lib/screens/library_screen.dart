@@ -203,6 +203,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
         if (!mounted) return;
         setState(() => partnerOnline = true);
       })
+      ..on<ActiveSpeakersChangedEvent>((event) {
+        final remoteSpeaking = event.speakers.any(
+          (speaker) => speaker is RemoteParticipant,
+        );
+        widget.controller.setRemoteSpeaking(remoteSpeaking);
+        _roomLog('CALL remoteSpeaking=$remoteSpeaking');
+      })
       ..on<ParticipantDisconnectedEvent>((event) {
         partnerResyncTimer?.cancel();
         partnerResyncTimer = null;
@@ -305,6 +312,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     await roomSyncEngine?.dispose();
     roomSyncEngine = null;
     await callEngine.leave();
+    widget.controller.setRemoteSpeaking(false);
     if (!mounted) return;
     setState(() {
       roomConnected = false;
