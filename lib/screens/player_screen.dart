@@ -75,7 +75,11 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   Timer? _volumeOsdTimer;
   Timer? _seekDebounceTimer;
   Timer? _previewDebounceTimer;
+  Timer? _duckingRampTimer;
   double? _queuedSeekTarget;
+  double _appliedMovieVolume = -1;
+  bool _lastDuckingEnabled = false;
+  bool _lastRemoteSpeaking = false;
   bool _seekInFlight = false;
   bool _applyingRemoteCommand = false;
   bool _pausedForConnectionLoss = false;
@@ -143,6 +147,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   void initState() {
     super.initState();
     windowManager.addListener(this);
+    widget.controller.addListener(_handleControllerAudioState);
+    _lastDuckingEnabled = widget.controller.ducking;
+    _lastRemoteSpeaking = widget.controller.remoteSpeaking;
     if (widget.active) {
       unawaited(
         windowManager.setTitleBarStyle(
@@ -290,6 +297,57 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     return widget.controller.t('noSubtitles');
   }
 
+  void _handleControllerAudioState() {
+    final duckingChanged = _lastDuckingEnabled != widget.controller.ducking;
+    final speakingChanged =
+        _lastRemoteSpeaking != widget.controller.remoteSpeaking;
+    _lastDuckingEnabled = widget.controller.ducking;
+    _lastRemoteSpeaking = widget.controller.remoteSpeaking;
+    if (duckingChanged || speakingChanged) {
+      _rampMovieVolume();
+    }
+  }
+
+  double get _targetMovieVolume {
+    if (movieMuted) return 0;
+    final base = widget.controller.movieVolume * 100.0;
+    return widget.controller.ducking && widget.controller.remoteSpeaking
+        ? base * 0.35
+        : base;
+  }
+
+  void _rampMovieVolume() {
+    _duckingRampTimer?.cancel();
+    final target = _targetMovieVolume;
+    final start = _appliedMovieVolume >= 0
+        ? _appliedMovieVolume
+        : widget.controller.movieVolume * 100.0;
+    final duckingDown = target < start;
+    final steps = duckingDown ? 6 : 12;
+    final interval = duckingDown
+        ? const Duration(milliseconds: 30)
+        : const Duration(milliseconds: 50);
+    var step = 0;
+    _duckingRampTimer = Timer.periodic(interval, (timer) {
+      step++;
+      final t = (step / steps).clamp(0.0, 1.0);
+      final value = start + (target - start) * t;
+      _appliedMovieVolume = value;
+      unawaited(player.setVolume(value));
+      if (step >= steps) {
+        timer.cancel();
+        _duckingRampTimer = null;
+      }
+    });
+  }
+
+  Future<void> _setEffectiveMovieVolume() async {
+    _duckingRampTimer?.cancel();
+    final value = _targetMovieVolume;
+    _appliedMovieVolume = value;
+    await player.setVolume(value);
+  }
+
   Future<void> _openMedia() async {
     final resumePosition =
         widget.controller.playbackPositionFor(currentMovie.fullPath);
@@ -297,7 +355,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     final openingVolume = widget.controller.rememberMovieVolume
         ? widget.controller.movieVolume
         : widget.controller.defaultMovieVolume;
-    await player.setVolume(openingVolume * 100.0);
+    _appliedMovieVolume = openingVolume * 100.0;
+    await player.setVolume(_targetMovieVolume);
     await player.open(
       Media(Uri.file(currentMovie.fullPath).toString()),
       play: false,
@@ -470,6 +529,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     _volumeOsdTimer?.cancel();
     _seekDebounceTimer?.cancel();
     _previewDebounceTimer?.cancel();
+    _duckingRampTimer?.cancel();
+    widget.controller.removeListener(_handleControllerAudioState);
     for (final subscription in _subscriptions) {
       subscription.cancel();
     }
@@ -603,13 +664,20 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                         // When hidden, only entering the lower 40 px header
                         // trigger area reveals the whole unit; touching the
                         // top 32 px alone does nothing.
-                        if (!topControlsVisible && event.localPosition.dy >= 32) {
-                          setState(() => topControlsVisible = true);
+                        if ((!topControlsVisible || !bottomControlsVisible) &&
+                            event.localPosition.dy >= 32) {
+                          setState(() {
+                            topControlsVisible = true;
+                            bottomControlsVisible = true;
+                          });
                         }
                       },
                       onExit: (_) {
-                        if (topControlsVisible) {
-                          setState(() => topControlsVisible = false);
+                        if (topControlsVisible || bottomControlsVisible) {
+                          setState(() {
+                            topControlsVisible = false;
+                            bottomControlsVisible = false;
+                          });
                         }
                       },
                       child: topControlsVisible
@@ -645,13 +713,19 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                     height: 70,
                     child: MouseRegion(
                       onEnter: (_) {
-                        if (!bottomControlsVisible) {
-                          setState(() => bottomControlsVisible = true);
+                        if (!bottomControlsVisible || !topControlsVisible) {
+                          setState(() {
+                            bottomControlsVisible = true;
+                            topControlsVisible = true;
+                          });
                         }
                       },
                       onExit: (_) {
-                        if (bottomControlsVisible) {
-                          setState(() => bottomControlsVisible = false);
+                        if (bottomControlsVisible || topControlsVisible) {
+                          setState(() {
+                            bottomControlsVisible = false;
+                            topControlsVisible = false;
+                          });
                         }
                       },
                       child: bottomControlsVisible
@@ -718,9 +792,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     }
     if (key == LogicalKeyboardKey.keyM) {
       movieMuted = !movieMuted;
-      await player.setVolume(
-        movieMuted ? 0 : widget.controller.movieVolume * 100.0,
-      );
+      await _setEffectiveMovieVolume();
       if (mounted) setState(() {});
       return;
     }
@@ -958,37 +1030,31 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                IconButton(
-                  tooltip: widget.controller.t('back'),
-                  visualDensity: VisualDensity.compact,
-                  constraints: BoxConstraints(
-                    minWidth: compact ? 30 : 34,
-                    minHeight: barHeight,
-                  ),
-                  padding: EdgeInsets.zero,
-                  onPressed: _returnToHome,
-                  icon: Icon(
-                    Icons.arrow_back_rounded,
-                    size: compact ? 17 : 19,
-                  ),
-                ),
-                const SizedBox(width: 3),
                 Tooltip(
                   message: widget.controller.t('back'),
                   waitDuration: const Duration(milliseconds: 350),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(6),
                     onTap: _returnToHome,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 3,
-                        vertical: 2,
-                      ),
-                      child: Text(
-                        'SyncWatch',
-                        style: TextStyle(
-                          fontSize: compact ? 14.5 : 16,
-                          fontWeight: FontWeight.w800,
+                    child: SizedBox(
+                      height: barHeight,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.arrow_back_rounded,
+                              size: compact ? 17 : 19,
+                            ),
+                            Text(
+                              'SyncWatch',
+                              style: TextStyle(
+                                fontSize: compact ? 14.5 : 16,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -2032,7 +2098,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   Future<void> _changeMovieVolume(double delta) async {
     final value = (widget.controller.movieVolume + delta).clamp(0.0, 1.0);
     widget.controller.setMovieVolume(value);
-    await player.setVolume(value * 100.0);
+    await _setEffectiveMovieVolume();
 
     _volumeOsdTimer?.cancel();
     if (mounted) {
@@ -2424,9 +2490,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     }
     if (result == 'mute') {
       movieMuted = !movieMuted;
-      await player.setVolume(
-        movieMuted ? 0 : widget.controller.movieVolume * 100.0,
-      );
+      await _setEffectiveMovieVolume();
       if (mounted) setState(() {});
       return;
     }
@@ -2688,15 +2752,11 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                               muted: movieMuted,
                               onMute: () async {
                                 setState(() => movieMuted = !movieMuted);
-                                await player.setVolume(
-                                  movieMuted
-                                      ? 0
-                                      : widget.controller.movieVolume * 100.0,
-                                );
+                                await _setEffectiveMovieVolume();
                               },
                               onChanged: (value) async {
                                 widget.controller.setMovieVolume(value);
-                                await player.setVolume(value * 100.0);
+                                await _setEffectiveMovieVolume();
                               },
                             ),
                             const SizedBox(height: 2),
