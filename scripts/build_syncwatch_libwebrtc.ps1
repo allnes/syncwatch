@@ -35,8 +35,12 @@ target_os = ["win"]
 gclient sync --no-history
 Set-Location "$WorkDir\\src"
 
-git apply --check $patch
-git apply $patch
+if (!(Select-String -Path "modules\\audio_device\\win\\core_audio_base_win.cc" -Pattern "SyncWatch owns its in-app ducking policy" -Quiet)) {
+  git apply --check $patch
+  if ($LASTEXITCODE -ne 0) { throw "SyncWatch libwebrtc patch does not apply cleanly." }
+  git apply $patch
+  if ($LASTEXITCODE -ne 0) { throw "Failed to apply SyncWatch libwebrtc patch." }
+}
 
 if (!(Test-Path "libwebrtc")) {
   git clone https://github.com/webrtc-sdk/libwebrtc.git libwebrtc
@@ -48,8 +52,11 @@ if ($buildFile -notmatch '"//libwebrtc"') {
   Set-Content -Encoding UTF8 BUILD.gn $buildFile
 }
 
-gn gen out/Windows-x64 --args='target_os="win" target_cpu="x64" is_component_build=false is_clang=true is_debug=false rtc_use_h264=true ffmpeg_branding="Chrome" rtc_include_tests=false rtc_build_examples=false libwebrtc_desktop_capture=true' --ide=vs2022
-ninja -C out/Windows-x64 libwebrtc
+$gnArgs = 'target_os="win" target_cpu="x64" is_component_build=false is_clang=true is_debug=false rtc_use_h264=true ffmpeg_branding="Chrome" rtc_include_tests=false rtc_build_examples=false libwebrtc_desktop_capture=true'
+& gn gen out/Windows-x64 "--args=$gnArgs" --ide=vs2022
+if ($LASTEXITCODE -ne 0) { throw "gn gen failed." }
+& ninja -C out/Windows-x64 libwebrtc
+if ($LASTEXITCODE -ne 0) { throw "libwebrtc build failed." }
 
 $out = Join-Path $repoRoot "third_party\\libwebrtc-syncwatch\\lib"
 New-Item -ItemType Directory -Force -Path $out | Out-Null
