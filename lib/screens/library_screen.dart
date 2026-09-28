@@ -966,9 +966,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
           const Spacer(),
-          const Icon(Icons.circle, size: 10, color: syncSuccess),
+          Icon(
+            partnerOnline ? Icons.circle : Icons.radio_button_unchecked_rounded,
+            size: 10,
+            color: partnerOnline ? syncSuccess : Colors.white38,
+          ),
           const SizedBox(width: 7),
-          Text(widget.controller.t('friendOnline')),
+          Text(
+            partnerOnline
+                ? widget.controller.t('friendOnline')
+                : 'Собеседник не подключён',
+          ),
           const SizedBox(width: 22),
           Icon(
             callActive ? Icons.call_rounded : Icons.call_outlined,
@@ -1603,10 +1611,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
         : roomReconnecting
             ? 'Переподключение…'
             : roomConnected
-            ? 'Подключено'
-            : roomConnectionError != null
-                ? 'Ошибка подключения'
-                : 'Не подключено';
+                ? 'Подключено'
+                : roomConnectionError != null
+                    ? 'Ошибка подключения'
+                    : 'Не подключено';
+    final showDiagnostics =
+        roomConnectionError != null || roomDiagnostics.isNotEmpty;
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: _panelDecoration(),
@@ -1615,37 +1626,39 @@ class _LibraryScreenState extends State<LibraryScreen> {
         children: [
           Row(
             children: [
-              Text(widget.controller.t('roomStatus'),
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+              Text(
+                widget.controller.t('roomStatus'),
+                style:
+                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              ),
               const Spacer(),
-              Icon(Icons.circle,
-                  size: 9,
-                  color: roomConnected && !roomReconnecting ? syncSuccess : Colors.white38),
+              Icon(
+                Icons.circle,
+                size: 9,
+                color: roomConnected && !roomReconnecting
+                    ? syncSuccess
+                    : Colors.white38,
+              ),
               const SizedBox(width: 6),
               Text(status, style: TextStyle(color: _secondaryText)),
             ],
           ),
-          const SizedBox(height: 7),
-          Text(widget.controller.roomName,
-              style: const TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 5),
+          Text(
+            widget.controller.roomName,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
           if (roomConnectionError != null) ...[
-            const SizedBox(height: 6),
-            Text(roomConnectionError!,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: _secondaryText, fontSize: 12)),
-          ],
-          if (roomConnectionError != null || roomDiagnostics.isNotEmpty)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: _showRoomDiagnostics,
-                icon: const Icon(Icons.bug_report_outlined, size: 16),
-                label: const Text('Подробнее'),
-              ),
+            const SizedBox(height: 4),
+            Text(
+              roomConnectionError!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: _secondaryText, fontSize: 12),
             ),
-          const SizedBox(height: 8),
+          ],
           if (roomConnected) ...[
+            const SizedBox(height: 6),
             Text(
               '${partnerOnline ? 2 : 1}/2 подключено',
               style: TextStyle(
@@ -1653,41 +1666,77 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 7),
-            _memberRow(widget.controller.t('you'), true),
             const SizedBox(height: 5),
+            _memberRow(widget.controller.t('you'), true),
+            const SizedBox(height: 3),
             _memberRow(widget.controller.t('friend'), partnerOnline),
           ],
-          const SizedBox(height: 8),
+          const Spacer(),
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: roomConnecting
-                      ? null
-                      : roomConnected
-                          ? _disconnectRoom
-                          : _connectRoom,
-                  icon: Icon(roomConnected
-                      ? Icons.link_off_rounded
-                      : Icons.link_rounded),
-                  label: Text(roomConnected ? 'Отключиться' : 'Подключиться'),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: roomConnecting
+                            ? null
+                            : roomConnected
+                                ? _disconnectRoom
+                                : _connectRoom,
+                        icon: Icon(
+                          roomConnected
+                              ? Icons.link_off_rounded
+                              : Icons.link_rounded,
+                        ),
+                        label: Text(
+                          roomConnected ? 'Отключиться' : 'Подключиться',
+                        ),
+                      ),
+                    ),
+                    if (showDiagnostics)
+                      SizedBox(
+                        height: 28,
+                        child: TextButton.icon(
+                          onPressed: _showRoomDiagnostics,
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          icon:
+                              const Icon(Icons.bug_report_outlined, size: 15),
+                          label: const Text('Подробнее'),
+                        ),
+                      ),
+                  ],
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: FilledButton.icon(
-                  onPressed: !roomConnected || roomReconnecting
-                      ? null
-                      : callActive
-                          ? _focusCallWindow
-                          : _startCall,
-                  icon: Icon(callActive
-                      ? Icons.open_in_new_rounded
-                      : Icons.video_call_rounded),
-                  label: Text(callActive
-                      ? widget.controller.t('goToCall')
-                      : widget.controller.t('startCall')),
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: !roomConnected || roomReconnecting
+                          ? null
+                          : callActive
+                              ? _focusCallWindow
+                              : _startCall,
+                      icon: Icon(
+                        callActive
+                            ? Icons.open_in_new_rounded
+                            : Icons.video_call_rounded,
+                      ),
+                      label: Text(
+                        callActive
+                            ? widget.controller.t('goToCall')
+                            : widget.controller.t('startCall'),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -1731,12 +1780,27 @@ class _LibraryScreenState extends State<LibraryScreen> {
             widget.controller.t('recentActivity'),
             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 14),
-          if (roomActivity.isEmpty)
-            Text('Событий пока нет', style: TextStyle(color: _secondaryText))
-          else
-            for (final event in roomActivity.take(5))
-              _activityRow(event.text, event.time),
+          const SizedBox(height: 10),
+          Expanded(
+            child: roomActivity.isEmpty
+                ? Align(
+                    alignment: Alignment.topLeft,
+                    child: Text(
+                      'Событий пока нет',
+                      style: TextStyle(color: _secondaryText),
+                    ),
+                  )
+                : Scrollbar(
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      itemCount: roomActivity.length,
+                      itemBuilder: (context, index) {
+                        final event = roomActivity[index];
+                        return _activityRow(event.text, event.time);
+                      },
+                    ),
+                  ),
+          ),
         ],
       ),
     );
