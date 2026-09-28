@@ -140,6 +140,37 @@ if (!(Test-Path "libwebrtc")) {
   git clone https://github.com/webrtc-sdk/libwebrtc.git libwebrtc
 }
 
+# The wrapper repository defines a test target unconditionally. With
+# rtc_include_tests=false, //test:test_main is intentionally absent, so remove
+# only that wrapper test target; the production :libwebrtc target is unchanged.
+$wrapperBuild = "libwebrtc\\BUILD.gn"
+$wrapperText = Get-Content $wrapperBuild -Raw
+$testMarker = 'rtc_test("libwebrtc_cpp_api_unittests")'
+$testStart = $wrapperText.IndexOf($testMarker)
+if ($testStart -ge 0) {
+  $braceStart = $wrapperText.IndexOf('{', $testStart)
+  $depth = 0
+  $testEnd = -1
+  for ($i = $braceStart; $i -lt $wrapperText.Length; $i++) {
+    if ($wrapperText[$i] -eq '{') { $depth++ }
+    elseif ($wrapperText[$i] -eq '}') {
+      $depth--
+      if ($depth -eq 0) {
+        $testEnd = $i + 1
+        break
+      }
+    }
+  }
+  if ($testEnd -lt 0) { throw "Could not parse libwebrtc wrapper test target." }
+  $wrapperText = $wrapperText.Remove($testStart, $testEnd - $testStart)
+  [System.IO.File]::WriteAllText(
+    (Resolve-Path $wrapperBuild),
+    $wrapperText,
+    [System.Text.UTF8Encoding]::new($false)
+  )
+  Write-Host "Disabled libwebrtc wrapper unit-test target for production build."
+}
+
 $buildFile = Get-Content BUILD.gn -Raw
 if ($buildFile -notmatch '"//libwebrtc"') {
   $buildFile = $buildFile -replace 'deps = \[ ":webrtc" \]', 'deps = [ ":webrtc", "//libwebrtc" ]'
