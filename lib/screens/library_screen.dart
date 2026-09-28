@@ -432,18 +432,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
     _roomLog('CALL ended');
   }
 
-  Future<void> _toggleCallMicrophone() async {
-    final next = !microphoneEnabled;
-    await callEngine.setMicrophoneEnabled(next);
-    if (mounted) setState(() => microphoneEnabled = next);
-  }
-
-  Future<void> _toggleCallCamera() async {
-    final next = !cameraEnabled;
-    await callEngine.setCameraEnabled(next);
-    if (mounted) setState(() => cameraEnabled = next);
-  }
-
   Future<void> _focusCallWindow() async {
     final viewId = callWindowViewId;
     if (!callActive || viewId == null) return;
