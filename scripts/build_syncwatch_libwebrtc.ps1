@@ -201,7 +201,11 @@ if ($testStart -ge 0) {
 $buildFile = Get-Content BUILD.gn -Raw
 if ($buildFile -notmatch '"//libwebrtc"') {
   $buildFile = $buildFile -replace 'deps = \[ ":webrtc" \]', 'deps = [ ":webrtc", "//libwebrtc" ]'
-  Set-Content -Encoding UTF8 BUILD.gn $buildFile
+  [System.IO.File]::WriteAllText(
+    (Resolve-Path "BUILD.gn"),
+    $buildFile,
+    [System.Text.UTF8Encoding]::new($false)
+  )
 }
 
 # The checkout's synthetic LASTCHANGE can still feed an invalid negative PE
