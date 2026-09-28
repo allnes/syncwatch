@@ -62,6 +62,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String? roomConnectionError;
   VideoTrack? remoteCallVideoTrack;
   EventsListener<RoomEvent>? callTrackListener;
+  Offset callOverlayPosition = const Offset(24, 96);
+  Size callOverlaySize = const Size(420, 280);
+  bool callOverlayMinimized = false;
+  bool callOverlayFullscreen = false;
   bool metadataLoading = false;
   String? metadataPath;
   bool microphoneEnabled = true;
@@ -386,6 +390,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
     setState(() {
       callActive = false;
       remoteCallVideoTrack = null;
+      callOverlayMinimized = false;
+      callOverlayFullscreen = false;
     });
     _roomLog('CALL ended');
   }
@@ -1531,100 +1537,216 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final remoteTrack = remoteCallVideoTrack ?? _remoteVideoTrack();
     final localTrack = cameraEnabled ? callEngine.localVideoTrack : null;
 
-    return Positioned(
-      right: 24,
-      top: 96,
-      width: 420,
-      height: 280,
-      child: Material(
-        elevation: 16,
-        clipBehavior: Clip.antiAlias,
-        borderRadius: BorderRadius.circular(16),
-        color: const Color(0xFF0B1C2B),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: remoteTrack == null
-                  ? Container(
-                      color: const Color(0xFF0B1C2B),
-                      child: const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.person_rounded,
-                            size: 86,
-                            color: Colors.white24,
-                          ),
-                          SizedBox(height: 10),
-                          Text(
-                            'Камера собеседника выключена',
-                            style: TextStyle(color: Colors.white54),
-                          ),
-                        ],
-                      ),
-                    )
-                  : VideoTrackRenderer(
-                      remoteTrack,
-                      fit: VideoViewFit.cover,
-                      mirrorMode: VideoViewMirrorMode.off,
-                    ),
-            ),
-            Positioned(
-              right: 12,
-              bottom: 64,
-              width: 112,
-              height: 76,
-              child: Material(
-                elevation: 8,
-                clipBehavior: Clip.antiAlias,
-                borderRadius: BorderRadius.circular(10),
-                color: const Color(0xFF182634),
-                child: localTrack == null
-                    ? const Center(
-                        child: Icon(
-                          Icons.videocam_off_rounded,
-                          color: Colors.white38,
-                        ),
-                      )
-                    : VideoTrackRenderer(
-                        localTrack,
-                        fit: VideoViewFit.cover,
-                        mirrorMode: VideoViewMirrorMode.mirror,
-                      ),
-              ),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 12,
+    if (callOverlayMinimized) {
+      return Positioned(
+        right: 24,
+        top: 96,
+        child: Material(
+          elevation: 16,
+          borderRadius: BorderRadius.circular(14),
+          color: const Color(0xFF101D29),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => setState(() => callOverlayMinimized = false),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _callOverlayButton(
-                    icon: microphoneEnabled
-                        ? Icons.mic_rounded
-                        : Icons.mic_off_rounded,
-                    onPressed: () => unawaited(_toggleCallMicrophone()),
-                  ),
-                  const SizedBox(width: 10),
-                  _callOverlayButton(
-                    icon: cameraEnabled
-                        ? Icons.videocam_rounded
-                        : Icons.videocam_off_rounded,
-                    onPressed: () => unawaited(_toggleCallCamera()),
-                  ),
-                  const SizedBox(width: 10),
-                  _callOverlayButton(
-                    icon: Icons.call_end_rounded,
-                    destructive: true,
-                    onPressed: () => unawaited(_endCall()),
-                  ),
+                  Icon(Icons.videocam_rounded, size: 18),
+                  SizedBox(width: 8),
+                  Text('Звонок'),
+                  SizedBox(width: 8),
+                  Icon(Icons.open_in_full_rounded, size: 16),
                 ],
               ),
             ),
-          ],
+          ),
         ),
+      );
+    }
+
+    final callCard = Material(
+      elevation: 16,
+      clipBehavior: Clip.antiAlias,
+      borderRadius: BorderRadius.circular(callOverlayFullscreen ? 0 : 16),
+      color: const Color(0xFF0B1C2B),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: remoteTrack == null
+                ? Container(
+                    color: const Color(0xFF0B1C2B),
+                    child: const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.person_rounded,
+                          size: 86,
+                          color: Colors.white24,
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          'Камера собеседника выключена',
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      ],
+                    ),
+                  )
+                : VideoTrackRenderer(
+                    remoteTrack,
+                    fit: VideoViewFit.cover,
+                    mirrorMode: VideoViewMirrorMode.off,
+                  ),
+          ),
+          if (!callOverlayFullscreen)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              height: 42,
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onPanUpdate: (details) {
+                  setState(() => callOverlayPosition += details.delta);
+                },
+                child: Container(
+                  padding: const EdgeInsets.only(left: 12, right: 4),
+                  color: Colors.black38,
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Звонок',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        tooltip: widget.controller.t('minimize'),
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () =>
+                            setState(() => callOverlayMinimized = true),
+                        icon: const Icon(Icons.remove_rounded, size: 19),
+                      ),
+                      IconButton(
+                        tooltip: widget.controller.t('fullscreen'),
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () =>
+                            setState(() => callOverlayFullscreen = true),
+                        icon: const Icon(Icons.fullscreen_rounded, size: 20),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          if (callOverlayFullscreen)
+            Positioned(
+              right: 8,
+              top: 8,
+              child: IconButton(
+                tooltip: widget.controller.t('fullscreen'),
+                onPressed: () =>
+                    setState(() => callOverlayFullscreen = false),
+                icon: const Icon(Icons.fullscreen_exit_rounded),
+              ),
+            ),
+          Positioned(
+            right: 12,
+            bottom: 64,
+            width: callOverlayFullscreen ? 180 : 112,
+            height: callOverlayFullscreen ? 120 : 76,
+            child: Material(
+              elevation: 8,
+              clipBehavior: Clip.antiAlias,
+              borderRadius: BorderRadius.circular(10),
+              color: const Color(0xFF182634),
+              child: localTrack == null
+                  ? const Center(
+                      child: Icon(
+                        Icons.videocam_off_rounded,
+                        color: Colors.white38,
+                      ),
+                    )
+                  : VideoTrackRenderer(
+                      localTrack,
+                      fit: VideoViewFit.cover,
+                      mirrorMode: VideoViewMirrorMode.mirror,
+                    ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 12,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _callOverlayButton(
+                  icon: microphoneEnabled
+                      ? Icons.mic_rounded
+                      : Icons.mic_off_rounded,
+                  onPressed: () => unawaited(_toggleCallMicrophone()),
+                ),
+                const SizedBox(width: 10),
+                _callOverlayButton(
+                  icon: cameraEnabled
+                      ? Icons.videocam_rounded
+                      : Icons.videocam_off_rounded,
+                  onPressed: () => unawaited(_toggleCallCamera()),
+                ),
+                const SizedBox(width: 10),
+                _callOverlayButton(
+                  icon: Icons.call_end_rounded,
+                  destructive: true,
+                  onPressed: () => unawaited(_endCall()),
+                ),
+              ],
+            ),
+          ),
+          if (!callOverlayFullscreen)
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onPanUpdate: (details) {
+                  setState(() {
+                    callOverlaySize = Size(
+                      (callOverlaySize.width + details.delta.dx)
+                          .clamp(300.0, 760.0),
+                      (callOverlaySize.height + details.delta.dy)
+                          .clamp(210.0, 520.0),
+                    );
+                  });
+                },
+                child: const SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: Align(
+                    alignment: Alignment.bottomRight,
+                    child: Icon(
+                      Icons.drag_handle_rounded,
+                      size: 17,
+                      color: Colors.white54,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
+    );
+
+    if (callOverlayFullscreen) {
+      return Positioned.fill(child: callCard);
+    }
+
+    return Positioned(
+      left: callOverlayPosition.dx,
+      top: callOverlayPosition.dy,
+      width: callOverlaySize.width,
+      height: callOverlaySize.height,
+      child: callCard,
     );
   }
 
