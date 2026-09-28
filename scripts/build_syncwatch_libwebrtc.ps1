@@ -153,6 +153,31 @@ git -C libwebrtc fetch --tags origin
 git -C libwebrtc reset --hard 070aa6d763c16027ba53c0965107658c837a4dae
 if ($LASTEXITCODE -ne 0) { throw "Failed to pin libwebrtc wrapper release." }
 
+# Release 7871.03 added enable_sctp_snap to the wrapper and expects the matching
+# WebRTC m150 API. The m150_release checkout used here predates that one field,
+# so add the matching RTCConfiguration member before compiling the wrapper.
+$pcInterface = "api\\peer_connection_interface.h"
+if (!(Select-String -Path $pcInterface -Pattern "enable_sctp_snap" -Quiet)) {
+  $pcText = Get-Content $pcInterface -Raw
+  $pcAnchor = "    int max_sctp_streams = 65536;"
+  if (!$pcText.Contains($pcAnchor)) {
+    throw "Could not find RTCConfiguration max_sctp_streams insertion point."
+  }
+  $pcText = $pcText.Replace(
+    $pcAnchor,
+    $pcAnchor + [Environment]::NewLine +
+      [Environment]::NewLine +
+      "    // Enable SNAP (SCTP INIT in SDP)." + [Environment]::NewLine +
+      "    bool enable_sctp_snap = false;"
+  )
+  [System.IO.File]::WriteAllText(
+    (Resolve-Path $pcInterface),
+    $pcText,
+    [System.Text.UTF8Encoding]::new($false)
+  )
+  Write-Host "Applied m150 RTCConfiguration enable_sctp_snap compatibility field."
+}
+
 # Apply the wrapper's m150 custom-audio API patch. The published patch has
 # stale context in exactly audio_receive_stream.cc/.h on the current m150
 # checkout, so apply with rejects, repair only those two known rejects, and
