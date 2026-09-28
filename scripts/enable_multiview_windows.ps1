@@ -133,6 +133,25 @@ if (!(Test-Path $pluginCpp)) {
 
 $p = Get-Content $pluginCpp -Raw
 
+# A previous local run may already have patched the Git dependency cache with
+# an older SyncWatch block. Because git dependencies are shared in PUB_CACHE,
+# flutter pub get does not necessarily restore that file. Normalize stale
+# variants before applying the current patch.
+if ($p -match "SyncWatch frameless resize hit-test") {
+  $staleStart = $p.IndexOf("case WM_NCHITTEST: {")
+  $staleEnd = $p.IndexOf("case WM_SIZE: {", $staleStart)
+  if ($staleStart -ge 0 -and $staleEnd -gt $staleStart) {
+    $p = $p.Remove($staleStart, $staleEnd - $staleStart)
+  }
+}
+$p = $p.Replace(
+  "    // SyncWatch refresh native frame after changing WS_THICKFRAME." + [Environment]::NewLine +
+  "    ::SetWindowPos(hWnd, nullptr, 0, 0, 0, 0," + [Environment]::NewLine +
+  "                   SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |" + [Environment]::NewLine +
+  "                       SWP_NOOWNERZORDER | SWP_FRAMECHANGED);" + [Environment]::NewLine,
+  ""
+)
+
 if ($p -notmatch "SyncWatch frameless resize hit-test") {
   # The pinned revision routes host messages through HostWndProc and does not
   # contain WM_NCHITTEST/WM_GETMINMAXINFO yet. Add both directly to the host
