@@ -162,9 +162,27 @@ if (!(Select-String -Path $audioSource -Pattern "SyncWatch owns its in-app ducki
 
 if (!(Test-Path "libwebrtc")) {
   git clone https://github.com/webrtc-sdk/libwebrtc.git libwebrtc
-} else {
-  git -C libwebrtc fetch origin
-  git -C libwebrtc reset --hard origin/main
+}
+# Pin the wrapper to the exact binary release used by flutter_webrtc
+# 1.6.2+hotfix.3. Do not build arbitrary wrapper main against this checkout.
+git -C libwebrtc fetch --tags origin
+git -C libwebrtc reset --hard 070aa6d763c16027ba53c0965107658c837a4dae
+if ($LASTEXITCODE -ne 0) { throw "Failed to pin libwebrtc wrapper release." }
+
+# The wrapper requires its matching m150 custom-audio API patch. Without this
+# patch its AudioTransportFactory/UpdateAudioSenders interfaces cannot compile.
+$wrapperAudioPatch = "libwebrtc\\patches\\custom_audio_source_m150.patch"
+$audioDefines = "api\\audio\\audio_device_defines.h"
+if (!(Select-String -Path $audioDefines -Pattern "UpdateAudioSenders" -Quiet)) {
+  git apply --check $wrapperAudioPatch
+  if ($LASTEXITCODE -ne 0) {
+    throw "libwebrtc m150 custom-audio patch does not apply cleanly."
+  }
+  git apply $wrapperAudioPatch
+  if ($LASTEXITCODE -ne 0) {
+    throw "Failed to apply libwebrtc m150 custom-audio patch."
+  }
+  Write-Host "Applied libwebrtc m150 custom-audio compatibility patch."
 }
 
 # The wrapper repository defines a test target unconditionally. With
