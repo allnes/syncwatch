@@ -86,8 +86,22 @@ if ($buildFile -notmatch '"//libwebrtc"') {
   Set-Content -Encoding UTF8 BUILD.gn $buildFile
 }
 
-$gnArgs = 'target_os="win" target_cpu="x64" is_component_build=false is_clang=true is_debug=false rtc_use_h264=true ffmpeg_branding="Chrome" rtc_include_tests=false rtc_build_examples=false libwebrtc_desktop_capture=true'
-& gn gen out/Windows-x64 "--args=$gnArgs" --ide=vs2022
+$argsFile = Join-Path (Get-Location) "out\\Windows-x64\\args.gn"
+New-Item -ItemType Directory -Force -Path (Split-Path $argsFile) | Out-Null
+@'
+target_os = "win"
+target_cpu = "x64"
+is_component_build = false
+is_clang = true
+is_debug = false
+rtc_use_h264 = true
+ffmpeg_branding = "Chrome"
+rtc_include_tests = false
+rtc_build_examples = false
+libwebrtc_desktop_capture = true
+'@ | Set-Content -Path $argsFile -Encoding ASCII
+
+& gn gen out/Windows-x64 --ide=vs2022
 if ($LASTEXITCODE -ne 0) { throw "gn gen failed." }
 & ninja -C out/Windows-x64 libwebrtc
 if ($LASTEXITCODE -ne 0) { throw "libwebrtc build failed." }
