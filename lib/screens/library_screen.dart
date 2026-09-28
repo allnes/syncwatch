@@ -70,6 +70,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   late final CallEngine callEngine;
   LiveKitSyncEngine? roomSyncEngine;
   EventsListener<RoomEvent>? roomPresenceListener;
+  final Map<String, EventsListener<ParticipantEvent>> remoteSpeakingListeners = {};
   bool partnerOnline = false;
   bool roomReconnecting = false;
   bool playbackConnectionInterrupted = false;
@@ -113,6 +114,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
     partnerResyncTimer?.cancel();
     roomPresenceListener?.dispose();
     roomPresenceListener = null;
+    for (final listener in remoteSpeakingListeners.values) {
+      listener.dispose();
+    }
+    remoteSpeakingListeners.clear();
     roomSyncEngine?.dispose();
     if (roomConnected || callActive) {
       callEngine.leave();
@@ -187,6 +192,34 @@ class _LibraryScreenState extends State<LibraryScreen> {
     setState(() => playbackConnectionMessage = message);
   }
 
+  void _attachRemoteSpeakingListener(RemoteParticipant participant) {
+    final key = participant.identity;
+    remoteSpeakingListeners.remove(key)?.dispose();
+    final listener = participant.createListener()
+      ..on<SpeakingChangedEvent>((event) {
+        final anyRemoteSpeaking = callEngine.room?.remoteParticipants.values
+                .any((remote) => remote.isSpeaking) ??
+            false;
+        widget.controller.setRemoteSpeaking(anyRemoteSpeaking);
+        _roomLog(
+          'CALL speaking identity=${participant.identity} '
+          'speaking=${event.speaking} anyRemote=$anyRemoteSpeaking',
+        );
+      });
+    remoteSpeakingListeners[key] = listener;
+    if (participant.isSpeaking) {
+      widget.controller.setRemoteSpeaking(true);
+    }
+  }
+
+  void _attachAllRemoteSpeakingListeners() {
+    final room = callEngine.room;
+    if (room == null) return;
+    for (final participant in room.remoteParticipants.values) {
+      _attachRemoteSpeakingListener(participant);
+    }
+  }
+
   void _attachRoomPresence() {
     final room = callEngine.room;
     if (room == null) return;
@@ -194,6 +227,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     roomPresenceListener = room.createListener()
       ..on<ParticipantConnectedEvent>((event) {
         _roomLog('participant joined identity=${event.participant.identity}');
+        _attachRemoteSpeakingListener(event.participant);
         unawaited(_handlePartnerReturned());
         if (!mounted) return;
         setState(() => partnerOnline = true);
@@ -209,6 +243,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
         partnerResyncTimer?.cancel();
         partnerResyncTimer = null;
         _roomLog('participant left identity=${event.participant.identity}');
+        remoteSpeakingListeners.remove(event.participant.identity)?.dispose();
+        final anyRemoteSpeaking = room.remoteParticipants.values
+            .any((remote) => remote.isSpeaking);
+        widget.controller.setRemoteSpeaking(anyRemoteSpeaking);
         unawaited(_sendCallConnectionNotice('Собеседник отключился. Ожидаем повторного подключения…'));
         if (!mounted) return;
         setState(() {
@@ -268,6 +306,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
     partnerOnline = room.remoteParticipants.isNotEmpty;
   }
 
+  void _syncRemoteSpeakingListeners() {
+    _attachAllRemoteSpeakingListeners();
+  }
+
   Future<void> _connectRoom() async {
     if (roomConnected || roomConnecting) return;
     setState(() {
@@ -284,6 +326,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       });
       _roomLog('CONNECTED');
       _attachRoomPresence();
+      _syncRemoteSpeakingListeners();
       await _attachRoomSync();
       await _publishLibraryToRoom();
     } catch (error) {
