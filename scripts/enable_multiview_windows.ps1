@@ -148,12 +148,15 @@ MultiViewDesktop *window =
         MultiViewDesktop::Instance().FindByHwnd(hwnd);
 if (window != nullptr && window->is_resizable_ &&
     (window->title_bar_style_ == "hidden" || window->is_frameless_)) {
-POINT cursor = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+POINT cursor = {
+        static_cast<LONG>(static_cast<short>(LOWORD(lparam))),
+        static_cast<LONG>(static_cast<short>(HIWORD(lparam)))};
 RECT rect{};
 GetWindowRect(hwnd, &rect);
-const int border =
-        std::max(6, GetSystemMetrics(SM_CXSIZEFRAME) +
-                        GetSystemMetrics(SM_CXPADDEDBORDER));
+const int native_border =
+        GetSystemMetrics(SM_CXSIZEFRAME) +
+        GetSystemMetrics(SM_CXPADDEDBORDER);
+const int border = native_border > 6 ? native_border : 6;
 const bool left = cursor.x < rect.left + border;
 const bool right = cursor.x >= rect.right - border;
 const bool top = cursor.y < rect.top + border;
