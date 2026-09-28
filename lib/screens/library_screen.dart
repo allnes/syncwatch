@@ -4,6 +4,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart' hide VideoTrack;
 import 'package:livekit_client/livekit_client.dart' hide AudioTrack;
+import 'package:multiview_desktop/multiview_desktop.dart';
 
 import '../app.dart';
 import '../core/app_theme.dart';
@@ -11,6 +12,7 @@ import '../models/movie_item.dart';
 import '../services/call_engine.dart';
 import '../services/livekit_connection.dart';
 import '../services/sync_engine.dart';
+import '../widgets/call_window_view.dart';
 import 'player_screen.dart';
 import 'settings_screen.dart';
 
@@ -60,13 +62,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool roomConnected = false;
   bool roomConnecting = false;
   String? roomConnectionError;
-  VideoTrack? remoteCallVideoTrack;
-  EventsListener<RoomEvent>? callTrackListener;
-  Offset callOverlayPosition = const Offset(24, 96);
-  static const Size _callMinimumSize = Size(300, 210);
-  Size callOverlaySize = _callMinimumSize;
-  bool callOverlayMinimized = false;
-  bool callOverlayFullscreen = false;
+  int? callWindowViewId;
   bool metadataLoading = false;
   String? metadataPath;
   bool microphoneEnabled = true;
@@ -115,8 +111,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
   void dispose() {
     trackMenuScrollController.dispose();
     partnerResyncTimer?.cancel();
-    callTrackListener?.dispose();
-    callTrackListener = null;
     roomPresenceListener?.dispose();
     roomPresenceListener = null;
     roomSyncEngine?.dispose();
@@ -376,73 +370,66 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _startCall() async {
-    if (callActive) return;
+    if (callActive) {
+      await _focusCallWindow();
+      return;
+    }
     if (!roomConnected) return;
 
     await callEngine.setMicrophoneEnabled(microphoneEnabled);
     await callEngine.setCameraEnabled(cameraEnabled);
-    _attachCallTrackListener();
 
-    // Every new call starts compact. The user can resize it afterwards.
-    callOverlaySize = _callMinimumSize;
-    callOverlayMinimized = false;
-    callOverlayFullscreen = false;
+    final viewId = await openWindow(
+      (_, __) => CallWindowView(
+        controller: widget.controller,
+        callEngine: callEngine,
+        microphoneEnabled: microphoneEnabled,
+        cameraEnabled: cameraEnabled,
+        onMicrophoneChanged: (enabled) async {
+          await callEngine.setMicrophoneEnabled(enabled);
+          if (mounted) setState(() => microphoneEnabled = enabled);
+        },
+        onCameraChanged: (enabled) async {
+          await callEngine.setCameraEnabled(enabled);
+          if (mounted) setState(() => cameraEnabled = enabled);
+        },
+        onHangUp: () => _endCall(closeWindow: false),
+      ),
+      options: const WindowOptions(
+        size: Size(300, 210),
+        minimumSize: Size(300, 210),
+        maximumSize: Size(1280, 900),
+        title: 'SyncWatch Call',
+        titleBarStyle: TitleBarStyle.hidden,
+        windowButtonVisibility: false,
+        backgroundColor: Color(0xFF0B1C2B),
+        alwaysOnTop: true,
+      ),
+    );
 
-    if (!mounted) return;
+    if (!mounted) {
+      await MultiViewDesktop.fromId(viewId).closeWindow();
+      return;
+    }
     setState(() {
       callActive = true;
-      remoteCallVideoTrack = _remoteVideoTrack();
+      callWindowViewId = viewId;
     });
-    _roomLog('CALL started');
+    _roomLog('CALL started view=$viewId');
   }
 
-  Future<void> _endCall() async {
-    callTrackListener?.dispose();
-    callTrackListener = null;
+  Future<void> _endCall({bool closeWindow = true}) async {
+    final viewId = callWindowViewId;
+    callWindowViewId = null;
     await callEngine.stopCallMedia();
+    if (closeWindow && viewId != null) {
+      await MultiViewDesktop.fromId(viewId).closeWindow();
+    }
     if (!mounted) return;
     setState(() {
       callActive = false;
-      remoteCallVideoTrack = null;
-      callOverlayMinimized = false;
-      callOverlayFullscreen = false;
     });
     _roomLog('CALL ended');
-  }
-
-  void _attachCallTrackListener() {
-    final room = callEngine.room;
-    if (room == null) return;
-    callTrackListener?.dispose();
-    callTrackListener = room.createListener()
-      ..on<TrackSubscribedEvent>((event) {
-        if (event.track is! VideoTrack || !mounted) return;
-        setState(() => remoteCallVideoTrack = event.track as VideoTrack);
-        _roomLog(
-          'CALL remote video subscribed identity=${event.participant.identity}',
-        );
-      })
-      ..on<TrackUnsubscribedEvent>((event) {
-        if (event.track is! VideoTrack || !mounted) return;
-        if (identical(remoteCallVideoTrack, event.track)) {
-          setState(() => remoteCallVideoTrack = _remoteVideoTrack());
-        }
-      })
-      ;
-  }
-
-  VideoTrack? _remoteVideoTrack() {
-    final room = callEngine.room;
-    if (room == null) return null;
-    for (final participant in room.remoteParticipants.values) {
-      for (final publication in participant.videoTrackPublications) {
-        final track = publication.track;
-        if (track is VideoTrack && publication.source == TrackSource.camera) {
-          return track;
-        }
-      }
-    }
-    return null;
   }
 
   Future<void> _toggleCallMicrophone() async {
@@ -454,16 +441,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Future<void> _toggleCallCamera() async {
     final next = !cameraEnabled;
     await callEngine.setCameraEnabled(next);
-    if (!mounted) return;
-    setState(() {
-      cameraEnabled = next;
-      remoteCallVideoTrack = _remoteVideoTrack();
-    });
+    if (mounted) setState(() => cameraEnabled = next);
   }
 
   Future<void> _focusCallWindow() async {
-    if (!callActive || !mounted) return;
-    setState(() {});
+    final viewId = callWindowViewId;
+    if (!callActive || viewId == null) return;
+    final window = MultiViewDesktop.fromId(viewId);
+    await window.restore();
+    await window.show();
+    await window.focus();
   }
 
   Future<void> _browseFolder() async {
@@ -866,12 +853,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ],
         );
 
-        return Stack(
-          children: [
-            Positioned.fill(child: content),
-            if (callActive) _callOverlay(),
-          ],
-        );
+        return content;
       },
     );
   }
@@ -1544,264 +1526,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _callOverlay() {
-    final remoteTrack = remoteCallVideoTrack ?? _remoteVideoTrack();
-    final localTrack = cameraEnabled ? callEngine.localVideoTrack : null;
-    final showLocalPreview = callOverlayFullscreen ||
-        callOverlaySize.width >= 380 ||
-        callOverlaySize.height >= 260;
-
-    if (callOverlayMinimized) {
-      return Positioned(
-        right: 24,
-        top: 96,
-        child: Material(
-          elevation: 16,
-          borderRadius: BorderRadius.circular(14),
-          color: const Color(0xFF101D29),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: () => setState(() => callOverlayMinimized = false),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.videocam_rounded, size: 18),
-                  SizedBox(width: 8),
-                  Text('Звонок'),
-                  SizedBox(width: 8),
-                  Icon(Icons.open_in_full_rounded, size: 16),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    final callCard = Material(
-      elevation: 16,
-      clipBehavior: Clip.antiAlias,
-      borderRadius: BorderRadius.circular(callOverlayFullscreen ? 0 : 16),
-      color: const Color(0xFF0B1C2B),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: remoteTrack == null
-                ? Container(
-                    color: const Color(0xFF0B1C2B),
-                    child: const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.person_rounded,
-                          size: 86,
-                          color: Colors.white24,
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          'Камера собеседника выключена',
-                          style: TextStyle(color: Colors.white54),
-                        ),
-                      ],
-                    ),
-                  )
-                : VideoTrackRenderer(
-                    remoteTrack,
-                    fit: VideoViewFit.cover,
-                    mirrorMode: VideoViewMirrorMode.off,
-                  ),
-          ),
-          if (!callOverlayFullscreen)
-            Positioned(
-              left: 0,
-              right: 0,
-              top: 0,
-              height: 48,
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onPanUpdate: (details) {
-                  setState(() => callOverlayPosition += details.delta);
-                },
-                child: const ColoredBox(color: Colors.transparent),
-              ),
-            ),
-          if (!callOverlayFullscreen)
-            Positioned(
-              right: 8,
-              top: 6,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _callChromeButton(
-                    icon: Icons.remove_rounded,
-                    tooltip: widget.controller.t('minimize'),
-                    onPressed: () =>
-                        setState(() => callOverlayMinimized = true),
-                  ),
-                  const SizedBox(width: 4),
-                  _callChromeButton(
-                    icon: Icons.fullscreen_rounded,
-                    tooltip: widget.controller.t('fullscreen'),
-                    onPressed: () =>
-                        setState(() => callOverlayFullscreen = true),
-                  ),
-                ],
-              ),
-            ),
-          if (callOverlayFullscreen)
-            Positioned(
-              right: 8,
-              top: 8,
-              child: IconButton(
-                tooltip: widget.controller.t('fullscreen'),
-                onPressed: () =>
-                    setState(() => callOverlayFullscreen = false),
-                icon: const Icon(Icons.fullscreen_exit_rounded),
-              ),
-            ),
-          if (showLocalPreview)
-            Positioned(
-            right: 12,
-            bottom: 64,
-            width: callOverlayFullscreen ? 180 : 112,
-            height: callOverlayFullscreen ? 120 : 76,
-            child: Material(
-              elevation: 8,
-              clipBehavior: Clip.antiAlias,
-              borderRadius: BorderRadius.circular(10),
-              color: const Color(0xFF182634),
-              child: localTrack == null
-                  ? const Center(
-                      child: Icon(
-                        Icons.videocam_off_rounded,
-                        color: Colors.white38,
-                      ),
-                    )
-                  : VideoTrackRenderer(
-                      localTrack,
-                      fit: VideoViewFit.cover,
-                      mirrorMode: VideoViewMirrorMode.mirror,
-                    ),
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 12,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _callOverlayButton(
-                  icon: microphoneEnabled
-                      ? Icons.mic_rounded
-                      : Icons.mic_off_rounded,
-                  onPressed: () => unawaited(_toggleCallMicrophone()),
-                ),
-                const SizedBox(width: 10),
-                _callOverlayButton(
-                  icon: cameraEnabled
-                      ? Icons.videocam_rounded
-                      : Icons.videocam_off_rounded,
-                  onPressed: () => unawaited(_toggleCallCamera()),
-                ),
-                const SizedBox(width: 10),
-                _callOverlayButton(
-                  icon: Icons.call_end_rounded,
-                  destructive: true,
-                  onPressed: () => unawaited(_endCall()),
-                ),
-              ],
-            ),
-          ),
-          if (!callOverlayFullscreen)
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onPanUpdate: (details) {
-                  setState(() {
-                    callOverlaySize = Size(
-                      (callOverlaySize.width + details.delta.dx)
-                          .clamp(_callMinimumSize.width, 760.0),
-                      (callOverlaySize.height + details.delta.dy)
-                          .clamp(_callMinimumSize.height, 520.0),
-                    );
-                  });
-                },
-                child: const SizedBox(
-                  width: 26,
-                  height: 26,
-                  child: Align(
-                    alignment: Alignment.bottomRight,
-                    child: Icon(
-                      Icons.drag_handle_rounded,
-                      size: 17,
-                      color: Colors.white54,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-
-    if (callOverlayFullscreen) {
-      return Positioned.fill(child: callCard);
-    }
-
-    return Positioned(
-      left: callOverlayPosition.dx,
-      top: callOverlayPosition.dy,
-      width: callOverlaySize.width,
-      height: callOverlaySize.height,
-      child: callCard,
-    );
-  }
-
-  Widget _callChromeButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onPressed,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: Colors.black38,
-        shape: const CircleBorder(),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onPressed,
-          child: SizedBox(
-            width: 34,
-            height: 34,
-            child: Icon(icon, size: 19, color: Colors.white),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _callOverlayButton({
-    required IconData icon,
-    required VoidCallback onPressed,
-    bool destructive = false,
-  }) {
-    return FilledButton(
-      onPressed: onPressed,
-      style: FilledButton.styleFrom(
-        shape: const CircleBorder(),
-        padding: const EdgeInsets.all(12),
-        backgroundColor:
-            destructive ? const Color(0xFFB3261E) : syncSurfaceRaised,
-      ),
-      child: Icon(icon, size: 20),
     );
   }
 
