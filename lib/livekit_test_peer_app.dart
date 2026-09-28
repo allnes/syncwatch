@@ -45,6 +45,11 @@ class _LiveKitTestPeerAppState extends State<LiveKitTestPeerApp> {
         identity: 'partner-bot',
         participantName: 'PartnerBot',
       );
+      // Test Peer emulates presence/data sync only. It must never open local
+      // communication media devices or affect the host system audio session.
+      await connectedRoom.localParticipant?.setMicrophoneEnabled(false);
+      await connectedRoom.localParticipant?.setCameraEnabled(false);
+      debugPrint('[SyncWatch][TEST_PEER] media disabled mic=false camera=false');
       connectedRoom.addListener(_refresh);
       roomEvents = connectedRoom.createListener()
         ..on<DataReceivedEvent>((event) {
