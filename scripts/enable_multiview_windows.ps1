@@ -134,45 +134,69 @@ if (!(Test-Path $pluginCpp)) {
 $p = Get-Content $pluginCpp -Raw
 
 if ($p -notmatch "SyncWatch frameless resize hit-test") {
-  $hitStart = $p.IndexOf('} else if (message == WM_NCHITTEST) {')
-  if ($hitStart -lt 0) {
-    throw "Pinned multiview_desktop source does not contain WM_NCHITTEST."
+  # The pinned revision routes host messages through HostWndProc and does not
+  # contain WM_NCHITTEST/WM_GETMINMAXINFO yet. Add both directly to the host
+  # switch instead of searching for handlers that do not exist.
+  $sizeCase = "case WM_SIZE: {"
+  $casePos = $p.IndexOf($sizeCase)
+  if ($casePos -lt 0) {
+    throw "Pinned multiview_desktop HostWndProc lacks WM_SIZE."
   }
-  $hitEnd = $p.IndexOf('} else if (message == WM_GETMINMAXINFO) {', $hitStart)
-  if ($hitEnd -lt 0) {
-    throw "Pinned multiview_desktop source does not contain WM_GETMINMAXINFO after WM_NCHITTEST."
-  }
-
-  $newHit = @'
-} else if (message == WM_NCHITTEST) {
-            if (!window->is_resizable_) {
-                return HTCLIENT;
-            }
-
-            // SyncWatch frameless resize hit-test.
-            if (window->title_bar_style_ == "hidden" || window->is_frameless_) {
-                POINT cursor = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
-                RECT rect{};
-                GetWindowRect(hwnd, &rect);
-                const int border =
-                    std::max(6, GetSystemMetrics(SM_CXSIZEFRAME) +
-                                    GetSystemMetrics(SM_CXPADDEDBORDER));
-                const bool left = cursor.x < rect.left + border;
-                const bool right = cursor.x >= rect.right - border;
-                const bool top = cursor.y < rect.top + border;
-                const bool bottom = cursor.y >= rect.bottom - border;
-                if (top && left) return HTTOPLEFT;
-                if (top && right) return HTTOPRIGHT;
-                if (bottom && left) return HTBOTTOMLEFT;
-                if (bottom && right) return HTBOTTOMRIGHT;
-                if (left) return HTLEFT;
-                if (right) return HTRIGHT;
-                if (top) return HTTOP;
-                if (bottom) return HTBOTTOM;
-                return HTCLIENT;
-            }
-        '@
-  $p = $p.Substring(0, $hitStart) + $newHit + $p.Substring($hitEnd)
+  $nativeCases = @'
+case WM_NCHITTEST: {
+MultiViewDesktop *window =
+        MultiViewDesktop::Instance().FindByHwnd(hwnd);
+if (window != nullptr && window->is_resizable_ &&
+    (window->title_bar_style_ == "hidden" || window->is_frameless_)) {
+POINT cursor = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+RECT rect{};
+GetWindowRect(hwnd, &rect);
+const int border =
+        std::max(6, GetSystemMetrics(SM_CXSIZEFRAME) +
+                        GetSystemMetrics(SM_CXPADDEDBORDER));
+const bool left = cursor.x < rect.left + border;
+const bool right = cursor.x >= rect.right - border;
+const bool top = cursor.y < rect.top + border;
+const bool bottom = cursor.y >= rect.bottom - border;
+if (top && left) return HTTOPLEFT;
+if (top && right) return HTTOPRIGHT;
+if (bottom && left) return HTBOTTOMLEFT;
+if (bottom && right) return HTBOTTOMRIGHT;
+if (left) return HTLEFT;
+if (right) return HTRIGHT;
+if (top) return HTTOP;
+if (bottom) return HTBOTTOM;
+}
+break;
+}
+case WM_GETMINMAXINFO: {
+MultiViewDesktop *window =
+        MultiViewDesktop::Instance().FindByHwnd(hwnd);
+if (window != nullptr) {
+MINMAXINFO *info = reinterpret_cast<MINMAXINFO *>(lparam);
+if (window->minimum_size_.x != 0) {
+info->ptMinTrackSize.x = static_cast<LONG>(
+        window->minimum_size_.x * window->pixel_ratio_);
+}
+if (window->minimum_size_.y != 0) {
+info->ptMinTrackSize.y = static_cast<LONG>(
+        window->minimum_size_.y * window->pixel_ratio_);
+}
+if (window->maximum_size_.x != -1) {
+info->ptMaxTrackSize.x = static_cast<LONG>(
+        window->maximum_size_.x * window->pixel_ratio_);
+}
+if (window->maximum_size_.y != -1) {
+info->ptMaxTrackSize.y = static_cast<LONG>(
+        window->maximum_size_.y * window->pixel_ratio_);
+}
+return 0;
+}
+break;
+}
+// SyncWatch frameless resize hit-test
+'@
+  $p = $p.Insert($casePos, $nativeCases + [Environment]::NewLine)
 }
 
 if ($p -notmatch "SyncWatch refresh native frame") {
