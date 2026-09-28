@@ -1619,7 +1619,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         roomConnectionError != null || roomDiagnostics.isNotEmpty;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
       decoration: _panelDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1643,7 +1643,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               Text(status, style: TextStyle(color: _secondaryText)),
             ],
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 3),
           Text(
             widget.controller.roomName,
             style: const TextStyle(fontWeight: FontWeight.w700),
@@ -1658,7 +1658,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             ),
           ],
           if (roomConnected) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 3),
             Text(
               '${partnerOnline ? 2 : 1}/2 подключено',
               style: TextStyle(
@@ -1666,12 +1666,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 2),
             _memberRow(widget.controller.t('you'), true),
-            const SizedBox(height: 3),
+            const SizedBox(height: 1),
             _memberRow(widget.controller.t('friend'), partnerOnline),
           ],
-          const SizedBox(height: 6),
+          const SizedBox(height: 3),
           Row(
             children: [
               Expanded(
@@ -1723,17 +1723,24 @@ class _LibraryScreenState extends State<LibraryScreen> {
             ],
           ),
           if (showDiagnostics)
-            SizedBox(
-              height: 24,
-              child: TextButton.icon(
-                onPressed: _showRoomDiagnostics,
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            Transform.translate(
+              offset: const Offset(0, -2),
+              child: SizedBox(
+                height: 18,
+                child: TextButton.icon(
+                  onPressed: _showRoomDiagnostics,
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  icon: const Icon(Icons.bug_report_outlined, size: 13),
+                  label: const Text(
+                    'Подробнее',
+                    style: TextStyle(fontSize: 12),
+                  ),
                 ),
-                icon: const Icon(Icons.bug_report_outlined, size: 14),
-                label: const Text('Подробнее'),
               ),
             ),
         ],
