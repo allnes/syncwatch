@@ -16,6 +16,7 @@ class AppController extends ChangeNotifier {
 
   int skipSeconds = 10;
   bool ducking = false;
+  bool remoteSpeaking = false;
   bool scanSubfolders = true;
   bool automaticRefresh = false;
   bool timelinePreview = true;
@@ -172,6 +173,12 @@ class AppController extends ChangeNotifier {
   void setDucking(bool value) {
     ducking = value;
     _setBool('ducking', value);
+    notifyListeners();
+  }
+
+  void setRemoteSpeaking(bool value) {
+    if (remoteSpeaking == value) return;
+    remoteSpeaking = value;
     notifyListeners();
   }
 
