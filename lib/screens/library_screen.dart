@@ -1536,6 +1536,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Widget _callOverlay() {
     final remoteTrack = remoteCallVideoTrack ?? _remoteVideoTrack();
     final localTrack = cameraEnabled ? callEngine.localVideoTrack : null;
+    final showLocalPreview = callOverlayFullscreen ||
+        callOverlaySize.width >= 380 ||
+        callOverlaySize.height >= 260;
 
     if (callOverlayMinimized) {
       return Positioned(
@@ -1650,7 +1653,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 icon: const Icon(Icons.fullscreen_exit_rounded),
               ),
             ),
-          Positioned(
+          if (showLocalPreview)
+            Positioned(
             right: 12,
             bottom: 64,
             width: callOverlayFullscreen ? 180 : 112,
