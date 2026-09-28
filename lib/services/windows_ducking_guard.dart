@@ -29,12 +29,12 @@ class WindowsDuckingGuard {
         CLSCTX_ALL,
         null,
       );
-      sessions = sessionManager!.getSessionEnumerator();
+      sessions = sessionManager.getSessionEnumerator();
 
       final currentPid = pid;
       final count = sessions!.getCount();
       for (var index = 0; index < count; index++) {
-        final session = sessions!.getSession(index);
+        final session = sessions.getSession(index);
         if (session == null) continue;
 
         IAudioSessionControl2? control;
