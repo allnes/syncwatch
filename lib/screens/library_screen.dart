@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:io';
-
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
@@ -12,7 +10,6 @@ import '../models/movie_item.dart';
 import '../services/call_engine.dart';
 import '../services/livekit_connection.dart';
 import '../services/sync_engine.dart';
-import '../services/windows_ducking_guard.dart';
 import 'player_screen.dart';
 import 'settings_screen.dart';
 
@@ -62,18 +59,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool roomConnected = false;
   bool roomConnecting = false;
   String? roomConnectionError;
-  Process? callProcess;
-  String? callCommandFilePath;
-  String? callPreviewFilePath;
-  Timer? callCommandTimer;
-  Timer? callPreviewTimer;
-  String? lastCallCommand;
+  VideoTrack? callVideoTrack;
+  EventsListener<RoomEvent>? callTrackListener;
   bool metadataLoading = false;
   String? metadataPath;
   bool microphoneEnabled = true;
   bool cameraEnabled = true;
   late final CallEngine callEngine;
-  final WindowsDuckingGuard windowsDuckingGuard = WindowsDuckingGuard();
   LiveKitSyncEngine? roomSyncEngine;
   EventsListener<RoomEvent>? roomPresenceListener;
   bool partnerOnline = false;
@@ -116,23 +108,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
   @override
   void dispose() {
     trackMenuScrollController.dispose();
-    callCommandTimer?.cancel();
-    callPreviewTimer?.cancel();
     partnerResyncTimer?.cancel();
-    callProcess?.kill();
-    unawaited(windowsDuckingGuard.restore());
-    final previewPath = callPreviewFilePath;
-    if (previewPath != null) {
-      try {
-        File(previewPath).deleteSync();
-      } catch (_) {}
-    }
-    final commandPath = callCommandFilePath;
-    if (commandPath != null) {
-      try {
-        File(commandPath).deleteSync();
-      } catch (_) {}
-    }
+    callTrackListener?.dispose();
+    callTrackListener = null;
     roomPresenceListener?.dispose();
     roomPresenceListener = null;
     roomSyncEngine?.dispose();
@@ -205,14 +183,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _sendCallConnectionNotice(String? message) async {
-    final path = callCommandFilePath;
-    if (!callActive || path == null) return;
-    try {
-      await File(path).writeAsString(
-        'connection:${message ?? 'ok'}',
-        flush: true,
-      );
-    } catch (_) {}
+    if (!mounted || !callActive) return;
+    setState(() => playbackConnectionMessage = message);
   }
 
   void _attachRoomPresence() {
@@ -321,8 +293,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Future<void> _disconnectRoom() async {
     _roomLog('DISCONNECT requested');
     if (callActive) {
-      callProcess?.kill();
-      callActive = false;
+      await _endCall();
     }
     roomPresenceListener?.dispose();
     roomPresenceListener = null;
@@ -347,112 +318,98 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _startCall() async {
-    if (callActive) {
-      await _focusCallWindow();
-      return;
-    }
-
+    if (callActive) return;
     if (!roomConnected) return;
-    await windowsDuckingGuard.protectActiveRenderSessions();
+
     await callEngine.setMicrophoneEnabled(microphoneEnabled);
     await callEngine.setCameraEnabled(cameraEnabled);
-
-    try {
-      final commandFile = File(
-        '${Directory.systemTemp.path}\\syncwatch_call_$pid.cmd',
-      );
-      await commandFile.writeAsString('idle:0', flush: true);
-      callCommandFilePath = commandFile.path;
-      callPreviewFilePath = '${Directory.systemTemp.path}\\syncwatch_call_preview_$pid.png';
-      callPreviewTimer?.cancel();
-      callPreviewTimer = Timer.periodic(
-        const Duration(milliseconds: 100),
-        (_) => unawaited(_refreshCallPreview()),
-      );
-      lastCallCommand = 'idle:0';
-      callCommandTimer?.cancel();
-      callCommandTimer = Timer.periodic(
-        const Duration(milliseconds: 120),
-        (_) => unawaited(_pollCallCommand()),
-      );
-
-      final process = await Process.start(
-        Platform.resolvedExecutable,
-        [
-          '--call-window',
-          '--call-command-file=${commandFile.path}',
-          '--call-preview-file=${callPreviewFilePath!}',
-        ],
-        mode: ProcessStartMode.normal,
-      );
-      unawaited(process.stdout.drain<void>());
-      unawaited(process.stderr.drain<void>());
-      callProcess = process;
-      process.exitCode.then((_) async {
-        await callEngine.stopCallMedia();
-        await windowsDuckingGuard.restore();
-        if (!mounted) return;
-        setState(() {
-          callActive = false;
-
-          callProcess = null;
-          callCommandFilePath = null;
-          final previewPath = callPreviewFilePath;
-          if (previewPath != null) {
-            try {
-              File(previewPath).deleteSync();
-            } catch (_) {}
-          }
-          callPreviewFilePath = null;
-          callCommandTimer?.cancel();
-          callCommandTimer = null;
-          callPreviewTimer?.cancel();
-          callPreviewTimer = null;
-        });
-      });
-    } catch (error) {
-      debugPrint('[SyncWatch][CALL] START failed error=$error');
-      await callEngine.stopCallMedia();
-      await windowsDuckingGuard.restore();
-      if (mounted) {
-        setState(() {
-          callActive = false;
-          callProcess = null;
-          callCommandTimer?.cancel();
-          callCommandTimer = null;
-          callPreviewTimer?.cancel();
-          callPreviewTimer = null;
-        });
-      }
-      rethrow;
-    }
+    _attachCallTrackListener();
 
     if (!mounted) return;
-    setState(() => callActive = true);
+    setState(() {
+      callActive = true;
+      callVideoTrack = _preferredCallVideoTrack();
+    });
+    _roomLog('CALL started');
   }
 
-  Future<void> _pollCallCommand() async {
-    final path = callCommandFilePath;
-    if (path == null) return;
-    try {
-      final command = await File(path).readAsString();
-      if (command == lastCallCommand) return;
-      lastCallCommand = command;
-      if (!command.startsWith('media:')) return;
-      final parts = command.split(':');
-      if (parts.length < 3) return;
-      final mic = parts[1] == '1';
-      final camera = parts[2] == '1';
-      await callEngine.setMicrophoneEnabled(mic);
-      await callEngine.setCameraEnabled(camera);
-      if (!mounted) return;
-      setState(() {
-        microphoneEnabled = mic;
-        cameraEnabled = camera;
+  Future<void> _endCall() async {
+    callTrackListener?.dispose();
+    callTrackListener = null;
+    await callEngine.stopCallMedia();
+    if (!mounted) return;
+    setState(() {
+      callActive = false;
+      callVideoTrack = null;
+    });
+    _roomLog('CALL ended');
+  }
+
+  void _attachCallTrackListener() {
+    final room = callEngine.room;
+    if (room == null) return;
+    callTrackListener?.dispose();
+    callTrackListener = room.createListener()
+      ..on<TrackSubscribedEvent>((event) {
+        if (event.track is! VideoTrack || !mounted) return;
+        setState(() => callVideoTrack = event.track as VideoTrack);
+        _roomLog(
+          'CALL remote video subscribed identity=${event.participant.identity}',
+        );
+      })
+      ..on<TrackUnsubscribedEvent>((event) {
+        if (event.track is! VideoTrack || !mounted) return;
+        if (identical(callVideoTrack, event.track)) {
+          setState(() => callVideoTrack = _preferredCallVideoTrack());
+        }
+      })
+      ..on<LocalTrackPublishedEvent>((event) {
+        if (event.publication.track is! VideoTrack || !mounted) return;
+        if (_remoteVideoTrack() == null) {
+          setState(
+            () => callVideoTrack = event.publication.track as VideoTrack,
+          );
+        }
       });
-    } catch (_) {}
   }
 
+  VideoTrack? _remoteVideoTrack() {
+    final room = callEngine.room;
+    if (room == null) return null;
+    for (final participant in room.remoteParticipants.values) {
+      for (final publication in participant.videoTrackPublications) {
+        final track = publication.track;
+        if (track is VideoTrack && publication.source == TrackSource.camera) {
+          return track;
+        }
+      }
+    }
+    return null;
+  }
+
+  VideoTrack? _preferredCallVideoTrack() =>
+      _remoteVideoTrack() ?? callEngine.localVideoTrack;
+
+  Future<void> _toggleCallMicrophone() async {
+    final next = !microphoneEnabled;
+    await callEngine.setMicrophoneEnabled(next);
+    if (mounted) setState(() => microphoneEnabled = next);
+  }
+
+  Future<void> _toggleCallCamera() async {
+    final next = !cameraEnabled;
+    await callEngine.setCameraEnabled(next);
+    if (!mounted) return;
+    setState(() {
+      cameraEnabled = next;
+      callVideoTrack = next ? _preferredCallVideoTrack() : _remoteVideoTrack();
+    });
+  }
+
+  Future<void> _focusCallWindow() async {
+    if (!callActive || !mounted) return;
+    setState(() {});
+  }
 
   Future<void> _attachRoomSync() async {
     final room = callEngine.room;
@@ -934,11 +891,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 active: showingPlayer,
               );
 
-        return IndexedStack(
+        final content = IndexedStack(
           index: showingPlayer && movie != null ? 1 : 0,
           children: [
             libraryView,
             playerView,
+          ],
+        );
+
+        return Stack(
+          children: [
+            Positioned.fill(child: content),
+            if (callActive) _callOverlay(),
           ],
         );
       },
@@ -1613,6 +1577,89 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _callOverlay() {
+    final track = callVideoTrack;
+    return Positioned(
+      right: 24,
+      top: 96,
+      width: 320,
+      height: 220,
+      child: Material(
+        elevation: 16,
+        clipBehavior: Clip.antiAlias,
+        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFF0B1C2B),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: track == null
+                  ? const Center(
+                      child: Icon(
+                        Icons.person_rounded,
+                        size: 82,
+                        color: Colors.white24,
+                      ),
+                    )
+                  : VideoTrackRenderer(
+                      track,
+                      fit: VideoViewFit.cover,
+                      mirrorMode: track is LocalVideoTrack
+                          ? VideoViewMirrorMode.mirror
+                          : VideoViewMirrorMode.off,
+                    ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 12,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _callOverlayButton(
+                    icon: microphoneEnabled
+                        ? Icons.mic_rounded
+                        : Icons.mic_off_rounded,
+                    onPressed: () => unawaited(_toggleCallMicrophone()),
+                  ),
+                  const SizedBox(width: 10),
+                  _callOverlayButton(
+                    icon: cameraEnabled
+                        ? Icons.videocam_rounded
+                        : Icons.videocam_off_rounded,
+                    onPressed: () => unawaited(_toggleCallCamera()),
+                  ),
+                  const SizedBox(width: 10),
+                  _callOverlayButton(
+                    icon: Icons.call_end_rounded,
+                    destructive: true,
+                    onPressed: () => unawaited(_endCall()),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _callOverlayButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    bool destructive = false,
+  }) {
+    return FilledButton(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(
+        shape: const CircleBorder(),
+        padding: const EdgeInsets.all(12),
+        backgroundColor:
+            destructive ? const Color(0xFFB3261E) : syncSurfaceRaised,
+      ),
+      child: Icon(icon, size: 20),
     );
   }
 
