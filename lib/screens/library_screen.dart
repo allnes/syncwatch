@@ -446,7 +446,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         titleBarStyle: TitleBarStyle.hidden,
         windowButtonVisibility: false,
         backgroundColor: Color(0xFF0B1C2B),
-        alwaysOnTop: true,
+        alwaysOnTop: false,
       ),
     );
 
@@ -459,6 +459,30 @@ class _LibraryScreenState extends State<LibraryScreen> {
     await callWindow.setMaximumSize(const Size(1280, 900));
     await callWindow.setSize(const Size(300, 210));
     await callWindow.center();
+    final requestedCallSize = const Size(300, 210);
+    final firstActualSize = await callWindow.getSize();
+    _roomLog(
+      'CALL WINDOW requested=${requestedCallSize.width.toInt()}x'
+      '${requestedCallSize.height.toInt()} actual='
+      '${firstActualSize.width.toStringAsFixed(0)}x'
+      '${firstActualSize.height.toStringAsFixed(0)} '
+      'resizable=${await callWindow.isResizable()}',
+    );
+
+    // The secondary Flutter view can update native geometry during its first
+    // frame. Re-assert compact bounds after that frame has settled.
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    await callWindow.setResizable(true);
+    await callWindow.setMinimumSize(const Size(300, 210));
+    await callWindow.setMaximumSize(const Size(1280, 900));
+    await callWindow.setSize(requestedCallSize);
+    final settledActualSize = await callWindow.getSize();
+    _roomLog(
+      'CALL WINDOW settled actual='
+      '${settledActualSize.width.toStringAsFixed(0)}x'
+      '${settledActualSize.height.toStringAsFixed(0)} '
+      'resizable=${await callWindow.isResizable()}',
+    );
 
     if (!mounted) {
       await callWindow.closeWindow();
