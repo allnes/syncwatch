@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:multiview_desktop/multiview_desktop.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
@@ -21,7 +22,16 @@ Future<void> main(List<String> args) async {
 
   await windowManager.setMinimumSize(const Size(1100, 760));
 
-  runApp(
-    SyncWatchApp(controller: controller),
+  runMultiApp(
+    home: (_, __) => SyncWatchApp(controller: controller),
+    config: const MultiAppConfig(
+      generalParams: MultiPlatformParams(
+        closeMode: CloseMode.cascade,
+      ),
+      globalWindowOptions: WindowOptions(
+        minimumSize: Size(1100, 760),
+        title: 'SyncWatch',
+      ),
+    ),
   );
 }
