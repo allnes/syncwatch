@@ -99,31 +99,42 @@ if ($rootBytes.Length -ge 3 -and
   Write-Host "Removed accidental UTF-8 BOM from BUILD.gn."
 }
 
-$audioSource = "modules\\audio_device\\win\\core_audio_base_win.cc"
-if (!(Select-String -Path $audioSource -Pattern "SyncWatch owns its in-app ducking policy" -Quiet)) {
+$audioSource = "modules\\audio_device\\win\\audio_device_core_win.cc"
+if (!(Select-String -Path $audioSource -Pattern "SyncWatch: system ducking disabled" -Quiet)) {
   $source = Get-Content $audioSource -Raw
   $anchor = @'
-  // Check device period and the preferred buffer size and log a warning if
+  if (FAILED(hr)) {
+    RTC_LOG(LS_ERROR) << "IAudioClient::Initialize() failed:";
+  }
+  EXIT_ON_ERROR(hr);
+
 '@
   $duckingCode = @'
-  // SyncWatch owns its in-app ducking policy. A WebRTC communications render
-  // stream must never cause Windows to attenuate unrelated applications.
-  // Keep AudioCategory_Communications (AEC/communications processing) and opt
-  // only this render stream out of causing system ducking.
-  if (IsOutput()) {
-    ComPtr<IAudioClientDuckingControl> ducking_control;
-    const HRESULT ducking_hr = audio_client->GetService(
+  if (FAILED(hr)) {
+    RTC_LOG(LS_ERROR) << "IAudioClient::Initialize() failed:";
+  }
+  EXIT_ON_ERROR(hr);
+
+  // SyncWatch owns its in-app ducking policy. This is the actual Windows
+  // AudioDeviceModule render backend used by m150 (AudioDeviceWindowsCore).
+  // Opt this initialized render stream out of ducking unrelated applications.
+  {
+    IAudioClientDuckingControl* ducking_control = nullptr;
+    const HRESULT ducking_hr = _ptrClientOut->GetService(
         __uuidof(IAudioClientDuckingControl),
-        reinterpret_cast<void**>(ducking_control.GetAddressOf()));
-    if (SUCCEEDED(ducking_hr) && ducking_control) {
+        reinterpret_cast<void**>(&ducking_control));
+    if (SUCCEEDED(ducking_hr) && ducking_control != nullptr) {
       const HRESULT set_ducking_hr =
           ducking_control->SetDuckingOptionsForCurrentStream(
               AUDIO_DUCKING_OPTIONS_DO_NOT_DUCK_OTHER_STREAMS);
-      if (FAILED(set_ducking_hr)) {
+      if (SUCCEEDED(set_ducking_hr)) {
+        RTC_LOG(LS_INFO) << "SyncWatch: system ducking disabled";
+      } else {
         RTC_LOG(LS_WARNING)
             << "SyncWatch: failed to disable system ducking: "
             << set_ducking_hr;
       }
+      ducking_control->Release();
     } else {
       RTC_LOG(LS_WARNING)
           << "SyncWatch: IAudioClientDuckingControl unavailable: "
@@ -133,15 +144,15 @@ if (!(Select-String -Path $audioSource -Pattern "SyncWatch owns its in-app ducki
 
 '@
   if (!$source.Contains($anchor)) {
-    throw "Could not find the Core Audio insertion point in $audioSource."
+    throw "Could not find the initialized render-stream insertion point in $audioSource."
   }
-  $source = $source.Replace($anchor, $duckingCode + $anchor)
+  $source = $source.Replace($anchor, $duckingCode)
   [System.IO.File]::WriteAllText(
     (Resolve-Path $audioSource),
     $source,
     [System.Text.UTF8Encoding]::new($false)
   )
-  Write-Host "Applied SyncWatch no-system-ducking source patch."
+  Write-Host "Applied SyncWatch no-system-ducking patch to AudioDeviceWindowsCore."
 }
 
 if (!(Test-Path "libwebrtc")) {
