@@ -1,15 +1,8 @@
 diff --git a/modules/audio_device/win/core_audio_base_win.cc b/modules/audio_device/win/core_audio_base_win.cc
+index 0000000..1111111 100644
 --- a/modules/audio_device/win/core_audio_base_win.cc
 +++ b/modules/audio_device/win/core_audio_base_win.cc
-@@
-   if (low_latency_support) {
-@@
-   } else {
-@@
-     if (FAILED(core_audio_utility::SharedModeInitialize(
-             audio_client.Get(), &format_, audio_samples_event_,
-             requested_buffer_size, sample_rate_.has_value(),
-             &endpoint_buffer_size_frames_))) {
+@@ -420,6 +420,28 @@ bool CoreAudioBase::InitializeInternal() {
        return false;
      }
    }
@@ -29,14 +22,13 @@ diff --git a/modules/audio_device/win/core_audio_base_win.cc b/modules/audio_dev
 +              AUDIO_DUCKING_OPTIONS_DO_NOT_DUCK_OTHER_STREAMS);
 +      if (FAILED(set_ducking_hr)) {
 +        RTC_LOG(LS_WARNING)
-+            << "IAudioClientDuckingControl::SetDuckingOptionsForCurrentStream "
-+               "failed: "
-+            << core_audio_utility::ErrorToString(set_ducking_hr);
++            << "SyncWatch: failed to disable system ducking: "
++            << set_ducking_hr;
 +      }
 +    } else {
 +      RTC_LOG(LS_WARNING)
-+          << "IAudioClientDuckingControl unavailable: "
-+          << core_audio_utility::ErrorToString(ducking_hr);
++          << "SyncWatch: IAudioClientDuckingControl unavailable: "
++          << ducking_hr;
 +    }
 +  }
  
