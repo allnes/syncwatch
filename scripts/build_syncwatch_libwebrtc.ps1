@@ -35,6 +35,22 @@ target_os = ["win"]
 gclient sync --no-history
 Set-Location "$WorkDir\\src"
 
+# Windows PowerShell 5.1 Set-Content -Encoding UTF8 writes a BOM. An earlier
+# revision of this script touched BUILD.gn that way; strip the BOM if present
+# so GN can parse the checkout without requiring a fresh gclient sync.
+$rootBuild = Join-Path (Get-Location) "BUILD.gn"
+$rootBytes = [System.IO.File]::ReadAllBytes($rootBuild)
+if ($rootBytes.Length -ge 3 -and
+    $rootBytes[0] -eq 0xEF -and
+    $rootBytes[1] -eq 0xBB -and
+    $rootBytes[2] -eq 0xBF) {
+  [System.IO.File]::WriteAllBytes(
+    $rootBuild,
+    $rootBytes[3..($rootBytes.Length - 1)]
+  )
+  Write-Host "Removed accidental UTF-8 BOM from BUILD.gn."
+}
+
 $audioSource = "modules\\audio_device\\win\\core_audio_base_win.cc"
 if (!(Select-String -Path $audioSource -Pattern "SyncWatch owns its in-app ducking policy" -Quiet)) {
   $source = Get-Content $audioSource -Raw
@@ -72,7 +88,11 @@ if (!(Select-String -Path $audioSource -Pattern "SyncWatch owns its in-app ducki
     throw "Could not find the Core Audio insertion point in $audioSource."
   }
   $source = $source.Replace($anchor, $duckingCode + $anchor)
-  Set-Content -Path $audioSource -Value $source -Encoding UTF8
+  [System.IO.File]::WriteAllText(
+    (Resolve-Path $audioSource),
+    $source,
+    [System.Text.UTF8Encoding]::new($false)
+  )
   Write-Host "Applied SyncWatch no-system-ducking source patch."
 }
 
