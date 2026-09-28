@@ -370,7 +370,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (callActive) return;
     if (!roomConnected) return;
 
-    await callEngine.setMicrophoneEnabled(microphoneEnabled);
+    // TEMP DIAGNOSTIC: start the call without creating/publishing a
+    // microphone track. This isolates WebRTC playout/camera activation from
+    // microphone capture while investigating Windows system audio attenuation.
+    await callEngine.setMicrophoneEnabled(false);
+    _roomLog('CALL diagnostic microphone capture suppressed');
     await callEngine.setCameraEnabled(cameraEnabled);
     _attachCallTrackListener();
 
