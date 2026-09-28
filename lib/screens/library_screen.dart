@@ -1161,8 +1161,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        const lowerPanelMinHeight = 225.0;
+        const sectionGap = 14.0;
         final selectedHeight =
-            (constraints.maxHeight * 0.54).clamp(345.0, 375.0);
+            (constraints.maxHeight - lowerPanelMinHeight - sectionGap)
+                .clamp(260.0, 375.0);
 
         return Column(
           children: [
@@ -1361,9 +1364,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ],
         ),
         const SizedBox(height: 14),
-        SizedBox(
-          height: 62,
-          child: Container(
+        Container(
+          constraints: const BoxConstraints(minHeight: 62),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: _pageBackgroundDeep.withValues(alpha: _isLight ? 0.64 : 0.38),
@@ -1394,7 +1396,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ),
             ],
           ),
-        ),
         ),
       ],
     );
