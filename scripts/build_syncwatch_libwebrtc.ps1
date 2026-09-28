@@ -61,7 +61,7 @@ if (!(Test-Path ".gclient")) {
 solutions = [
   {
     "name": "src",
-    "url": "https://github.com/webrtc-sdk/webrtc.git@m144_release",
+    "url": "https://github.com/webrtc-sdk/webrtc.git@m150_release",
     "deps_file": "DEPS",
     "managed": False,
     "custom_deps": {},
@@ -72,6 +72,13 @@ target_os = ["win"]
 '@ | Set-Content -Encoding ASCII .gclient
 }
 
+# Ensure an old m144 checkout from earlier script revisions is not reused.
+if (Test-Path "$WorkDir\\src") {
+  $configuredUrl = (Get-Content "$WorkDir\\.gclient" -Raw)
+  if ($configuredUrl -notmatch "m150_release") {
+    Remove-Item "$WorkDir\\src" -Recurse -Force
+  }
+}
 gclient sync --no-history
 Set-Location "$WorkDir\\src"
 
@@ -155,6 +162,9 @@ if (!(Select-String -Path $audioSource -Pattern "SyncWatch owns its in-app ducki
 
 if (!(Test-Path "libwebrtc")) {
   git clone https://github.com/webrtc-sdk/libwebrtc.git libwebrtc
+} else {
+  git -C libwebrtc fetch origin
+  git -C libwebrtc reset --hard origin/main
 }
 
 # The wrapper repository defines a test target unconditionally. With
