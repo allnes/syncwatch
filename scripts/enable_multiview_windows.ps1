@@ -189,4 +189,11 @@ if ($p -notmatch "SyncWatch refresh native frame") {
 
 Write-Utf8NoBom $pluginCpp $p
 
+# Force CMake to rebuild the locally patched plugin instead of reusing a
+# previously compiled object from the last Flutter build.
+$pluginBuild = Join-Path $root "build\windows\x64\plugins\multiview_desktop"
+if (Test-Path $pluginBuild) {
+  Remove-Item $pluginBuild -Recurse -Force
+}
+
 Write-Host "SyncWatch Windows runner is configured for single-engine multi-view."
