@@ -102,22 +102,20 @@ if ($rootBytes.Length -ge 3 -and
 $audioSource = "modules\\audio_device\\win\\audio_device_core_win.cc"
 if (!(Select-String -Path $audioSource -Pattern "SyncWatch: system ducking disabled" -Quiet)) {
   $source = Get-Content $audioSource -Raw
-  $anchor = @'
-  if (FAILED(hr)) {
-    RTC_LOG(LS_ERROR) << "IAudioClient::Initialize() failed:";
+  $initializePos = $source.IndexOf("_ptrClientOut->Initialize(")
+  if ($initializePos -lt 0) {
+    throw "Could not find AudioDeviceWindowsCore render Initialize()."
   }
-  EXIT_ON_ERROR(hr);
-
-'@
+  $needle = "  EXIT_ON_ERROR(hr);"
+  $insertPos = $source.IndexOf($needle, $initializePos)
+  if ($insertPos -lt 0) {
+    throw "Could not find EXIT_ON_ERROR after AudioDeviceWindowsCore render Initialize()."
+  }
+  $insertPos += $needle.Length
   $duckingCode = @'
-  if (FAILED(hr)) {
-    RTC_LOG(LS_ERROR) << "IAudioClient::Initialize() failed:";
-  }
-  EXIT_ON_ERROR(hr);
 
-  // SyncWatch owns its in-app ducking policy. This is the actual Windows
-  // AudioDeviceModule render backend used by m150 (AudioDeviceWindowsCore).
-  // Opt this initialized render stream out of ducking unrelated applications.
+  // SyncWatch owns its in-app ducking policy. Do not let this WebRTC
+  // render stream attenuate unrelated Windows applications.
   {
     IAudioClientDuckingControl* ducking_control = nullptr;
     const HRESULT ducking_hr = _ptrClientOut->GetService(
@@ -141,18 +139,17 @@ if (!(Select-String -Path $audioSource -Pattern "SyncWatch: system ducking disab
           << ducking_hr;
     }
   }
-
 '@
-  if (!$source.Contains($anchor)) {
-    throw "Could not find the initialized render-stream insertion point in $audioSource."
-  }
-  $source = $source.Replace($anchor, $duckingCode)
+  $source = $source.Insert($insertPos, $duckingCode)
   [System.IO.File]::WriteAllText(
     (Resolve-Path $audioSource),
     $source,
     [System.Text.UTF8Encoding]::new($false)
   )
-  Write-Host "Applied SyncWatch no-system-ducking patch to AudioDeviceWindowsCore."
+  if (!(Select-String -Path $audioSource -Pattern "SyncWatch: system ducking disabled" -Quiet)) {
+    throw "AudioDeviceWindowsCore no-system-ducking patch verification failed."
+  }
+  Write-Host "Applied and verified SyncWatch no-system-ducking patch to AudioDeviceWindowsCore."
 }
 
 if (!(Test-Path "libwebrtc")) {
