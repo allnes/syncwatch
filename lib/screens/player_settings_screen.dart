@@ -217,11 +217,6 @@ class _PlayerSettingsScreenState extends State<PlayerSettingsScreen> {
           ),
           const SizedBox(height: 7),
           _compactSwitch(
-            value: controller.autoReady,
-            onChanged: controller.setAutoReady,
-            title: controller.t('autoReady'),
-          ),
-          _compactSwitch(
             value: controller.timelinePreview,
             onChanged: controller.setTimelinePreview,
             title: controller.t('timelinePreview'),
