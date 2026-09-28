@@ -76,6 +76,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   Timer? _seekDebounceTimer;
   Timer? _previewDebounceTimer;
   Timer? _duckingRampTimer;
+  Timer? _duckingReleaseTimer;
   double? _queuedSeekTarget;
   double _appliedMovieVolume = -1;
   bool _lastDuckingEnabled = false;
@@ -303,9 +304,21 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         _lastRemoteSpeaking != widget.controller.remoteSpeaking;
     _lastDuckingEnabled = widget.controller.ducking;
     _lastRemoteSpeaking = widget.controller.remoteSpeaking;
-    if (duckingChanged || speakingChanged) {
+    if (!(duckingChanged || speakingChanged)) return;
+
+    _duckingReleaseTimer?.cancel();
+    _duckingReleaseTimer = null;
+
+    if (widget.controller.ducking && widget.controller.remoteSpeaking) {
       _rampMovieVolume();
+      return;
     }
+
+    // Keep short gaps between words from pumping the movie volume.
+    _duckingReleaseTimer = Timer(const Duration(milliseconds: 280), () {
+      _duckingReleaseTimer = null;
+      _rampMovieVolume();
+    });
   }
 
   double get _targetMovieVolume {
@@ -530,6 +543,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     _seekDebounceTimer?.cancel();
     _previewDebounceTimer?.cancel();
     _duckingRampTimer?.cancel();
+    _duckingReleaseTimer?.cancel();
     widget.controller.removeListener(_handleControllerAudioState);
     for (final subscription in _subscriptions) {
       subscription.cancel();
