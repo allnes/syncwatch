@@ -1161,7 +1161,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        const lowerPanelMinHeight = 225.0;
+        const lowerPanelMinHeight = 250.0;
         const sectionGap = 14.0;
         final selectedHeight =
             (constraints.maxHeight - lowerPanelMinHeight - sectionGap)
@@ -1620,7 +1620,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         roomConnectionError != null || roomDiagnostics.isNotEmpty;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+      padding: const EdgeInsets.all(14),
       decoration: _panelDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1644,7 +1644,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               Text(status, style: TextStyle(color: _secondaryText)),
             ],
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 7),
           Text(
             widget.controller.roomName,
             style: const TextStyle(fontWeight: FontWeight.w700),
@@ -1659,7 +1659,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             ),
           ],
           if (roomConnected) ...[
-            const SizedBox(height: 3),
+            const SizedBox(height: 8),
             Text(
               '${partnerOnline ? 2 : 1}/2 подключено',
               style: TextStyle(
@@ -1667,12 +1667,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 7),
             _memberRow(widget.controller.t('you'), true),
-            const SizedBox(height: 1),
+            const SizedBox(height: 5),
             _memberRow(widget.controller.t('friend'), partnerOnline),
           ],
-          const SizedBox(height: 3),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
@@ -1723,27 +1723,23 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ),
             ],
           ),
-          if (showDiagnostics)
-            Transform.translate(
-              offset: const Offset(0, -2),
-              child: SizedBox(
-                height: 18,
-                child: TextButton.icon(
-                  onPressed: _showRoomDiagnostics,
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: Size.zero,
-                    visualDensity: VisualDensity.compact,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  icon: const Icon(Icons.bug_report_outlined, size: 13),
-                  label: const Text(
-                    'Подробнее',
-                    style: TextStyle(fontSize: 12),
-                  ),
+          if (showDiagnostics) ...[
+            const SizedBox(height: 4),
+            SizedBox(
+              height: 24,
+              child: TextButton.icon(
+                onPressed: _showRoomDiagnostics,
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  visualDensity: VisualDensity.compact,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
+                icon: const Icon(Icons.bug_report_outlined, size: 14),
+                label: const Text('Подробнее'),
               ),
             ),
+          ],
         ],
       ),
     );
