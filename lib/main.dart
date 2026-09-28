@@ -60,6 +60,8 @@ Future<void> main(List<String> args) async {
     return;
   }
 
+  await windowManager.setMinimumSize(const Size(1100, 760));
+
   runApp(
     SyncWatchApp(controller: controller),
   );
