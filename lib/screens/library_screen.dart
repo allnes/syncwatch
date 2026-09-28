@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
@@ -409,94 +410,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Future<void> _focusCallWindow() async {
     if (!callActive || !mounted) return;
     setState(() {});
-  }
-
-  Future<void> _attachRoomSync() async {
-    final room = callEngine.room;
-    if (room == null) return;
-    await roomSyncEngine?.dispose();
-    final sync = LiveKitSyncEngine(
-      room: room,
-      mediaId: () => activePlayerMovie?.movieId ?? remotePlaybackMovieId ?? '',
-      position: () => Duration(
-        milliseconds: activePlayerMovie == null
-            ? remotePlaybackPositionMs
-            : (widget.controller.playbackPositionFor(
-                        activePlayerMovie!.fullPath,
-                      ) *
-                    1000)
-                .round(),
-      ),
-      isPlaying: () => showingPlayer,
-    );
-    sync.setRemoteSessionHandler(_handleRemoteSession);
-    sync.setLibraryProvider(() => [
-      for (final movie in movies)
-        SharedMediaDescriptor(
-          movieId: movie.movieId,
-          fingerprint: movie.mediaFingerprint,
-        ),
-    ]);
-    await sync.connect();
-    roomSyncEngine = sync;
-    await sync.requestPlaybackState();
-    await sync.requestLibrary();
-  }
-
-  Future<void> _refreshCallPreview() async {
-    if (!cameraEnabled) return;
-    final track = callEngine.localVideoTrack;
-    final path = callPreviewFilePath;
-    if (track == null || path == null) return;
-    try {
-      final frame = await track.mediaStreamTrack.captureFrame();
-      final bytes = frame.asUint8List();
-      if (bytes.length < 8) return;
-      final isPng = bytes[0] == 0x89 &&
-          bytes[1] == 0x50 &&
-          bytes[2] == 0x4E &&
-          bytes[3] == 0x47;
-      if (!isPng) {
-        debugPrint('[SyncWatch][CALL] PREVIEW unexpected frame format bytes=${bytes.length}');
-        return;
-      }
-      final target = File(path);
-      final staging = File('$path.next');
-      await staging.writeAsBytes(bytes, flush: true);
-      if (await target.exists()) {
-        await target.delete();
-      }
-      await staging.rename(path);
-    } catch (error) {
-      debugPrint('[SyncWatch][CALL] PREVIEW capture failed: $error');
-    }
-  }
-
-  Future<void> _publishLibraryToRoom() async {
-    final room = callEngine.room;
-    if (room == null) return;
-    final sync = roomSyncEngine;
-    if (sync == null) return;
-    await sync.publishLibrary([
-      for (final movie in movies)
-        SharedMediaDescriptor(
-          movieId: movie.movieId,
-          fingerprint: movie.mediaFingerprint,
-        ),
-    ]);
-  }
-
-  Future<void> _focusCallWindow() async {
-    final process = callProcess;
-    final commandPath = callCommandFilePath;
-    if (process == null || commandPath == null) return;
-
-    try {
-      await File(commandPath).writeAsString(
-        'restore:${DateTime.now().microsecondsSinceEpoch}',
-        flush: true,
-      );
-    } catch (_) {}
   }
 
   Future<void> _browseFolder() async {
