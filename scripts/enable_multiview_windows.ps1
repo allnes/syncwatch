@@ -108,13 +108,27 @@ $m = Get-Content $main -Raw
 $m = $m.Replace('window.SetQuitOnClose(true);', 'window.SetQuitOnClose(false);')
 Write-Utf8NoBom $main $m
 
-# Patch the pub-cache Windows multi-view host. The upstream frameless secondary
-# window currently needs explicit non-client hit testing and a frame refresh on
-# Windows for reliable sizing/resizing.
-$pluginRoot = Join-Path $env:LOCALAPPDATA "Pub\Cache\hosted\pub.dev\multiview_desktop-1.2.2\windows"
-$pluginCpp = Join-Path $pluginRoot "multi_view_desktop.cpp"
+# multiview_desktop is pinned to a known Git revision in pubspec.yaml.
+# Patch the exact package source selected by Flutter rather than assuming a
+# pub.dev cache path/version.
+$packageConfig = Join-Path $root ".dart_tool\package_config.json"
+if (!(Test-Path $packageConfig)) {
+  throw "Missing $packageConfig. Run flutter pub get first."
+}
+$config = Get-Content $packageConfig -Raw | ConvertFrom-Json
+$mvPackage = $config.packages | Where-Object { $_.name -eq "multiview_desktop" } | Select-Object -First 1
+if ($null -eq $mvPackage) {
+  throw "multiview_desktop is missing from package_config.json."
+}
+$mvRootUri = [Uri]$mvPackage.rootUri
+if ($mvRootUri.IsAbsoluteUri -and $mvRootUri.Scheme -eq "file") {
+  $mvRoot = $mvRootUri.LocalPath
+} else {
+  $mvRoot = [IO.Path]::GetFullPath((Join-Path (Split-Path $packageConfig -Parent) $mvPackage.rootUri))
+}
+$pluginCpp = Join-Path $mvRoot "windows\multi_view_desktop.cpp"
 if (!(Test-Path $pluginCpp)) {
-  throw "Missing multiview_desktop Windows source: $pluginCpp. Run flutter pub get first."
+  throw "Missing pinned multiview_desktop Windows source: $pluginCpp"
 }
 
 $p = Get-Content $pluginCpp -Raw
@@ -122,11 +136,11 @@ $p = Get-Content $pluginCpp -Raw
 if ($p -notmatch "SyncWatch frameless resize hit-test") {
   $hitStart = $p.IndexOf('} else if (message == WM_NCHITTEST) {')
   if ($hitStart -lt 0) {
-    throw "Could not locate multiview_desktop WM_NCHITTEST region."
+    throw "Pinned multiview_desktop source does not contain WM_NCHITTEST."
   }
   $hitEnd = $p.IndexOf('} else if (message == WM_GETMINMAXINFO) {', $hitStart)
   if ($hitEnd -lt 0) {
-    throw "Could not locate multiview_desktop WM_NCHITTEST/WM_GETMINMAXINFO region."
+    throw "Pinned multiview_desktop source does not contain WM_GETMINMAXINFO after WM_NCHITTEST."
   }
 
   $newHit = @'
@@ -135,8 +149,7 @@ if ($p -notmatch "SyncWatch frameless resize hit-test") {
                 return HTCLIENT;
             }
 
-            // SyncWatch frameless resize hit-test: Windows removes the visible
-            // non-client frame for hidden title bars, so provide resize borders.
+            // SyncWatch frameless resize hit-test.
             if (window->title_bar_style_ == "hidden" || window->is_frameless_) {
                 POINT cursor = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
                 RECT rect{};
@@ -163,34 +176,32 @@ if ($p -notmatch "SyncWatch frameless resize hit-test") {
 }
 
 if ($p -notmatch "SyncWatch refresh native frame") {
-  $oldResizable = @'
-    ::SetWindowLong(hWnd, GWL_STYLE, gwlStyle);
-}
-'@
-  $newResizable = @'
+  $setResizablePos = $p.IndexOf("void MultiViewDesktop::SetResizable")
+  if ($setResizablePos -lt 0) {
+    throw "Pinned multiview_desktop source lacks SetResizable."
+  }
+  $setResizableEnd = $p.IndexOf("bool MultiViewDesktop::IsMinimizable", $setResizablePos)
+  if ($setResizableEnd -lt 0) {
+    throw "Pinned multiview_desktop source lacks IsMinimizable after SetResizable."
+  }
+  $section = $p.Substring($setResizablePos, $setResizableEnd - $setResizablePos)
+  $needle = "    ::SetWindowLong(hWnd, GWL_STYLE, gwlStyle);"
+  if (!$section.Contains($needle)) {
+    throw "Pinned multiview_desktop SetResizable lacks SetWindowLong."
+  }
+  $replacement = @'
     ::SetWindowLong(hWnd, GWL_STYLE, gwlStyle);
     // SyncWatch refresh native frame after changing WS_THICKFRAME.
     ::SetWindowPos(hWnd, nullptr, 0, 0, 0, 0,
                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
                        SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
-}
 '@
-  $setResizablePos = $p.IndexOf("void MultiViewDesktop::SetResizable")
-  if ($setResizablePos -lt 0) {
-    throw "Could not locate MultiViewDesktop::SetResizable."
-  }
-  $tail = $p.Substring($setResizablePos)
-  if (!$tail.Contains($oldResizable)) {
-    throw "Could not locate SetResizable SetWindowLong block."
-  }
-  $tail = $tail.Replace($oldResizable, $newResizable)
-  $p = $p.Substring(0, $setResizablePos) + $tail
+  $section = $section.Replace($needle, $replacement)
+  $p = $p.Substring(0, $setResizablePos) + $section + $p.Substring($setResizableEnd)
 }
 
 Write-Utf8NoBom $pluginCpp $p
 
-# Force CMake to rebuild the locally patched plugin instead of reusing a
-# previously compiled object from the last Flutter build.
 $pluginBuild = Join-Path $root "build\windows\x64\plugins\multiview_desktop"
 if (Test-Path $pluginBuild) {
   Remove-Item $pluginBuild -Recurse -Force
