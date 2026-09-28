@@ -24,7 +24,7 @@ class WindowsDuckingGuard {
     try {
       // Flutter's Windows runner has COM initialized already.
       deviceEnumerator = createInstance<IMMDeviceEnumerator>(MMDeviceEnumerator);
-      device = deviceEnumerator.getDefaultAudioEndpoint(eRender, eMultimedia);
+      device = deviceEnumerator.getDefaultAudioEndpoint(eRender, eConsole);
       sessionManager = device!.activate<IAudioSessionManager2>(
         CLSCTX_ALL,
         null,
