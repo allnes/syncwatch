@@ -121,8 +121,11 @@ $p = Get-Content $pluginCpp -Raw
 
 if ($p -notmatch "SyncWatch frameless resize hit-test") {
   $hitStart = $p.IndexOf('} else if (message == WM_NCHITTEST) {')
+  if ($hitStart -lt 0) {
+    throw "Could not locate multiview_desktop WM_NCHITTEST region."
+  }
   $hitEnd = $p.IndexOf('} else if (message == WM_GETMINMAXINFO) {', $hitStart)
-  if ($hitStart -lt 0 -or $hitEnd -lt 0) {
+  if ($hitEnd -lt 0) {
     throw "Could not locate multiview_desktop WM_NCHITTEST/WM_GETMINMAXINFO region."
   }
 
