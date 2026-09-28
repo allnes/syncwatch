@@ -366,7 +366,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       callPreviewFilePath = '${Directory.systemTemp.path}\\syncwatch_call_preview_$pid.png';
       callPreviewTimer?.cancel();
       callPreviewTimer = Timer.periodic(
-        const Duration(milliseconds: 350),
+        const Duration(milliseconds: 100),
         (_) => unawaited(_refreshCallPreview()),
       );
       lastCallCommand = 'idle:0';
@@ -503,7 +503,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
         debugPrint('[SyncWatch][CALL] PREVIEW unexpected frame format bytes=${bytes.length}');
         return;
       }
-      await File(path).writeAsBytes(bytes, flush: true);
+      final target = File(path);
+      final staging = File('$path.next');
+      await staging.writeAsBytes(bytes, flush: true);
+      if (await target.exists()) {
+        await target.delete();
+      }
+      await staging.rename(path);
     } catch (error) {
       debugPrint('[SyncWatch][CALL] PREVIEW capture failed: $error');
     }
