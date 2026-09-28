@@ -676,9 +676,14 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                     right: 0,
                     top: 0,
                     height: 8,
-                    child: MouseRegion(
-                      onEnter: (_) => _showFullscreenControls(),
-                      child: const SizedBox.expand(),
+                    child: Listener(
+                      behavior: HitTestBehavior.opaque,
+                      onPointerHover: (_) => _showFullscreenControls(),
+                      onPointerMove: (_) => _showFullscreenControls(),
+                      child: MouseRegion(
+                        onEnter: (_) => _showFullscreenControls(),
+                        child: const SizedBox.expand(),
+                      ),
                     ),
                   ),
                   if (topControlsVisible)
