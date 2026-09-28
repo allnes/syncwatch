@@ -385,8 +385,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       unawaited(process.stderr.drain<void>());
       callProcess = process;
       process.exitCode.then((_) async {
-        await callEngine.setMicrophoneEnabled(false);
-        await callEngine.setCameraEnabled(false);
+        await callEngine.stopCallMedia();
         if (!mounted) return;
         setState(() {
           callActive = false;
@@ -408,8 +407,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       });
     } catch (error) {
       debugPrint('[SyncWatch][CALL] START failed error=$error');
-      await callEngine.setMicrophoneEnabled(false);
-      await callEngine.setCameraEnabled(false);
+      await callEngine.stopCallMedia();
       if (mounted) {
         setState(() {
           callActive = false;
