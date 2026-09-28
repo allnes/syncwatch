@@ -14,7 +14,22 @@ if (!(Test-Path "depot_tools")) {
 }
 $env:PATH = "$WorkDir\\depot_tools;$env:PATH"
 $env:DEPOT_TOOLS_WIN_TOOLCHAIN = "0"
-$env:GYP_MSVS_VERSION = "2022"
+
+# This WebRTC branch recognizes Visual Studio through 2022. If a newer Visual
+# Studio is installed, provide its path explicitly and request the compatible
+# VS 2022/v143 toolchain mode.
+$vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\\Installer\\vswhere.exe"
+$vsPath = $null
+if (Test-Path $vswhere) {
+  $vsPath = & $vswhere -latest -products * -property installationPath
+}
+if ($vsPath) {
+  $env:GYP_MSVS_OVERRIDE_PATH = $vsPath
+  $env:GYP_MSVS_VERSION = "2022"
+  Write-Host "Using local Visual Studio toolchain at $vsPath (WebRTC compatibility mode: VS 2022/v143)."
+} else {
+  $env:GYP_MSVS_VERSION = "2022"
+}
 
 if (!(Test-Path ".gclient")) {
 @'
