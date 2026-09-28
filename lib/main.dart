@@ -3,7 +3,6 @@ import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
-import 'call_window_app.dart';
 import 'livekit_test_peer_app.dart';
 
 Future<void> main(List<String> args) async {
@@ -19,46 +18,6 @@ Future<void> main(List<String> args) async {
     return;
   }
 
-  if (args.contains('--call-window')) {
-    final commandArg = args.firstWhere(
-      (arg) => arg.startsWith('--call-command-file='),
-      orElse: () => '',
-    );
-    final commandFilePath = commandArg.isEmpty
-        ? null
-        : commandArg.substring('--call-command-file='.length);
-    final previewArg = args.firstWhere(
-      (arg) => arg.startsWith('--call-preview-file='),
-      orElse: () => '',
-    );
-    final previewFilePath = previewArg.isEmpty
-        ? null
-        : previewArg.substring('--call-preview-file='.length);
-
-    const options = WindowOptions(
-      size: Size(260, 180),
-      minimumSize: Size(260, 180),
-      center: true,
-      alwaysOnTop: true,
-      skipTaskbar: true,
-      titleBarStyle: TitleBarStyle.hidden,
-      backgroundColor: Colors.transparent,
-    );
-
-    runApp(
-      CallWindowApp(
-        controller: controller,
-        commandFilePath: commandFilePath,
-        previewFilePath: previewFilePath,
-      ),
-    );
-
-    await windowManager.waitUntilReadyToShow(options, () async {
-      await windowManager.show();
-      await windowManager.focus();
-    });
-    return;
-  }
 
   await windowManager.setMinimumSize(const Size(1100, 760));
 
