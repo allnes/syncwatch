@@ -233,20 +233,69 @@ class _CallWindowViewState extends State<CallWindowView> {
                 ),
               ),
               if (!_fullscreen) ...[
-                const Positioned(
-                  right: 0,
+                Positioned(
+                  left: 0,
+                  top: 0,
                   bottom: 0,
-                  child: DragToResizeArea(
-                    resizeEdge: ResizeEdge.bottomRight,
-                    child: SizedBox(width: 18, height: 18),
+                  width: 6,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onPanStart: (_) => unawaited(
+                      MultiViewDesktop.of(context)
+                          .startResizing(ResizeEdge.left),
+                    ),
                   ),
                 ),
-                const Positioned(
-                  left: 0,
+                Positioned(
+                  right: 0,
+                  top: 0,
                   bottom: 0,
-                  child: DragToResizeArea(
-                    resizeEdge: ResizeEdge.bottomLeft,
-                    child: SizedBox(width: 12, height: 18),
+                  width: 6,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onPanStart: (_) => unawaited(
+                      MultiViewDesktop.of(context)
+                          .startResizing(ResizeEdge.right),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  height: 6,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onPanStart: (_) => unawaited(
+                      MultiViewDesktop.of(context)
+                          .startResizing(ResizeEdge.top),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: 6,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onPanStart: (_) => unawaited(
+                      MultiViewDesktop.of(context)
+                          .startResizing(ResizeEdge.bottom),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  width: 18,
+                  height: 18,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onPanStart: (_) => unawaited(
+                      MultiViewDesktop.of(context)
+                          .startResizing(ResizeEdge.bottomRight),
+                    ),
                   ),
                 ),
               ],
