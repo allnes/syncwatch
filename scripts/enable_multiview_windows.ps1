@@ -35,7 +35,11 @@ if ($c -notmatch "MultiViewDesktopCreateMainView") {
     '#include <multiview_desktop/multi_view_desktop_plugin.h>'
   )
 
-  $onCreatePattern = '(?s)bool FlutterWindow::OnCreate\(\) \{.*?\n\}'
+  $onCreateStart = $c.IndexOf('bool FlutterWindow::OnCreate()')
+  $destroyStart = $c.IndexOf('void FlutterWindow::OnDestroy()', $onCreateStart)
+  if ($onCreateStart -lt 0 -or $destroyStart -lt 0) {
+    throw "Could not locate FlutterWindow::OnCreate/OnDestroy in $cpp"
+  }
   $onCreate = @'
 bool FlutterWindow::OnCreate() {
   if (!Win32Window::OnCreate()) {
@@ -56,16 +60,22 @@ bool FlutterWindow::OnCreate() {
   SetChildContent(flutter_hwnd);
   return true;
 }
-'@
-  $c = [regex]::Replace($c, $onCreatePattern, $onCreate, 1)
 
-  $destroyPattern = '(?s)void FlutterWindow::OnDestroy\(\) \{.*?\n\}'
+'@
+  $c = $c.Substring(0, $onCreateStart) + $onCreate + $c.Substring($destroyStart)
+
+  $destroyStart = $c.IndexOf('void FlutterWindow::OnDestroy()')
+  $messageStart = $c.IndexOf('LRESULT', $destroyStart)
+  if ($destroyStart -lt 0 -or $messageStart -lt 0) {
+    throw "Could not locate FlutterWindow::OnDestroy/MessageHandler in $cpp"
+  }
   $destroy = @'
 void FlutterWindow::OnDestroy() {
   Win32Window::OnDestroy();
 }
+
 '@
-  $c = [regex]::Replace($c, $destroyPattern, $destroy, 1)
+  $c = $c.Substring(0, $destroyStart) + $destroy + $c.Substring($messageStart)
 
   $messageStart = $c.IndexOf('LRESULT' + [Environment]::NewLine + 'FlutterWindow::MessageHandler')
   if ($messageStart -lt 0) {
