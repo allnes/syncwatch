@@ -77,6 +77,8 @@ class _CallWindowState extends State<_CallWindow> {
           final modified = file.lastModifiedSync();
           if (modified != lastPreviewModified) {
             lastPreviewModified = modified;
+            final provider = FileImage(file);
+            unawaited(provider.evict());
             setState(() => previewVersion++);
           }
         }
@@ -171,11 +173,11 @@ class _CallWindowState extends State<_CallWindow> {
                 child: cameraEnabled &&
                         widget.previewFilePath != null &&
                         File(widget.previewFilePath!).existsSync()
-                    ? Image.file(
-                        File(widget.previewFilePath!),
+                    ? Image(
+                        image: FileImage(File(widget.previewFilePath!)),
                         key: ValueKey(previewVersion),
                         fit: BoxFit.cover,
-                        gaplessPlayback: true,
+                        gaplessPlayback: false,
                       )
                     : const Center(
                         child: Icon(
