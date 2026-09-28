@@ -153,20 +153,48 @@ git -C libwebrtc fetch --tags origin
 git -C libwebrtc reset --hard 070aa6d763c16027ba53c0965107658c837a4dae
 if ($LASTEXITCODE -ne 0) { throw "Failed to pin libwebrtc wrapper release." }
 
-# Apply the wrapper's m150 custom-audio API patch. Two hunks in the published
-# patch have stale context; git's 3-way mode resolves them against m150.
+# Apply the wrapper's m150 custom-audio API patch. The published patch has
+# stale context in exactly audio_receive_stream.cc/.h on the current m150
+# checkout, so apply with rejects, repair only those two known rejects, and
+# fail on anything else.
 $wrapperAudioPatch = "libwebrtc\\patches\\custom_audio_source_m150.patch"
 $audioDefines = "api\\audio\\audio_device_defines.h"
 if (!(Select-String -Path $audioDefines -Pattern "UpdateAudioSenders" -Quiet)) {
-  git apply --3way --ignore-space-change --ignore-whitespace --whitespace=nowarn $wrapperAudioPatch
-  if ($LASTEXITCODE -ne 0) {
-    throw "libwebrtc m150 custom-audio patch failed in 3-way mode."
+  Get-ChildItem -Recurse -Filter "*.rej" | Remove-Item -Force
+  git apply --reject --ignore-space-change --ignore-whitespace --whitespace=nowarn $wrapperAudioPatch
+
+  $rejects = @(Get-ChildItem -Recurse -Filter "*.rej")
+  $allowedRejectNames = @("audio_receive_stream.cc.rej", "audio_receive_stream.h.rej")
+  $unexpectedRejects = @($rejects | Where-Object { $_.Name -notin $allowedRejectNames })
+  if ($unexpectedRejects.Count -gt 0) {
+    throw "Unexpected m150 patch rejects: $($unexpectedRejects.FullName -join ', ')"
   }
+
+  $receiveCc = "audio\\audio_receive_stream.cc"
+  $receiveCcText = Get-Content $receiveCc -Raw
+  $receiveCcText = $receiveCcText -replace 'internal::AudioState\* AudioReceiveStreamImpl::audio_state\(\) const \{', 'webrtc::AudioState* AudioReceiveStreamImpl::audio_state() const {'
+  $receiveCcText = $receiveCcText -replace 'static_cast<internal::AudioState\*>\(audio_state_\.get\(\)\)', 'static_cast<webrtc::AudioState*>(audio_state_.get())'
+  [System.IO.File]::WriteAllText((Resolve-Path $receiveCc), $receiveCcText, [System.Text.UTF8Encoding]::new($false))
+
+  $receiveH = "audio\\audio_receive_stream.h"
+  $receiveHText = Get-Content $receiveH -Raw
+  $receiveHText = $receiveHText -replace 'internal::AudioState\* audio_state\(\) const;', 'webrtc::AudioState* audio_state() const;'
+  [System.IO.File]::WriteAllText((Resolve-Path $receiveH), $receiveHText, [System.Text.UTF8Encoding]::new($false))
+
+  $rejects | Remove-Item -Force
 }
-if (!(Select-String -Path $audioDefines -Pattern "UpdateAudioSenders" -Quiet) -or
-    !(Select-String -Path "audio\\audio_transport_impl.h" -Pattern "class AudioTransportFactory" -Quiet) -or
-    !(Select-String -Path "api\\peer_connection_interface.h" -Pattern "audio_transport_factory" -Quiet)) {
-  throw "m150 custom-audio compatibility patch verification failed."
+
+$requiredChecks = @(
+  @{ Path = "api\\audio\\audio_device_defines.h"; Pattern = "UpdateAudioSenders" },
+  @{ Path = "audio\\audio_transport_impl.h"; Pattern = "class AudioTransportFactory" },
+  @{ Path = "api\\peer_connection_interface.h"; Pattern = "audio_transport_factory" },
+  @{ Path = "audio\\audio_receive_stream.cc"; Pattern = "static_cast<webrtc::AudioState" },
+  @{ Path = "audio\\audio_receive_stream.h"; Pattern = "webrtc::AudioState* audio_state" }
+)
+foreach ($check in $requiredChecks) {
+  if (!(Select-String -Path $check.Path -Pattern $check.Pattern -SimpleMatch -Quiet)) {
+    throw "m150 compatibility verification failed: $($check.Path) / $($check.Pattern)"
+  }
 }
 Write-Host "Verified libwebrtc m150 custom-audio compatibility patch."
 
