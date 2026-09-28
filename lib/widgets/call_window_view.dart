@@ -38,6 +38,7 @@ class _CallWindowViewState extends State<CallWindowView> {
   bool _microphoneEnabled = true;
   bool _cameraEnabled = true;
   bool _fullscreen = false;
+  bool _alwaysOnTop = false;
   bool _ending = false;
 
   @override
@@ -96,6 +97,12 @@ class _CallWindowViewState extends State<CallWindowView> {
     final next = !_cameraEnabled;
     await widget.onCameraChanged(next);
     if (mounted) setState(() => _cameraEnabled = next);
+  }
+
+  Future<void> _toggleAlwaysOnTop() async {
+    final next = !_alwaysOnTop;
+    await MultiViewDesktop.of(context).setAlwaysOnTop(next);
+    if (mounted) setState(() => _alwaysOnTop = next);
   }
 
   Future<void> _toggleFullscreen() async {
@@ -161,6 +168,17 @@ class _CallWindowViewState extends State<CallWindowView> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    _chromeButton(
+                      tooltip: _alwaysOnTop
+                          ? 'Не держать поверх всех окон'
+                          : 'Поверх всех окон',
+                      icon: _alwaysOnTop
+                          ? Icons.push_pin_rounded
+                          : Icons.push_pin_outlined,
+                      active: _alwaysOnTop,
+                      onPressed: _toggleAlwaysOnTop,
+                    ),
+                    const SizedBox(width: 4),
                     _chromeButton(
                       tooltip: widget.controller.t('minimize'),
                       icon: Icons.remove_rounded,
@@ -310,11 +328,12 @@ class _CallWindowViewState extends State<CallWindowView> {
     required String tooltip,
     required IconData icon,
     required FutureOr<void> Function() onPressed,
+    bool active = false,
   }) {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: Colors.black38,
+        color: active ? Colors.white24 : Colors.black38,
         shape: const CircleBorder(),
         child: InkWell(
           customBorder: const CircleBorder(),
