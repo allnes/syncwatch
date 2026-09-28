@@ -194,6 +194,16 @@ if ($buildFile -notmatch '"//libwebrtc"') {
   Set-Content -Encoding UTF8 BUILD.gn $buildFile
 }
 
+# The checkout's synthetic LASTCHANGE can still feed an invalid negative PE
+# timestamp into Chromium's linker flags. Override Chromium's documented
+# compute_build_timestamp GN arg with a tiny deterministic local script.
+$timestampScript = Join-Path (Get-Location) "build\\syncwatch_build_timestamp.py"
+[System.IO.File]::WriteAllText(
+  $timestampScript,
+  "print(1704067200)" + [Environment]::NewLine,
+  [System.Text.Encoding]::ASCII
+)
+
 $argsFile = Join-Path (Get-Location) "out\\Windows-x64\\args.gn"
 New-Item -ItemType Directory -Force -Path (Split-Path $argsFile) | Out-Null
 @'
@@ -207,6 +217,7 @@ ffmpeg_branding = "Chrome"
 rtc_include_tests = false
 rtc_build_examples = false
 libwebrtc_desktop_capture = true
+compute_build_timestamp = "//build/syncwatch_build_timestamp.py"
 '@ | Set-Content -Path $argsFile -Encoding ASCII
 
 & gn gen out/Windows-x64 --ide=vs2022
