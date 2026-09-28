@@ -671,7 +671,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                     left: 0,
                     right: 0,
                     top: 0,
-                    height: 72,
+                    height: 40,
                     child: MouseRegion(
                       onHover: (event) {
                         // Purple bar + SyncWatch header are one visual unit.
@@ -695,12 +695,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                         }
                       },
                       child: topControlsVisible
-                          ? Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _fullscreenWindowBar(),
-                                _topBar(context, compact: true),
-                              ],
+                          ? _mergedTopBar(
+                              context,
+                              compact: true,
+                              fullscreenMode: true,
                             )
                           : const SizedBox.expand(),
                     ),
@@ -710,12 +708,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                     left: 0,
                     right: 0,
                     top: 0,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _fullscreenWindowBar(fullscreenMode: false),
-                        _topBar(context),
-                      ],
+                    child: _mergedTopBar(
+                      context,
+                      fullscreenMode: false,
                     ),
                   ),
 
@@ -822,7 +817,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   Widget _movieSurface(BuildContext context) {
     return Container(
       margin: EdgeInsets.only(
-        top: isFullscreen ? 0 : 84,
+        top: isFullscreen ? 0 : 32,
         bottom: isFullscreen ? 0 : 78,
       ),
       color: Colors.black,
@@ -880,55 +875,176 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     );
   }
 
-  Widget _fullscreenWindowBar({bool fullscreenMode = true}) {
+  Widget _mergedTopBar(
+    BuildContext context, {
+    bool compact = false,
+    required bool fullscreenMode,
+  }) {
     final barColor =
         _isLight ? const Color(0xFFBFD7F2) : const Color(0xFF7357C8);
-    const barHeight = 32.0;
+    final barHeight = compact ? 40.0 : 32.0;
+    final titleFontSize = compact ? 12.5 : 12.0;
     const buttonWidth = 46.0;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onPanStart: fullscreenMode
-          ? null
-          : (_) => windowManager.startDragging(),
+      onPanStart:
+          fullscreenMode ? null : (_) => windowManager.startDragging(),
       onDoubleTap: _toggleFullscreen,
       child: Container(
         height: barHeight,
         color: barColor,
-        child: Row(
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            const SizedBox(width: 10),
-            Text(
-              'SyncWatch',
-              style: TextStyle(
-                fontSize: 11.5,
-                color: _playerSecondary,
-                fontWeight: FontWeight.w500,
+            Positioned.fill(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 250),
+                  child: Tooltip(
+                    message: currentMovie.fileName,
+                    waitDuration: const Duration(milliseconds: 350),
+                    child: Text(
+                      currentMovie.fileName,
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: titleFontSize,
+                        fontWeight: FontWeight.w600,
+                        color: _playerPrimary.withValues(alpha: 0.88),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
-            const Spacer(),
-            _windowBarButton(
-              tooltip: widget.controller.t('minimize'),
-              width: buttonWidth,
-              icon: Icons.remove_rounded,
-              iconSize: 14,
-              onPressed: _minimizePlayerWindow,
+            Positioned(
+              left: compact ? 8 : 10,
+              top: 0,
+              bottom: 0,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Tooltip(
+                    message: widget.controller.t('back'),
+                    waitDuration: const Duration(milliseconds: 350),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(6),
+                      onTap: _returnToHome,
+                      child: SizedBox(
+                        height: barHeight,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.arrow_back_rounded,
+                                size: compact ? 17 : 16,
+                              ),
+                              Text(
+                                'SyncWatch',
+                                style: TextStyle(
+                                  fontSize: compact ? 14.5 : 14,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: compact ? 10 : 9),
+                  SizedBox(
+                    height: compact ? 18 : 17,
+                    child: const VerticalDivider(width: 1),
+                  ),
+                  SizedBox(width: compact ? 8 : 7),
+                  Icon(
+                    Icons.groups_2_rounded,
+                    color: syncAccentSoft,
+                    size: compact ? 17 : 16,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    widget.controller.roomName,
+                    style: TextStyle(fontSize: compact ? 12 : 11.5),
+                  ),
+                ],
+              ),
             ),
-            _windowBarButton(
-              tooltip: widget.controller.t('fullscreen'),
-              width: buttonWidth,
-              icon: fullscreenMode
-                  ? Icons.fullscreen_exit_rounded
-                  : Icons.crop_square_rounded,
-              iconSize: fullscreenMode ? 16 : 13,
-              onPressed: _toggleFullscreen,
-            ),
-            _windowBarButton(
-              tooltip: widget.controller.t('hide'),
-              width: buttonWidth,
-              icon: Icons.close_rounded,
-              iconSize: 16,
-              onPressed: _endWatchingFromPlayer,
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.onShowCall != null)
+                    IconButton(
+                      tooltip: widget.controller.t('goToCall'),
+                      visualDensity: VisualDensity.compact,
+                      constraints: BoxConstraints(
+                        minWidth: compact ? 32 : 34,
+                        minHeight: barHeight,
+                      ),
+                      padding: EdgeInsets.zero,
+                      onPressed: () => widget.onShowCall?.call(),
+                      icon: Icon(
+                        Icons.videocam_rounded,
+                        size: compact ? 17 : 16,
+                      ),
+                    ),
+                  IconButton(
+                    tooltip: widget.controller.t('settings'),
+                    visualDensity: VisualDensity.compact,
+                    constraints: BoxConstraints(
+                      minWidth: compact ? 32 : 34,
+                      minHeight: barHeight,
+                    ),
+                    padding: EdgeInsets.zero,
+                    onPressed: () => showDialog<void>(
+                      context: context,
+                      barrierColor: Colors.black.withValues(alpha: 0.56),
+                      builder: (_) =>
+                          SettingsScreen(controller: widget.controller),
+                    ),
+                    icon: Icon(
+                      Icons.settings_rounded,
+                      size: compact ? 17 : 16,
+                    ),
+                  ),
+                  _windowBarButton(
+                    tooltip: widget.controller.t('minimize'),
+                    width: buttonWidth,
+                    height: barHeight,
+                    icon: Icons.remove_rounded,
+                    iconSize: 14,
+                    onPressed: _minimizePlayerWindow,
+                  ),
+                  _windowBarButton(
+                    tooltip: widget.controller.t('fullscreen'),
+                    width: buttonWidth,
+                    height: barHeight,
+                    icon: fullscreenMode
+                        ? Icons.fullscreen_exit_rounded
+                        : Icons.crop_square_rounded,
+                    iconSize: fullscreenMode ? 16 : 13,
+                    onPressed: _toggleFullscreen,
+                  ),
+                  _windowBarButton(
+                    tooltip: widget.controller.t('hide'),
+                    width: buttonWidth,
+                    height: barHeight,
+                    icon: Icons.close_rounded,
+                    iconSize: 16,
+                    onPressed: _endWatchingFromPlayer,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -939,6 +1055,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   Widget _windowBarButton({
     required String tooltip,
     required double width,
+    required double height,
     required IconData icon,
     required double iconSize,
     required VoidCallback onPressed,
@@ -947,7 +1064,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       message: tooltip,
       child: SizedBox(
         width: width,
-        height: 32,
+        height: height,
         child: IconButton(
           visualDensity: VisualDensity.compact,
           constraints: const BoxConstraints.expand(),
@@ -992,155 +1109,12 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
     try {
       if (wasFullscreen) {
-        // media_kit's Windows video texture is recreated when the native
-        // surface changes. Avoid hide/show while that texture is alive: it can
-        // race ANGLE/Impeller and terminate the process. Use the stable native
-        // fullscreen-off -> minimize sequence instead.
         await _setPlayerFullscreen(false);
       }
       await windowManager.minimize();
     } finally {
       _minimizeInProgress = false;
     }
-  }
-
-  Widget _topBar(BuildContext context, {bool compact = false}) {
-    final barHeight = compact ? 40.0 : 52.0;
-    final titleFontSize = compact ? 12.5 : 13.5;
-
-    return Container(
-      height: barHeight,
-      color: _playerChrome.withValues(alpha: 0.98),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned.fill(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 220),
-                child: Tooltip(
-                  message: currentMovie.fileName,
-                  waitDuration: const Duration(milliseconds: 350),
-                  child: Text(
-                    currentMovie.fileName,
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: titleFontSize,
-                      fontWeight: FontWeight.w600,
-                      color: _playerPrimary.withValues(alpha: 0.88),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            left: compact ? 8 : 12,
-            top: 0,
-            bottom: 0,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Tooltip(
-                  message: widget.controller.t('back'),
-                  waitDuration: const Duration(milliseconds: 350),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(6),
-                    onTap: _returnToHome,
-                    child: SizedBox(
-                      height: barHeight,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 3),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.arrow_back_rounded,
-                              size: compact ? 17 : 19,
-                            ),
-                            Text(
-                              'SyncWatch',
-                              style: TextStyle(
-                                fontSize: compact ? 14.5 : 16,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(width: compact ? 10 : 12),
-                SizedBox(
-                  height: compact ? 18 : 22,
-                  child: const VerticalDivider(width: 1),
-                ),
-                SizedBox(width: compact ? 8 : 10),
-                Icon(
-                  Icons.groups_2_rounded,
-                  color: syncAccentSoft,
-                  size: compact ? 17 : 19,
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  widget.controller.roomName,
-                  style: TextStyle(fontSize: compact ? 12 : 13),
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            right: compact ? 8 : 12,
-            top: 0,
-            bottom: 0,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(width: compact ? 6 : 8),
-                if (widget.onShowCall != null)
-                  IconButton(
-                    tooltip: widget.controller.t('goToCall'),
-                    visualDensity: VisualDensity.compact,
-                    constraints: BoxConstraints(
-                      minWidth: compact ? 30 : 34,
-                      minHeight: barHeight,
-                    ),
-                    padding: EdgeInsets.zero,
-                    onPressed: () => widget.onShowCall?.call(),
-                    icon: Icon(
-                      Icons.videocam_rounded,
-                      size: compact ? 17 : 19,
-                    ),
-                  ),
-                IconButton(
-                  tooltip: widget.controller.t('settings'),
-                  visualDensity: VisualDensity.compact,
-                  constraints: BoxConstraints(
-                    minWidth: compact ? 30 : 34,
-                    minHeight: barHeight,
-                  ),
-                  padding: EdgeInsets.zero,
-                  onPressed: () => showDialog<void>(
-                    context: context,
-                    barrierColor: Colors.black.withValues(alpha: 0.56),
-                    builder: (_) =>
-                        SettingsScreen(controller: widget.controller),
-                  ),
-                  icon: Icon(
-                    Icons.settings_rounded,
-                    size: compact ? 17 : 19,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _applyVideoColorAdjustments(Widget child) {
