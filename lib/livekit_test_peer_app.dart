@@ -6,6 +6,11 @@ import 'package:livekit_client/livekit_client.dart';
 
 import 'services/livekit_connection.dart';
 
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const LiveKitTestPeerApp());
+}
+
 class LiveKitTestPeerApp extends StatefulWidget {
   const LiveKitTestPeerApp({super.key});
 
