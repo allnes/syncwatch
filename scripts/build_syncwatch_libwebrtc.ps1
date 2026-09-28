@@ -24,11 +24,14 @@ if (Test-Path $vswhere) {
   $vsPath = & $vswhere -latest -products * -property installationPath
 }
 if ($vsPath) {
+  # This Chromium branch detects supported versions before consulting
+  # GYP_MSVS_OVERRIDE_PATH. Hint the installed VS 2026 path as the supported
+  # VS 2022 candidate; DetectVisualStudioPath() then resolves this exact path.
+  $env:vs2022_install = $vsPath
   $env:GYP_MSVS_OVERRIDE_PATH = $vsPath
-  $env:GYP_MSVS_VERSION = "2022"
-  Write-Host "Using local Visual Studio toolchain at $vsPath (WebRTC compatibility mode: VS 2022/v143)."
+  Write-Host "Using local Visual Studio toolchain at $vsPath (advertised to WebRTC as VS 2022)."
 } else {
-  $env:GYP_MSVS_VERSION = "2022"
+  throw "No Visual Studio installation was found by vswhere."
 }
 
 if (!(Test-Path ".gclient")) {
