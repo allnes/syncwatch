@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:livekit_client/livekit_client.dart';
 
 class SharedMediaDescriptor {
@@ -63,7 +64,7 @@ class LiveKitSyncEngine implements SyncEngine {
 
   void _log(String message) {
     final now = DateTime.now().toIso8601String();
-    print('[SyncWatch][SYNC][$now] $message');
+    debugPrint('[SyncWatch][SYNC][$now] $message');
   }
   RemoteLibraryHandler? _remoteLibraryHandler;
   final Set<RemoteLibraryHandler> _remoteLibraryHandlers = {};
