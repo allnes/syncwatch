@@ -407,8 +407,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
       ),
     );
 
+    final callWindow = MultiViewDesktop.fromId(viewId);
+    // Enforce native geometry after the view exists. Some Windows window
+    // managers can initially inherit the anchor window bounds.
+    await callWindow.setResizable(true);
+    await callWindow.setMovable(true);
+    await callWindow.setMinimumSize(const Size(300, 210));
+    await callWindow.setMaximumSize(const Size(1280, 900));
+    await callWindow.setSize(const Size(300, 210));
+    await callWindow.center();
+
     if (!mounted) {
-      await MultiViewDesktop.fromId(viewId).closeWindow();
+      await callWindow.closeWindow();
       return;
     }
     setState(() {
