@@ -12,6 +12,7 @@ import '../models/movie_item.dart';
 import '../services/call_engine.dart';
 import '../services/livekit_connection.dart';
 import '../services/sync_engine.dart';
+import '../services/windows_ducking_guard.dart';
 import 'player_screen.dart';
 import 'settings_screen.dart';
 
@@ -72,6 +73,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool microphoneEnabled = true;
   bool cameraEnabled = true;
   late final CallEngine callEngine;
+  final WindowsDuckingGuard windowsDuckingGuard = WindowsDuckingGuard();
   LiveKitSyncEngine? roomSyncEngine;
   EventsListener<RoomEvent>? roomPresenceListener;
   bool partnerOnline = false;
@@ -118,6 +120,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     callPreviewTimer?.cancel();
     partnerResyncTimer?.cancel();
     callProcess?.kill();
+    unawaited(windowsDuckingGuard.restore());
     final previewPath = callPreviewFilePath;
     if (previewPath != null) {
       try {
@@ -350,6 +353,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
 
     if (!roomConnected) return;
+    await windowsDuckingGuard.protectActiveRenderSessions();
     await callEngine.setMicrophoneEnabled(microphoneEnabled);
     await callEngine.setCameraEnabled(cameraEnabled);
 
@@ -386,6 +390,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       callProcess = process;
       process.exitCode.then((_) async {
         await callEngine.stopCallMedia();
+        await windowsDuckingGuard.restore();
         if (!mounted) return;
         setState(() {
           callActive = false;
@@ -408,6 +413,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     } catch (error) {
       debugPrint('[SyncWatch][CALL] START failed error=$error');
       await callEngine.stopCallMedia();
+      await windowsDuckingGuard.restore();
       if (mounted) {
         setState(() {
           callActive = false;
