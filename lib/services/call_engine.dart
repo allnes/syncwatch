@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:livekit_client/livekit_client.dart';
 
 import 'livekit_connection.dart';
@@ -45,7 +46,7 @@ class LiveKitCallEngine implements CallEngine {
 
   void _log(String message) {
     final now = DateTime.now().toIso8601String();
-    print('[SyncWatch][CALL][$now] $message');
+    debugPrint('[SyncWatch][CALL][$now] $message');
   }
 
   @override
