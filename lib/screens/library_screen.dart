@@ -1619,7 +1619,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         roomConnectionError != null || roomDiagnostics.isNotEmpty;
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
       decoration: _panelDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1671,16 +1671,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
             const SizedBox(height: 3),
             _memberRow(widget.controller.t('friend'), partnerOnline),
           ],
-          const Spacer(),
+          const SizedBox(height: 6),
           Row(
             children: [
               Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
                         onPressed: roomConnecting
                             ? null
                             : roomConnected
@@ -1696,21 +1693,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         ),
                       ),
                     ),
-                    if (showDiagnostics)
-                      SizedBox(
-                        height: 28,
-                        child: TextButton.icon(
-                          onPressed: _showRoomDiagnostics,
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 6),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          icon:
-                              const Icon(Icons.bug_report_outlined, size: 15),
-                          label: const Text('Подробнее'),
-                        ),
-                      ),
-                  ],
                 ),
               ),
               const SizedBox(width: 8),
@@ -1741,6 +1723,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ),
             ],
           ),
+          if (showDiagnostics)
+            SizedBox(
+              height: 24,
+              child: TextButton.icon(
+                onPressed: _showRoomDiagnostics,
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                icon: const Icon(Icons.bug_report_outlined, size: 14),
+                label: const Text('Подробнее'),
+              ),
+            ),
         ],
       ),
     );
