@@ -75,6 +75,23 @@ target_os = ["win"]
 gclient sync --no-history
 Set-Location "$WorkDir\\src"
 
+# gclient can produce a negative LASTCHANGE timestamp when this checkout has
+# no Chromium-style Change-Id history. lld-link rejects that for /TIMESTAMP.
+$lastChangeTime = Join-Path (Get-Location) "build\\util\\LASTCHANGE.committime"
+if (Test-Path $lastChangeTime) {
+  $rawTimestamp = (Get-Content $lastChangeTime -Raw).Trim()
+  $parsedTimestamp = 0L
+  if ([long]::TryParse($rawTimestamp, [ref]$parsedTimestamp) -and
+      $parsedTimestamp -lt 0) {
+    [System.IO.File]::WriteAllText(
+      $lastChangeTime,
+      "1704067200" + [Environment]::NewLine,
+      [System.Text.Encoding]::ASCII
+    )
+    Write-Host "Replaced invalid negative Chromium build timestamp."
+  }
+}
+
 # Windows PowerShell 5.1 Set-Content -Encoding UTF8 writes a BOM. An earlier
 # revision of this script touched BUILD.gn that way; strip the BOM if present
 # so GN can parse the checkout without requiring a fresh gclient sync.
