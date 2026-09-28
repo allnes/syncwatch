@@ -35,11 +35,45 @@ target_os = ["win"]
 gclient sync --no-history
 Set-Location "$WorkDir\\src"
 
-if (!(Select-String -Path "modules\\audio_device\\win\\core_audio_base_win.cc" -Pattern "SyncWatch owns its in-app ducking policy" -Quiet)) {
-  git apply --check $patch
-  if ($LASTEXITCODE -ne 0) { throw "SyncWatch libwebrtc patch does not apply cleanly." }
-  git apply $patch
-  if ($LASTEXITCODE -ne 0) { throw "Failed to apply SyncWatch libwebrtc patch." }
+$audioSource = "modules\\audio_device\\win\\core_audio_base_win.cc"
+if (!(Select-String -Path $audioSource -Pattern "SyncWatch owns its in-app ducking policy" -Quiet)) {
+  $source = Get-Content $audioSource -Raw
+  $anchor = @'
+  // Check device period and the preferred buffer size and log a warning if
+'@
+  $duckingCode = @'
+  // SyncWatch owns its in-app ducking policy. A WebRTC communications render
+  // stream must never cause Windows to attenuate unrelated applications.
+  // Keep AudioCategory_Communications (AEC/communications processing) and opt
+  // only this render stream out of causing system ducking.
+  if (IsOutput()) {
+    ComPtr<IAudioClientDuckingControl> ducking_control;
+    const HRESULT ducking_hr = audio_client->GetService(
+        __uuidof(IAudioClientDuckingControl),
+        reinterpret_cast<void**>(ducking_control.GetAddressOf()));
+    if (SUCCEEDED(ducking_hr) && ducking_control) {
+      const HRESULT set_ducking_hr =
+          ducking_control->SetDuckingOptionsForCurrentStream(
+              AUDIO_DUCKING_OPTIONS_DO_NOT_DUCK_OTHER_STREAMS);
+      if (FAILED(set_ducking_hr)) {
+        RTC_LOG(LS_WARNING)
+            << "SyncWatch: failed to disable system ducking: "
+            << set_ducking_hr;
+      }
+    } else {
+      RTC_LOG(LS_WARNING)
+          << "SyncWatch: IAudioClientDuckingControl unavailable: "
+          << ducking_hr;
+    }
+  }
+
+'@
+  if (!$source.Contains($anchor)) {
+    throw "Could not find the Core Audio insertion point in $audioSource."
+  }
+  $source = $source.Replace($anchor, $duckingCode + $anchor)
+  Set-Content -Path $audioSource -Value $source -Encoding UTF8
+  Write-Host "Applied SyncWatch no-system-ducking source patch."
 }
 
 if (!(Test-Path "libwebrtc")) {
