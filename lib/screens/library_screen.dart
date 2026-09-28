@@ -63,7 +63,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   VideoTrack? remoteCallVideoTrack;
   EventsListener<RoomEvent>? callTrackListener;
   Offset callOverlayPosition = const Offset(24, 96);
-  Size callOverlaySize = const Size(420, 280);
+  static const Size _callMinimumSize = Size(300, 210);
+  Size callOverlaySize = _callMinimumSize;
   bool callOverlayMinimized = false;
   bool callOverlayFullscreen = false;
   bool metadataLoading = false;
@@ -381,6 +382,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
     await callEngine.setMicrophoneEnabled(microphoneEnabled);
     await callEngine.setCameraEnabled(cameraEnabled);
     _attachCallTrackListener();
+
+    // Every new call starts compact. The user can resize it afterwards.
+    callOverlaySize = _callMinimumSize;
+    callOverlayMinimized = false;
+    callOverlayFullscreen = false;
 
     if (!mounted) return;
     setState(() {
@@ -1615,39 +1621,36 @@ class _LibraryScreenState extends State<LibraryScreen> {
               left: 0,
               right: 0,
               top: 0,
-              height: 42,
+              height: 48,
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 onPanUpdate: (details) {
                   setState(() => callOverlayPosition += details.delta);
                 },
-                child: Container(
-                  padding: const EdgeInsets.only(left: 12, right: 4),
-                  color: Colors.black38,
-                  child: Row(
-                    children: [
-                      const Text(
-                        'Звонок',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        tooltip: widget.controller.t('minimize'),
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () =>
-                            setState(() => callOverlayMinimized = true),
-                        icon: const Icon(Icons.remove_rounded, size: 19),
-                      ),
-                      IconButton(
-                        tooltip: widget.controller.t('fullscreen'),
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () =>
-                            setState(() => callOverlayFullscreen = true),
-                        icon: const Icon(Icons.fullscreen_rounded, size: 20),
-                      ),
-                    ],
+                child: const ColoredBox(color: Colors.transparent),
+              ),
+            ),
+          if (!callOverlayFullscreen)
+            Positioned(
+              right: 8,
+              top: 6,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _callChromeButton(
+                    icon: Icons.remove_rounded,
+                    tooltip: widget.controller.t('minimize'),
+                    onPressed: () =>
+                        setState(() => callOverlayMinimized = true),
                   ),
-                ),
+                  const SizedBox(width: 4),
+                  _callChromeButton(
+                    icon: Icons.fullscreen_rounded,
+                    tooltip: widget.controller.t('fullscreen'),
+                    onPressed: () =>
+                        setState(() => callOverlayFullscreen = true),
+                  ),
+                ],
               ),
             ),
           if (callOverlayFullscreen)
@@ -1725,9 +1728,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   setState(() {
                     callOverlaySize = Size(
                       (callOverlaySize.width + details.delta.dx)
-                          .clamp(300.0, 760.0),
+                          .clamp(_callMinimumSize.width, 760.0),
                       (callOverlaySize.height + details.delta.dy)
-                          .clamp(210.0, 520.0),
+                          .clamp(_callMinimumSize.height, 520.0),
                     );
                   });
                 },
@@ -1759,6 +1762,29 @@ class _LibraryScreenState extends State<LibraryScreen> {
       width: callOverlaySize.width,
       height: callOverlaySize.height,
       child: callCard,
+    );
+  }
+
+  Widget _callChromeButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.black38,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed,
+          child: SizedBox(
+            width: 34,
+            height: 34,
+            child: Icon(icon, size: 19, color: Colors.white),
+          ),
+        ),
+      ),
     );
   }
 
