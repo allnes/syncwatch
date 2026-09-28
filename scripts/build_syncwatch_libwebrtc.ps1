@@ -79,25 +79,9 @@ if (Test-Path "$WorkDir\\src") {
     Remove-Item "$WorkDir\\src" -Recurse -Force
   }
 }
-gclient sync --no-history
+gclient sync --nohooks --no-history
+if ($LASTEXITCODE -ne 0) { throw "gclient sync failed." }
 Set-Location "$WorkDir\\src"
-
-# gclient can produce a negative LASTCHANGE timestamp when this checkout has
-# no Chromium-style Change-Id history. lld-link rejects that for /TIMESTAMP.
-$lastChangeTime = Join-Path (Get-Location) "build\\util\\LASTCHANGE.committime"
-if (Test-Path $lastChangeTime) {
-  $rawTimestamp = (Get-Content $lastChangeTime -Raw).Trim()
-  $parsedTimestamp = 0L
-  if ([long]::TryParse($rawTimestamp, [ref]$parsedTimestamp) -and
-      $parsedTimestamp -lt 0) {
-    [System.IO.File]::WriteAllText(
-      $lastChangeTime,
-      "1704067200" + [Environment]::NewLine,
-      [System.Text.Encoding]::ASCII
-    )
-    Write-Host "Replaced invalid negative Chromium build timestamp."
-  }
-}
 
 # Windows PowerShell 5.1 Set-Content -Encoding UTF8 writes a BOM. An earlier
 # revision of this script touched BUILD.gn that way; strip the BOM if present
@@ -169,21 +153,22 @@ git -C libwebrtc fetch --tags origin
 git -C libwebrtc reset --hard 070aa6d763c16027ba53c0965107658c837a4dae
 if ($LASTEXITCODE -ne 0) { throw "Failed to pin libwebrtc wrapper release." }
 
-# The wrapper requires its matching m150 custom-audio API patch. Without this
-# patch its AudioTransportFactory/UpdateAudioSenders interfaces cannot compile.
+# Apply the wrapper's m150 custom-audio API patch. Two hunks in the published
+# patch have stale context; git's 3-way mode resolves them against m150.
 $wrapperAudioPatch = "libwebrtc\\patches\\custom_audio_source_m150.patch"
 $audioDefines = "api\\audio\\audio_device_defines.h"
 if (!(Select-String -Path $audioDefines -Pattern "UpdateAudioSenders" -Quiet)) {
-  git apply --check $wrapperAudioPatch
+  git apply --3way --ignore-space-change --ignore-whitespace --whitespace=nowarn $wrapperAudioPatch
   if ($LASTEXITCODE -ne 0) {
-    throw "libwebrtc m150 custom-audio patch does not apply cleanly."
+    throw "libwebrtc m150 custom-audio patch failed in 3-way mode."
   }
-  git apply $wrapperAudioPatch
-  if ($LASTEXITCODE -ne 0) {
-    throw "Failed to apply libwebrtc m150 custom-audio patch."
-  }
-  Write-Host "Applied libwebrtc m150 custom-audio compatibility patch."
 }
+if (!(Select-String -Path $audioDefines -Pattern "UpdateAudioSenders" -Quiet) -or
+    !(Select-String -Path "audio\\audio_transport_impl.h" -Pattern "class AudioTransportFactory" -Quiet) -or
+    !(Select-String -Path "api\\peer_connection_interface.h" -Pattern "audio_transport_factory" -Quiet)) {
+  throw "m150 custom-audio compatibility patch verification failed."
+}
+Write-Host "Verified libwebrtc m150 custom-audio compatibility patch."
 
 # The wrapper repository defines a test target unconditionally. With
 # rtc_include_tests=false, //test:test_main is intentionally absent, so remove
