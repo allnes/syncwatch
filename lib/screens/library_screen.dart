@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
-import 'package:media_kit/media_kit.dart';
+import 'package:media_kit/media_kit.dart' hide VideoTrack;
 import 'package:livekit_client/livekit_client.dart' hide AudioTrack;
 
 import '../app.dart';
@@ -316,6 +316,50 @@ class _LibraryScreenState extends State<LibraryScreen> {
       roomReconnecting = false;
     });
     _roomLog('DISCONNECTED');
+  }
+
+  Future<void> _attachRoomSync() async {
+    final room = callEngine.room;
+    if (room == null) return;
+    await roomSyncEngine?.dispose();
+    final sync = LiveKitSyncEngine(
+      room: room,
+      mediaId: () => activePlayerMovie?.movieId ?? remotePlaybackMovieId ?? '',
+      position: () => Duration(
+        milliseconds: activePlayerMovie == null
+            ? remotePlaybackPositionMs
+            : (widget.controller.playbackPositionFor(
+                        activePlayerMovie!.fullPath,
+                      ) *
+                    1000)
+                .round(),
+      ),
+      isPlaying: () => showingPlayer,
+    );
+    sync.setRemoteSessionHandler(_handleRemoteSession);
+    sync.setLibraryProvider(() => [
+      for (final movie in movies)
+        SharedMediaDescriptor(
+          movieId: movie.movieId,
+          fingerprint: movie.mediaFingerprint,
+        ),
+    ]);
+    await sync.connect();
+    roomSyncEngine = sync;
+    await sync.requestPlaybackState();
+    await sync.requestLibrary();
+  }
+
+  Future<void> _publishLibraryToRoom() async {
+    final sync = roomSyncEngine;
+    if (sync == null) return;
+    await sync.publishLibrary([
+      for (final movie in movies)
+        SharedMediaDescriptor(
+          movieId: movie.movieId,
+          fingerprint: movie.mediaFingerprint,
+        ),
+    ]);
   }
 
   Future<void> _startCall() async {
