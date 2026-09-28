@@ -69,7 +69,7 @@ class _CallWindowState extends State<_CallWindow> {
     super.initState();
     _startCommandListener();
     previewTimer = Timer.periodic(
-      const Duration(milliseconds: 250),
+      const Duration(milliseconds: 100),
       (_) {
         final path = widget.previewFilePath;
         if (path != null && mounted) {
