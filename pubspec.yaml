@@ -19,7 +19,10 @@ dependencies:
   media_kit_libs_video: ^1.0.7
   media_kit_video: ^2.0.1
   media_kit: ^1.2.6
-  multiview_desktop: ^1.2.2
+  multiview_desktop:
+    git:
+      url: https://github.com/vvlad-islavs/multi-view-desktop.git
+      ref: f18498fe5257ab6e8291d86cbbbce2a2139b4fb7
 
 dev_dependencies:
   flutter_test:
