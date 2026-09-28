@@ -34,6 +34,28 @@ if ($vsPath) {
   throw "No Visual Studio installation was found by vswhere."
 }
 
+# Chromium expects WINDOWSSDKDIR when using a local toolchain. Detect the SDK
+# from standard and alternate-drive locations instead of assuming C:.
+$sdkCandidates = @(
+  "C:\\Program Files (x86)\\Windows Kits\\10",
+  "D:\\Windows Kits\\10"
+)
+$sdkRoot = $sdkCandidates |
+  Where-Object { Test-Path (Join-Path $_ "Include") } |
+  Select-Object -First 1
+if (!$sdkRoot) {
+  throw "Windows 10/11 SDK was not found."
+}
+$sdkVersion = Get-ChildItem (Join-Path $sdkRoot "Include") -Directory |
+  Sort-Object { [version]$_.Name } -Descending |
+  Select-Object -First 1 -ExpandProperty Name
+if (!$sdkVersion) {
+  throw "No Windows SDK version was found under $sdkRoot\\Include."
+}
+$env:WINDOWSSDKDIR = "$sdkRoot\\"
+$env:WINDOWSSDKVERSION = "$sdkVersion\\"
+Write-Host "Using Windows SDK $sdkVersion at $sdkRoot."
+
 if (!(Test-Path ".gclient")) {
 @'
 solutions = [
