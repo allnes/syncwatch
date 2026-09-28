@@ -24,7 +24,7 @@ Future<void> main(List<String> args) async {
 
   runMultiApp(
     home: (_, __) => SyncWatchApp(controller: controller),
-    config: const MultiAppConfig(
+    config: MultiAppConfig(
       generalParams: MultiPlatformParams(
         closeMode: CloseMode.cascade,
       ),
