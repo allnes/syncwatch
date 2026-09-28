@@ -108,4 +108,85 @@ $m = Get-Content $main -Raw
 $m = $m.Replace('window.SetQuitOnClose(true);', 'window.SetQuitOnClose(false);')
 Write-Utf8NoBom $main $m
 
+# Patch the pub-cache Windows multi-view host. The upstream frameless secondary
+# window currently needs explicit non-client hit testing and a frame refresh on
+# Windows for reliable sizing/resizing.
+$pluginRoot = Join-Path $env:LOCALAPPDATA "Pub\Cache\hosted\pub.dev\multiview_desktop-1.2.2\windows"
+$pluginCpp = Join-Path $pluginRoot "multi_view_desktop.cpp"
+if (!(Test-Path $pluginCpp)) {
+  throw "Missing multiview_desktop Windows source: $pluginCpp. Run flutter pub get first."
+}
+
+$p = Get-Content $pluginCpp -Raw
+
+if ($p -notmatch "SyncWatch frameless resize hit-test") {
+  $oldHit = @'
+        } else if (message == WM_NCHITTEST) {
+            if (!window->is_resizable_) {
+                return HTNOWHERE;
+            }
+'@
+  $newHit = @'
+        } else if (message == WM_NCHITTEST) {
+            if (!window->is_resizable_) {
+                return HTCLIENT;
+            }
+
+            // SyncWatch frameless resize hit-test: Windows removes the visible
+            // non-client frame for hidden title bars, so provide resize borders.
+            if (window->title_bar_style_ == "hidden" || window->is_frameless_) {
+                POINT cursor = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+                RECT rect{};
+                GetWindowRect(hwnd, &rect);
+                const int border =
+                    std::max(6, GetSystemMetrics(SM_CXSIZEFRAME) +
+                                    GetSystemMetrics(SM_CXPADDEDBORDER));
+                const bool left = cursor.x < rect.left + border;
+                const bool right = cursor.x >= rect.right - border;
+                const bool top = cursor.y < rect.top + border;
+                const bool bottom = cursor.y >= rect.bottom - border;
+                if (top && left) return HTTOPLEFT;
+                if (top && right) return HTTOPRIGHT;
+                if (bottom && left) return HTBOTTOMLEFT;
+                if (bottom && right) return HTBOTTOMRIGHT;
+                if (left) return HTLEFT;
+                if (right) return HTRIGHT;
+                if (top) return HTTOP;
+                if (bottom) return HTBOTTOM;
+                return HTCLIENT;
+            }
+'@
+  if (!$p.Contains($oldHit)) {
+    throw "Could not locate multiview_desktop WM_NCHITTEST block."
+  }
+  $p = $p.Replace($oldHit, $newHit)
+}
+
+if ($p -notmatch "SyncWatch refresh native frame") {
+  $oldResizable = @'
+    ::SetWindowLong(hWnd, GWL_STYLE, gwlStyle);
+}
+'@
+  $newResizable = @'
+    ::SetWindowLong(hWnd, GWL_STYLE, gwlStyle);
+    // SyncWatch refresh native frame after changing WS_THICKFRAME.
+    ::SetWindowPos(hWnd, nullptr, 0, 0, 0, 0,
+                   SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+                       SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+}
+'@
+  $setResizablePos = $p.IndexOf("void MultiViewDesktop::SetResizable")
+  if ($setResizablePos -lt 0) {
+    throw "Could not locate MultiViewDesktop::SetResizable."
+  }
+  $tail = $p.Substring($setResizablePos)
+  if (!$tail.Contains($oldResizable)) {
+    throw "Could not locate SetResizable SetWindowLong block."
+  }
+  $tail = $tail.Replace($oldResizable, $newResizable)
+  $p = $p.Substring(0, $setResizablePos) + $tail
+}
+
+Write-Utf8NoBom $pluginCpp $p
+
 Write-Host "SyncWatch Windows runner is configured for single-engine multi-view."
