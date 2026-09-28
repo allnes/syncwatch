@@ -56,6 +56,7 @@ class _CallWindowState extends State<_CallWindow> {
   Timer? previewTimer;
   int previewVersion = 0;
   DateTime? lastPreviewModified;
+  int? lastPreviewLength;
   String? lastCommand;
 
   bool microphoneEnabled = true;
@@ -75,10 +76,12 @@ class _CallWindowState extends State<_CallWindow> {
           final file = File(path);
           if (!file.existsSync()) return;
           final modified = file.lastModifiedSync();
-          if (modified != lastPreviewModified) {
+          final length = file.lengthSync();
+          if (modified != lastPreviewModified || length != lastPreviewLength) {
             lastPreviewModified = modified;
-            final provider = FileImage(file);
-            unawaited(provider.evict());
+            lastPreviewLength = length;
+            PaintingBinding.instance.imageCache.clear();
+            PaintingBinding.instance.imageCache.clearLiveImages();
             setState(() => previewVersion++);
           }
         }
@@ -173,11 +176,15 @@ class _CallWindowState extends State<_CallWindow> {
                 child: cameraEnabled &&
                         widget.previewFilePath != null &&
                         File(widget.previewFilePath!).existsSync()
-                    ? Image(
-                        image: FileImage(File(widget.previewFilePath!)),
-                        key: ValueKey(previewVersion),
+                    ? Image.file(
+                        File(widget.previewFilePath!),
+                        key: ValueKey(
+                          '${widget.previewFilePath}:$previewVersion',
+                        ),
                         fit: BoxFit.cover,
                         gaplessPlayback: false,
+                        cacheWidth: null,
+                        cacheHeight: null,
                       )
                     : const Center(
                         child: Icon(
