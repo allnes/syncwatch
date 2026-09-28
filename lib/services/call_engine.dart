@@ -7,6 +7,7 @@ abstract class CallEngine {
   Future<void> join();
   Future<void> setMicrophoneEnabled(bool enabled);
   Future<void> setCameraEnabled(bool enabled);
+  Future<void> stopCallMedia();
   Room? get room;
   LocalVideoTrack? get localVideoTrack;
   Future<void> leave();
@@ -104,6 +105,33 @@ class LiveKitCallEngine implements CallEngine {
   }
 
   @override
+  Future<void> stopCallMedia() async {
+    _microphoneEnabled = false;
+    _cameraEnabled = false;
+    final participant = _room?.localParticipant;
+    if (participant == null) return;
+
+    final publications = participant.trackPublications.values
+        .where((publication) =>
+            publication.source == TrackSource.microphone ||
+            publication.source == TrackSource.camera)
+        .toList();
+    for (final publication in publications) {
+      try {
+        await participant.removePublishedTrack(publication.sid);
+        _log(
+          'MEDIA unpublished sid=${publication.sid} source=${publication.source}',
+        );
+      } catch (error) {
+        _log(
+          'MEDIA unpublish failed sid=${publication.sid} '
+          'source=${publication.source} error=$error',
+        );
+      }
+    }
+  }
+
+  @override
   Future<void> leave() async {
     _log('LEAVE room=$roomName');
     _room = null;
@@ -124,6 +152,9 @@ class MockCallEngine implements CallEngine {
 
   @override
   Future<void> setMicrophoneEnabled(bool enabled) async {}
+
+  @override
+  Future<void> stopCallMedia() async {}
 
   @override
   Future<void> leave() async {}
