@@ -77,6 +77,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   Timer? _previewDebounceTimer;
   Timer? _duckingRampTimer;
   Timer? _duckingReleaseTimer;
+  Timer? _fullscreenControlsHideTimer;
   double? _queuedSeekTarget;
   double _appliedMovieVolume = -1;
   bool _lastDuckingEnabled = false;
@@ -544,6 +545,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     _previewDebounceTimer?.cancel();
     _duckingRampTimer?.cancel();
     _duckingReleaseTimer?.cancel();
+    _fullscreenControlsHideTimer?.cancel();
     widget.controller.removeListener(_handleControllerAudioState);
     for (final subscription in _subscriptions) {
       subscription.cancel();
@@ -666,43 +668,36 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                   ),
                 Positioned.fill(child: _movieSurface(context)),
 
-                if (isFullscreen)
+                if (isFullscreen) ...[
+                  // Stable trigger strip: it never changes size when the bar
+                  // appears, so revealing controls cannot generate a false exit.
                   Positioned(
                     left: 0,
                     right: 0,
                     top: 0,
-                    height: 40,
+                    height: 8,
                     child: MouseRegion(
-                      onHover: (event) {
-                        // Purple bar + SyncWatch header are one visual unit.
-                        // When hidden, only entering the lower 40 px header
-                        // trigger area reveals the whole unit; touching the
-                        // top 32 px alone does nothing.
-                        if ((!topControlsVisible || !bottomControlsVisible) &&
-                            event.localPosition.dy >= 32) {
-                          setState(() {
-                            topControlsVisible = true;
-                            bottomControlsVisible = true;
-                          });
-                        }
-                      },
-                      onExit: (_) {
-                        if (topControlsVisible || bottomControlsVisible) {
-                          setState(() {
-                            topControlsVisible = false;
-                            bottomControlsVisible = false;
-                          });
-                        }
-                      },
-                      child: topControlsVisible
-                          ? _mergedTopBar(
-                              context,
-                              compact: true,
-                              fullscreenMode: true,
-                            )
-                          : const SizedBox.expand(),
+                      onEnter: (_) => _showFullscreenControls(),
+                      child: const SizedBox.expand(),
                     ),
-                  )
+                  ),
+                  if (topControlsVisible)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: 0,
+                      height: 40,
+                      child: MouseRegion(
+                        onEnter: (_) => _showFullscreenControls(),
+                        onExit: (_) => _scheduleFullscreenControlsHide(),
+                        child: _mergedTopBar(
+                          context,
+                          compact: true,
+                          fullscreenMode: true,
+                        ),
+                      ),
+                    ),
+                ]
                 else
                   Positioned(
                     left: 0,
@@ -721,22 +716,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                     bottom: 0,
                     height: 70,
                     child: MouseRegion(
-                      onEnter: (_) {
-                        if (!bottomControlsVisible || !topControlsVisible) {
-                          setState(() {
-                            bottomControlsVisible = true;
-                            topControlsVisible = true;
-                          });
-                        }
-                      },
-                      onExit: (_) {
-                        if (bottomControlsVisible || topControlsVisible) {
-                          setState(() {
-                            bottomControlsVisible = false;
-                            topControlsVisible = false;
-                          });
-                        }
-                      },
+                      onEnter: (_) => _showFullscreenControls(),
+                      onExit: (_) => _scheduleFullscreenControlsHide(),
                       child: bottomControlsVisible
                           ? Align(
                               alignment: Alignment.bottomCenter,
@@ -772,6 +753,32 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         );
       },
     );
+  }
+
+  void _showFullscreenControls() {
+    _fullscreenControlsHideTimer?.cancel();
+    _fullscreenControlsHideTimer = null;
+    if (!topControlsVisible || !bottomControlsVisible) {
+      setState(() {
+        topControlsVisible = true;
+        bottomControlsVisible = true;
+      });
+    }
+  }
+
+  void _scheduleFullscreenControlsHide() {
+    _fullscreenControlsHideTimer?.cancel();
+    _fullscreenControlsHideTimer =
+        Timer(const Duration(milliseconds: 350), () {
+      _fullscreenControlsHideTimer = null;
+      if (!mounted || !isFullscreen) return;
+      if (topControlsVisible || bottomControlsVisible) {
+        setState(() {
+          topControlsVisible = false;
+          bottomControlsVisible = false;
+        });
+      }
+    });
   }
 
   Future<void> _handleKeyEvent(KeyEvent event) async {
