@@ -115,6 +115,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   bool _restoreFullscreenAfterMinimize = false;
   bool _minimizeInProgress = false;
   bool _resumeFullscreenWhenActivated = false;
+  int _fullscreenHoverGeneration = 0;
   bool topControlsVisible = true;
   bool bottomControlsVisible = true;
   late int currentIndex;
@@ -818,6 +819,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                   // Stable trigger strip: it never changes size when the bar
                   // appears, so revealing controls cannot generate a false exit.
                   Positioned(
+                    key: ValueKey<int>(_fullscreenHoverGeneration),
                     left: 0,
                     right: 0,
                     top: 0,
@@ -2421,7 +2423,22 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           // the pre-fullscreen window.
           topControlsVisible = false;
           bottomControlsVisible = false;
+          _fullscreenHoverGeneration++;
         });
+
+        // Windows updates the native fullscreen geometry asynchronously.
+        // Rebuild the hover hit-test layer after the resized frame has
+        // actually reached Flutter; otherwise MouseRegion can retain stale
+        // geometry after fullscreen entry or minimize/restore.
+        await WidgetsBinding.instance.endOfFrame;
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        if (mounted && isFullscreen) {
+          setState(() => _fullscreenHoverGeneration++);
+          debugPrint(
+            '[SyncWatch][UI] FULLSCREEN_HOVER_ARMED '
+            'generation=$_fullscreenHoverGeneration',
+          );
+        }
       } else {
         await windowManager.setFullScreen(false);
 
