@@ -20,7 +20,6 @@ Future<void> main(List<String> args) async {
   }
 
 
-  await windowManager.setMinimumSize(const Size(1100, 760));
 
   mv.runMultiApp(
     home: (_, __) => SyncWatchApp(controller: controller),
