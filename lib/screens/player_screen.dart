@@ -2424,29 +2424,54 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           await Future<void>.delayed(const Duration(milliseconds: 40));
         }
 
+        final beforeSize = await windowManager.getSize();
+        debugPrint(
+          '[SyncWatch][UI] FULLSCREEN_ENTER_BEGIN '
+          'size=${beforeSize.width.toStringAsFixed(0)}x'
+          '${beforeSize.height.toStringAsFixed(0)}',
+        );
+
         await windowManager.setFullScreen(true);
+
+        // Do not switch Flutter to fullscreen layout while Windows is still
+        // resizing the native window. A transient size here can produce
+        // clipped/oversized controls until another fullscreen cycle.
+        Size? previousSize;
+        Size settledSize = await windowManager.getSize();
+        var stableSamples = 0;
+        for (var attempt = 0; attempt < 12 && stableSamples < 2; attempt++) {
+          await Future<void>.delayed(const Duration(milliseconds: 25));
+          final currentSize = await windowManager.getSize();
+          if (previousSize != null &&
+              (currentSize.width - previousSize.width).abs() < 1 &&
+              (currentSize.height - previousSize.height).abs() < 1) {
+            stableSamples++;
+          } else {
+            stableSamples = 0;
+          }
+          previousSize = currentSize;
+          settledSize = currentSize;
+        }
 
         if (!mounted) return;
         setState(() {
           isFullscreen = true;
-          // Fullscreen chrome has one state: both bars are either visible or
-          // hidden. Do not infer visibility from the pointer coordinates from
-          // the pre-fullscreen window.
           topControlsVisible = false;
           bottomControlsVisible = false;
           _fullscreenHoverGeneration++;
         });
 
-        // Windows updates the native fullscreen geometry asynchronously.
-        // Rebuild the hover hit-test layer after the resized frame has
-        // actually reached Flutter; otherwise MouseRegion can retain stale
-        // geometry after fullscreen entry or minimize/restore.
         await WidgetsBinding.instance.endOfFrame;
-        await Future<void>.delayed(const Duration(milliseconds: 50));
         if (mounted && isFullscreen) {
+          // Rebuild the entire player after the first fullscreen frame, not
+          // only the hover strip. This refreshes every LayoutBuilder against
+          // the settled native window dimensions.
           setState(() => _fullscreenHoverGeneration++);
+          await WidgetsBinding.instance.endOfFrame;
           debugPrint(
-            '[SyncWatch][UI] FULLSCREEN_HOVER_ARMED '
+            '[SyncWatch][UI] FULLSCREEN_LAYOUT_SETTLED '
+            'size=${settledSize.width.toStringAsFixed(0)}x'
+            '${settledSize.height.toStringAsFixed(0)} '
             'generation=$_fullscreenHoverGeneration',
           );
         }
