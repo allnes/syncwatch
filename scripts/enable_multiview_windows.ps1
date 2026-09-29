@@ -127,8 +127,12 @@ if ($mvRootUri.IsAbsoluteUri -and $mvRootUri.Scheme -eq "file") {
   $mvRoot = [IO.Path]::GetFullPath((Join-Path (Split-Path $packageConfig -Parent) $mvPackage.rootUri))
 }
 $pluginCpp = Join-Path $mvRoot "windows\multi_view_desktop.cpp"
+$pluginProcCpp = Join-Path $mvRoot "windows\multi_view_desktop_plugin.cpp"
 if (!(Test-Path $pluginCpp)) {
   throw "Missing pinned multiview_desktop Windows source: $pluginCpp"
+}
+if (!(Test-Path $pluginProcCpp)) {
+  throw "Missing pinned multiview_desktop Windows proc source: $pluginProcCpp"
 }
 
 $p = Get-Content $pluginCpp -Raw
@@ -247,6 +251,49 @@ if ($p -notmatch "SyncWatch refresh native frame") {
 }
 
 Write-Utf8NoBom $pluginCpp $p
+
+$proc = Get-Content $pluginProcCpp -Raw
+$oldProcHit = @'
+        } else if (message == WM_NCHITTEST) {
+            if (!window->is_resizable_) {
+                return HTNOWHERE;
+            }
+'@
+$newProcHit = @'
+        } else if (message == WM_NCHITTEST) {
+            if (!window->is_resizable_) {
+                return HTCLIENT;
+            }
+            if (window->title_bar_style_ == "hidden" || window->is_frameless_) {
+                POINT cursor{};
+                GetCursorPos(&cursor);
+                RECT rect{};
+                GetWindowRect(hwnd, &rect);
+                const int native_border =
+                        GetSystemMetrics(SM_CXSIZEFRAME) +
+                        GetSystemMetrics(SM_CXPADDEDBORDER);
+                const int border = native_border > 8 ? native_border : 8;
+                const bool left = cursor.x < rect.left + border;
+                const bool right = cursor.x >= rect.right - border;
+                const bool top = cursor.y < rect.top + border;
+                const bool bottom = cursor.y >= rect.bottom - border;
+                if (top && left) return HTTOPLEFT;
+                if (top && right) return HTTOPRIGHT;
+                if (bottom && left) return HTBOTTOMLEFT;
+                if (bottom && right) return HTBOTTOMRIGHT;
+                if (left) return HTLEFT;
+                if (right) return HTRIGHT;
+                if (top) return HTTOP;
+                if (bottom) return HTBOTTOM;
+                return HTCLIENT;
+            }
+'@
+if ($proc.Contains($oldProcHit)) {
+  $proc = $proc.Replace($oldProcHit, $newProcHit)
+} elseif ($proc -notmatch 'const int border = native_border > 8') {
+  throw "Pinned multiview_desktop plugin WM_NCHITTEST block changed unexpectedly."
+}
+Write-Utf8NoBom $pluginProcCpp $proc
 
 $pluginBuild = Join-Path $root "build\windows\x64\plugins\multiview_desktop"
 if (Test-Path $pluginBuild) {
