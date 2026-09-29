@@ -1089,7 +1089,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                     waitDuration: const Duration(milliseconds: 350),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(6),
-                      onTap: _returnToHome,
+                      onTap: () => unawaited(
+                        _runUiAction('top:return_home', _returnToHome),
+                      ),
                       child: SizedBox(
                         height: barHeight,
                         child: Padding(
@@ -1149,7 +1151,12 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                         minHeight: barHeight,
                       ),
                       padding: EdgeInsets.zero,
-                      onPressed: () => widget.onShowCall?.call(),
+                      onPressed: () => unawaited(
+                        _runUiAction(
+                          'top:show_call',
+                          () => widget.onShowCall?.call(),
+                        ),
+                      ),
                       icon: Icon(
                         Icons.videocam_rounded,
                         size: compact ? 17 : 16,
@@ -1163,11 +1170,16 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                       minHeight: barHeight,
                     ),
                     padding: EdgeInsets.zero,
-                    onPressed: () => showDialog<void>(
-                      context: context,
-                      barrierColor: Colors.black.withValues(alpha: 0.56),
-                      builder: (_) =>
-                          SettingsScreen(controller: widget.controller),
+                    onPressed: () => unawaited(
+                      _runUiAction(
+                        'top:settings',
+                        () => showDialog<void>(
+                          context: context,
+                          barrierColor: Colors.black.withValues(alpha: 0.56),
+                          builder: (_) =>
+                              SettingsScreen(controller: widget.controller),
+                        ),
+                      ),
                     ),
                     icon: Icon(
                       Icons.settings_rounded,
@@ -1226,7 +1238,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           visualDensity: VisualDensity.compact,
           constraints: const BoxConstraints.expand(),
           padding: EdgeInsets.zero,
-          onPressed: onPressed,
+          onPressed: () => unawaited(_runUiAction('window:$tooltip', onPressed)),
           icon: Icon(icon, size: iconSize),
         ),
       ),
@@ -1832,7 +1844,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         visualDensity: VisualDensity.compact,
         constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
         padding: EdgeInsets.zero,
-        onPressed: onPressed,
+        onPressed: onPressed == null
+            ? null
+            : () => unawaited(_runUiAction('menu:$tooltip', onPressed)),
         icon: Icon(icon, size: 19),
       ),
     );
@@ -1858,7 +1872,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
               ? syncLightBackgroundDeep
               : null,
         ),
-        onPressed: onPressed,
+        onPressed: onPressed == null
+            ? null
+            : () => unawaited(_runUiAction('file:$tooltip', onPressed)),
         icon: Icon(icon, size: 20),
       ),
     );
@@ -1873,7 +1889,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       width: prominent ? 46 : 38,
       height: prominent ? 46 : 38,
       child: FilledButton(
-        onPressed: onPressed,
+        onPressed: () => unawaited(
+          _runUiAction('round:${icon.codePoint}', onPressed),
+        ),
         style: FilledButton.styleFrom(
           padding: EdgeInsets.zero,
           backgroundColor: prominent
