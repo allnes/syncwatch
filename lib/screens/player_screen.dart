@@ -430,6 +430,29 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     );
   }
 
+  Future<void> _runUiAction(
+    String action,
+    FutureOr<void> Function() callback,
+  ) async {
+    final clock = Stopwatch()..start();
+    debugPrint('[SyncWatch][UI] TAP surface=player action=$action');
+    debugPrint('[SyncWatch][UI] ACTION_BEGIN surface=player action=$action');
+    try {
+      await Future<void>.sync(callback);
+      debugPrint(
+        '[SyncWatch][UI] ACTION_DONE surface=player action=$action '
+        'elapsedMs=${clock.elapsedMilliseconds}',
+      );
+    } catch (error, stackTrace) {
+      debugPrint(
+        '[SyncWatch][UI] ACTION_ERROR surface=player action=$action '
+        'elapsedMs=${clock.elapsedMilliseconds} error=$error',
+      );
+      debugPrintStack(stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+
   Future<void> _logMpvPlaybackHealth() async {
     if (_mpvHealthLogInFlight) return;
     final native = player.platform;
@@ -965,7 +988,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             : SystemMouseCursors.basic,
         child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onDoubleTap: _toggleFullscreen,
+        onDoubleTap: () => unawaited(_runUiAction('fullscreen_double_tap', _toggleFullscreen)),
         onSecondaryTapDown: (details) {
           _showContextMenu(context, details.globalPosition);
         },
@@ -1024,7 +1047,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       behavior: HitTestBehavior.opaque,
       onPanStart:
           fullscreenMode ? null : (_) => windowManager.startDragging(),
-      onDoubleTap: _toggleFullscreen,
+      onDoubleTap: () => unawaited(_runUiAction('fullscreen_double_tap', _toggleFullscreen)),
       child: Container(
         height: barHeight,
         color: barColor,
