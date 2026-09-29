@@ -115,7 +115,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   bool _restoreFullscreenAfterMinimize = false;
   bool _minimizeInProgress = false;
   bool _resumeFullscreenWhenActivated = false;
-  int _fullscreenHoverGeneration = 0;
   bool topControlsVisible = true;
   bool bottomControlsVisible = true;
   late int currentIndex;
@@ -485,7 +484,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         property('autosync'),
         property('avsync'),
         property('total-avsync-change'),
-        property('vsync-ratio'),
       ]);
       _playbackLog(
         'MPV_HEALTH codec=${values[0]} format=${values[1]} '
@@ -493,8 +491,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         'estimatedFps=${values[4]} displayFps=${values[5]} '
         'frameDrops=${values[6]} decoderDrops=${values[7]} '
         'videoSync=${values[8]} autosync=${values[9]} '
-        'avsync=${values[10]} totalAvsyncChange=${values[11]} '
-        'vsyncRatio=${values[12]}',
+        'avsync=${values[10]} totalAvsyncChange=${values[11]}',
       );
     } finally {
       _mpvHealthLogInFlight = false;
@@ -821,7 +818,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                   // Stable trigger strip: it never changes size when the bar
                   // appears, so revealing controls cannot generate a false exit.
                   Positioned(
-                    key: ValueKey<int>(_fullscreenHoverGeneration),
                     left: 0,
                     right: 0,
                     top: 0,
@@ -1478,24 +1474,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       if (_previewPlayer == null) {
         final preview = Player();
         _previewPlayer = preview;
-        final nativePreview = preview.platform;
-        if (nativePreview is NativePlayer) {
-          // Timeline thumbnails are tiny. Keep their decoder off the main
-          // D3D11VA path so preview work cannot contend with movie playback.
-          await nativePreview.setProperty('hwdec', 'no');
-        }
-        _previewVideoController = VideoController(
-          preview,
-          configuration: const VideoControllerConfiguration(
-            width: 192,
-            height: 108,
-            enableHardwareAcceleration: false,
-          ),
-        );
-        _playbackLog(
-          'PREVIEW_PLAYER_CREATED request=$request '
-          'output=192x108 hwdec=no renderer=cpu',
-        );
+        _previewVideoController = VideoController(preview);
+        _playbackLog('PREVIEW_PLAYER_CREATED request=$request');
 
         if (mounted) {
           setState(() {});
@@ -1522,18 +1502,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           'PREVIEW_MEDIA_OPEN elapsed=${previewClock.elapsedMilliseconds}ms '
           'request=$request',
         );
-
-        // media_kit may resize the software output to the source dimensions
-        // after opening media. Force the thumbnail surface back to its actual
-        // UI size so preview never keeps a 1920x1080 software texture alive.
-        final previewController = _previewVideoController;
-        if (previewController != null) {
-          await previewController.setSize(
-            width: 192,
-            height: 108,
-          );
-          _playbackLog('PREVIEW_OUTPUT_RESIZED 192x108 request=$request');
-        }
 
         // Wait until the decoder has actual media metadata before seeking.
         try {
@@ -2427,57 +2395,17 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           await Future<void>.delayed(const Duration(milliseconds: 40));
         }
 
-        final beforeSize = await windowManager.getSize();
-        debugPrint(
-          '[SyncWatch][UI] FULLSCREEN_ENTER_BEGIN '
-          'size=${beforeSize.width.toStringAsFixed(0)}x'
-          '${beforeSize.height.toStringAsFixed(0)}',
-        );
-
         await windowManager.setFullScreen(true);
-
-        // Do not switch Flutter to fullscreen layout while Windows is still
-        // resizing the native window. A transient size here can produce
-        // clipped/oversized controls until another fullscreen cycle.
-        Size? previousSize;
-        Size settledSize = await windowManager.getSize();
-        var stableSamples = 0;
-        for (var attempt = 0; attempt < 12 && stableSamples < 2; attempt++) {
-          await Future<void>.delayed(const Duration(milliseconds: 25));
-          final currentSize = await windowManager.getSize();
-          if (previousSize != null &&
-              (currentSize.width - previousSize.width).abs() < 1 &&
-              (currentSize.height - previousSize.height).abs() < 1) {
-            stableSamples++;
-          } else {
-            stableSamples = 0;
-          }
-          previousSize = currentSize;
-          settledSize = currentSize;
-        }
 
         if (!mounted) return;
         setState(() {
           isFullscreen = true;
+          // Fullscreen chrome has one state: both bars are either visible or
+          // hidden. Do not infer visibility from the pointer coordinates from
+          // the pre-fullscreen window.
           topControlsVisible = false;
           bottomControlsVisible = false;
-          _fullscreenHoverGeneration++;
         });
-
-        await WidgetsBinding.instance.endOfFrame;
-        if (mounted && isFullscreen) {
-          // Rebuild the entire player after the first fullscreen frame, not
-          // only the hover strip. This refreshes every LayoutBuilder against
-          // the settled native window dimensions.
-          setState(() => _fullscreenHoverGeneration++);
-          await WidgetsBinding.instance.endOfFrame;
-          debugPrint(
-            '[SyncWatch][UI] FULLSCREEN_LAYOUT_SETTLED '
-            'size=${settledSize.width.toStringAsFixed(0)}x'
-            '${settledSize.height.toStringAsFixed(0)} '
-            'generation=$_fullscreenHoverGeneration',
-          );
-        }
       } else {
         await windowManager.setFullScreen(false);
 
