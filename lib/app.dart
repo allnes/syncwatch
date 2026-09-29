@@ -481,6 +481,26 @@ class SyncWatchApp extends StatelessWidget {
           theme: buildSyncWatchTheme(Brightness.light),
           darkTheme: buildSyncWatchTheme(Brightness.dark),
           themeMode: controller.materialThemeMode,
+          builder: (context, child) => Listener(
+            behavior: HitTestBehavior.translucent,
+            onPointerDown: (event) => debugPrint(
+              '[SyncWatch][UI] POINTER_DOWN '
+              'device=${event.device} kind=${event.kind.name} '
+              'button=${event.buttons} '
+              'x=${event.position.dx.toStringAsFixed(1)} '
+              'y=${event.position.dy.toStringAsFixed(1)}',
+            ),
+            onPointerUp: (event) => debugPrint(
+              '[SyncWatch][UI] POINTER_UP '
+              'device=${event.device} kind=${event.kind.name} '
+              'x=${event.position.dx.toStringAsFixed(1)} '
+              'y=${event.position.dy.toStringAsFixed(1)}',
+            ),
+            onPointerCancel: (event) => debugPrint(
+              '[SyncWatch][UI] POINTER_CANCEL device=${event.device}',
+            ),
+            child: child ?? const SizedBox.shrink(),
+          ),
           home: LibraryScreen(controller: controller),
         );
       },
