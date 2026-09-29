@@ -128,6 +128,18 @@ if ($mvRootUri.IsAbsoluteUri -and $mvRootUri.Scheme -eq "file") {
 }
 $pluginCpp = Join-Path $mvRoot "windows\multi_view_desktop.cpp"
 $pluginProcCpp = Join-Path $mvRoot "windows\multi_view_desktop_plugin.cpp"
+
+# The Git dependency lives in Flutter's shared PUB_CACHE. Previous setup runs
+# may have modified it. Restore the two files we patch from the pinned checkout
+# before applying SyncWatch changes so every run starts from identical source.
+$mvGitDir = Join-Path $mvRoot ".git"
+if (Test-Path $mvGitDir) {
+  & git -C $mvRoot checkout -- windows/multi_view_desktop.cpp windows/multi_view_desktop_plugin.cpp
+  if ($LASTEXITCODE -ne 0) {
+    throw "Failed to restore pinned multiview_desktop Windows sources."
+  }
+}
+
 if (!(Test-Path $pluginCpp)) {
   throw "Missing pinned multiview_desktop Windows source: $pluginCpp"
 }
@@ -260,37 +272,6 @@ $proc = Get-Content $pluginProcCpp -Raw
 # Keep patched C++ source ASCII-only.
 $proc = $proc.Replace([string][char]0x2014, "-")
 $proc = $proc.Replace([string][char]0x2026, "...")
-
-# Normalize stale SyncWatch edits in the shared PUB_CACHE before applying the
-# current patch. flutter pub get may reuse the same Git checkout between runs.
-$staleProcMinMax = @'
-        } else if (message == WM_GETMINMAXINFO) {
-            MINMAXINFO *info = reinterpret_cast<MINMAXINFO *>(lparam);
-            if (window->minimum_size_.x != 0) {
-                info->ptMinTrackSize.x = static_cast<LONG>(
-                        window->minimum_size_.x * window->pixel_ratio_);
-            }
-            if (window->minimum_size_.y != 0) {
-                info->ptMinTrackSize.y = static_cast<LONG>(
-                        window->minimum_size_.y * window->pixel_ratio_);
-            }
-            if (window->maximum_size_.x != -1) {
-                info->ptMaxTrackSize.x = static_cast<LONG>(
-                        window->maximum_size_.x * window->pixel_ratio_);
-            }
-            if (window->maximum_size_.y != -1) {
-                info->ptMaxTrackSize.y = static_cast<LONG>(
-                        window->maximum_size_.y * window->pixel_ratio_);
-            }
-            return 0;
-'@
-$baseProcMinMax = $staleProcMinMax.Replace(
-  "            return 0;",
-  "            result = 0;"
-)
-if ($proc.Contains($staleProcMinMax)) {
-  $proc = $proc.Replace($staleProcMinMax, $baseProcMinMax)
-}
 
 $oldProcHit = @'
         } else if (message == WM_NCHITTEST) {
