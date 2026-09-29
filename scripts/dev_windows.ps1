@@ -39,6 +39,49 @@ Write-Host "  $logDir"
 Write-Host "Stopping stale SyncWatch processes..."
 Get-Process syncwatch -ErrorAction SilentlyContinue | Stop-Process -Force
 
+# Recover dependency sources that older SyncWatch setup versions may have
+# modified in the shared PUB_CACHE. Restore only files we touched.
+$packageConfig = Join-Path $root ".dart_tool\package_config.json"
+if (Test-Path $packageConfig) {
+  try {
+    $config = Get-Content $packageConfig -Raw | ConvertFrom-Json
+
+    $mvPackage = $config.packages | Where-Object { $_.name -eq "multiview_desktop" } | Select-Object -First 1
+    if ($null -ne $mvPackage) {
+      $mvUri = [Uri]$mvPackage.rootUri
+      $mvRoot = if ($mvUri.IsAbsoluteUri -and $mvUri.Scheme -eq "file") {
+        $mvUri.LocalPath
+      } else {
+        [IO.Path]::GetFullPath((Join-Path (Split-Path $packageConfig -Parent) $mvPackage.rootUri))
+      }
+      if (Test-Path (Join-Path $mvRoot ".git")) {
+        Write-Host "Restoring clean multiview_desktop sources..."
+        & git -C $mvRoot checkout -- windows/multi_view_desktop.cpp windows/multi_view_desktop_plugin.cpp
+        if ($LASTEXITCODE -ne 0) { throw "Failed to restore multiview_desktop sources." }
+      }
+    }
+
+    $mkPackage = $config.packages | Where-Object { $_.name -eq "media_kit_video" } | Select-Object -First 1
+    if ($null -ne $mkPackage) {
+      $mkUri = [Uri]$mkPackage.rootUri
+      $mkRoot = if ($mkUri.IsAbsoluteUri -and $mkUri.Scheme -eq "file") {
+        $mkUri.LocalPath
+      } else {
+        [IO.Path]::GetFullPath((Join-Path (Split-Path $packageConfig -Parent) $mkPackage.rootUri))
+      }
+      $mkVideoOutput = Join-Path $mkRoot "windows\video_output.cc"
+      if ((Test-Path $mkVideoOutput) -and
+          ((Get-Content $mkVideoOutput -Raw) -match "SyncWatch presentation timing feedback")) {
+        Write-Host "Removing stale patched media_kit_video package..."
+        $mkPackageDir = Split-Path $mkRoot -Parent
+        Remove-Item $mkPackageDir -Recurse -Force
+      }
+    }
+  } catch {
+    throw "Dependency recovery failed: $($_.Exception.Message)"
+  }
+}
+
 Write-Host "Resolving Flutter dependencies..."
 flutter pub get
 if ($LASTEXITCODE -ne 0) { throw "flutter pub get failed." }
