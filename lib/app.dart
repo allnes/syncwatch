@@ -437,7 +437,6 @@ class AppController extends ChangeNotifier {
     if (persist) {
       _setString('activeMoviePath', activeMoviePath);
       _setDouble('activeMoviePositionSeconds', activeMoviePositionSeconds);
-      notifyListeners();
     }
   }
 
