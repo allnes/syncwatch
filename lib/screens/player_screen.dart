@@ -86,6 +86,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   bool _applyingRemoteCommand = false;
   bool _pausedForConnectionLoss = false;
   int _remoteCommandSerial = 0;
+  final Stopwatch _playbackSessionClock = Stopwatch();
+  Stopwatch? _bufferingClock;
+  DateTime? _lastPlaybackHealthLog;
+  bool? _lastBufferingState;
 
   Player? _previewPlayer;
   VideoController? _previewVideoController;
@@ -169,6 +173,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
     player = Player();
     videoController = VideoController(player);
+    _playbackSessionClock.start();
+    _playbackLog(
+      'INIT media="${currentMovie.fileName}" path="${currentMovie.fullPath}"',
+    );
 
     _subscriptions.add(
       player.stream.position.listen((position) {
@@ -180,6 +188,21 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           currentMovie.fullPath,
           seconds,
         );
+        final now = DateTime.now();
+        if (_lastPlaybackHealthLog == null ||
+            now.difference(_lastPlaybackHealthLog!) >=
+                const Duration(seconds: 10)) {
+          _lastPlaybackHealthLog = now;
+          _playbackLog(
+            'HEALTH pos=${position.inMilliseconds}ms '
+            'duration=${player.state.duration.inMilliseconds}ms '
+            'playing=${player.state.playing} '
+            'buffering=${player.state.buffering} '
+            'previewActive=${_previewPlayer != null} '
+            'previewHover=$_timelineHovering '
+            'previewCache=${_previewCache.length}',
+          );
+        }
         setState(() => positionSeconds = seconds);
       }),
     );
@@ -193,6 +216,35 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       player.stream.playing.listen((value) {
         if (!mounted) return;
         setState(() => playing = value);
+      }),
+    );
+    _subscriptions.add(
+      player.stream.buffering.listen((value) {
+        if (value == _lastBufferingState) return;
+        _lastBufferingState = value;
+        if (value) {
+          _bufferingClock = Stopwatch()..start();
+          _playbackLog(
+            'BUFFERING_START pos=${player.state.position.inMilliseconds}ms '
+            'playing=${player.state.playing}',
+          );
+        } else {
+          final elapsed = _bufferingClock?.elapsedMilliseconds;
+          _bufferingClock = null;
+          _playbackLog(
+            'BUFFERING_END duration=${elapsed ?? -1}ms '
+            'pos=${player.state.position.inMilliseconds}ms '
+            'playing=${player.state.playing}',
+          );
+        }
+      }),
+    );
+    _subscriptions.add(
+      player.stream.videoParams.listen((params) {
+        _playbackLog(
+          'VIDEO_PARAMS dw=${params.dw} dh=${params.dh} '
+          'aspect=${params.aspect}',
+        );
       }),
     );
     _subscriptions.add(
@@ -361,7 +413,16 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     await player.setVolume(value);
   }
 
+  void _playbackLog(String message) {
+    debugPrint(
+      '[SyncWatch][PLAYBACK] '
+      't=${_playbackSessionClock.elapsedMilliseconds}ms $message',
+    );
+  }
+
   Future<void> _openMedia() async {
+    final openClock = Stopwatch()..start();
+    _playbackLog('OPEN_BEGIN media="${currentMovie.fileName}"');
     final resumePosition =
         widget.controller.playbackPositionFor(currentMovie.fullPath);
 
@@ -373,6 +434,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     await player.open(
       Media(Uri.file(currentMovie.fullPath).toString()),
       play: false,
+    );
+    _playbackLog(
+      'OPEN_DONE elapsed=${openClock.elapsedMilliseconds}ms '
+      'duration=${player.state.duration.inMilliseconds}ms',
     );
 
     widget.controller.beginPlaybackSession(currentMovie.fullPath);
@@ -386,10 +451,19 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     // Give libmpv a moment to expose tracks, then apply the preselected values.
     await Future<void>.delayed(const Duration(milliseconds: 150));
     await _applyInitialTracks();
+    _playbackLog(
+      'TRACKS_READY elapsed=${openClock.elapsedMilliseconds}ms '
+      'audio=${player.state.tracks.audio.length} '
+      'subtitle=${player.state.tracks.subtitle.length}',
+    );
 
     // Entering the player via Start/Continue Watching means playback should
     // begin immediately rather than opening on a paused first frame.
     await player.play();
+    _playbackLog(
+      'PLAY_REQUESTED elapsed=${openClock.elapsedMilliseconds}ms '
+      'pos=${player.state.position.inMilliseconds}ms',
+    );
     if (!_applyingRemoteCommand) {
       await widget.syncEngine.start(
         currentMovie.movieId,
@@ -1266,13 +1340,19 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   Future<void> _loadTimelinePreview(double seconds, int bucket) async {
     if (!mounted || !widget.controller.timelinePreview) return;
 
+    final previewClock = Stopwatch()..start();
     final request = ++_previewRequestSerial;
+    _playbackLog(
+      'PREVIEW_BEGIN request=$request target=${seconds.toStringAsFixed(2)}s '
+      'bucket=$bucket cache=${_previewCache.length}',
+    );
 
     try {
       if (_previewPlayer == null) {
         final preview = Player();
         _previewPlayer = preview;
         _previewVideoController = VideoController(preview);
+        _playbackLog('PREVIEW_PLAYER_CREATED request=$request');
 
         if (mounted) {
           setState(() {});
@@ -1295,6 +1375,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           play: false,
         );
         _previewMediaPath = currentMovie.fullPath;
+        _playbackLog(
+          'PREVIEW_MEDIA_OPEN elapsed=${previewClock.elapsedMilliseconds}ms '
+          'request=$request',
+        );
 
         // Wait until the decoder has actual media metadata before seeking.
         try {
@@ -1336,6 +1420,11 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         _previewCache.remove(_previewCache.keys.first);
       }
       _previewCache[bucket] = frame;
+      _playbackLog(
+        'PREVIEW_READY request=$request bucket=$bucket '
+        'elapsed=${previewClock.elapsedMilliseconds}ms '
+        'bytes=${frame.length} cache=${_previewCache.length}',
+      );
 
       if (_timelineHovering) {
         setState(() {
@@ -1343,7 +1432,12 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           _previewFailed = false;
         });
       }
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _playbackLog(
+        'PREVIEW_ERROR request=$request '
+        'elapsed=${previewClock.elapsedMilliseconds}ms error=$error',
+      );
+      debugPrint('[SyncWatch][PLAYBACK] PREVIEW_STACK $stackTrace');
       if (mounted && request == _previewRequestSerial) {
         setState(() => _previewFailed = true);
       }
