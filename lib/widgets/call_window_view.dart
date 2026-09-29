@@ -130,6 +130,9 @@ class _CallWindowViewState extends State<CallWindowView> {
       builder: (context, constraints) {
         final compact =
             constraints.maxWidth < 380 || constraints.maxHeight < 260;
+        final controlScale = _fullscreen
+            ? 1.0
+            : (constraints.maxWidth / 520.0).clamp(0.72, 0.88).toDouble();
         return Material(
           color: const Color(0xFF0B1C2B),
           child: Stack(
@@ -163,12 +166,13 @@ class _CallWindowViewState extends State<CallWindowView> {
                   ),
                 ),
               Positioned(
-                right: 8,
-                top: 7,
+                right: 8 * controlScale,
+                top: 7 * controlScale,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _chromeButton(
+                      scale: controlScale,
                       tooltip: _alwaysOnTop
                           ? 'Не держать поверх всех окон'
                           : 'Поверх всех окон',
@@ -177,15 +181,17 @@ class _CallWindowViewState extends State<CallWindowView> {
                       quarterTurns: _alwaysOnTop ? 1 : 0,
                       onPressed: _toggleAlwaysOnTop,
                     ),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4 * controlScale),
                     _chromeButton(
+                      scale: controlScale,
                       tooltip: widget.controller.t('minimize'),
                       icon: Icons.remove_rounded,
                       onPressed: () =>
                           MultiViewDesktop.of(context).minimize(),
                     ),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4 * controlScale),
                     _chromeButton(
+                      scale: controlScale,
                       tooltip: widget.controller.t('fullscreen'),
                       icon: _fullscreen
                           ? Icons.fullscreen_exit_rounded
@@ -223,25 +229,28 @@ class _CallWindowViewState extends State<CallWindowView> {
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: 12,
+                bottom: 12 * controlScale,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     _callButton(
+                      scale: controlScale,
                       icon: _microphoneEnabled
                           ? Icons.mic_rounded
                           : Icons.mic_off_rounded,
                       onPressed: _toggleMicrophone,
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10 * controlScale),
                     _callButton(
+                      scale: controlScale,
                       icon: _cameraEnabled
                           ? Icons.videocam_rounded
                           : Icons.videocam_off_rounded,
                       onPressed: _toggleCamera,
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10 * controlScale),
                     _callButton(
+                      scale: controlScale,
                       icon: Icons.call_end_rounded,
                       destructive: true,
                       onPressed: _hangUp,
@@ -329,6 +338,7 @@ class _CallWindowViewState extends State<CallWindowView> {
     required FutureOr<void> Function() onPressed,
     bool active = false,
     int quarterTurns = 0,
+    double scale = 1.0,
   }) {
     return Tooltip(
       message: tooltip,
@@ -339,11 +349,11 @@ class _CallWindowViewState extends State<CallWindowView> {
           customBorder: const CircleBorder(),
           onTap: () => unawaited(Future<void>.sync(onPressed)),
           child: SizedBox(
-            width: 34,
-            height: 34,
+            width: 34 * scale,
+            height: 34 * scale,
             child: RotatedBox(
               quarterTurns: quarterTurns,
-              child: Icon(icon, size: 19, color: Colors.white),
+              child: Icon(icon, size: 19 * scale, color: Colors.white),
             ),
           ),
         ),
@@ -355,16 +365,17 @@ class _CallWindowViewState extends State<CallWindowView> {
     required IconData icon,
     required FutureOr<void> Function() onPressed,
     bool destructive = false,
+    double scale = 1.0,
   }) {
     return FilledButton(
       onPressed: () => unawaited(Future<void>.sync(onPressed)),
       style: FilledButton.styleFrom(
         shape: const CircleBorder(),
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12 * scale),
         backgroundColor:
             destructive ? const Color(0xFFB3261E) : syncSurfaceRaised,
       ),
-      child: Icon(icon, size: 20),
+      child: Icon(icon, size: 20 * scale),
     );
   }
 }
