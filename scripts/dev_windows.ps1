@@ -29,13 +29,6 @@ function Start-SyncWatchShell {
 
 Set-Location $root
 
-$logDir = Join-Path $root "logs"
-New-Item -ItemType Directory -Force -Path $logDir | Out-Null
-Remove-Item (Join-Path $logDir "*.log") -Force -ErrorAction SilentlyContinue
-
-Write-Host "Runtime logs will be written to:"
-Write-Host "  $logDir"
-
 Write-Host "Stopping stale SyncWatch processes..."
 Get-Process syncwatch -ErrorAction SilentlyContinue | Stop-Process -Force
 
@@ -57,19 +50,9 @@ if (!$SkipBuild) {
   if ($LASTEXITCODE -ne 0) { throw "flutter build windows --debug failed." }
 }
 
-$serverLog = Join-Path $logDir "server.log"
-$clientLog = Join-Path $logDir "client.log"
-$peerLog = Join-Path $logDir "test_peer.log"
-
-$server = 'Set-Location "' + (Join-Path $root "server") + '"; dart run bin\server.dart 2>&1 | Tee-Object -FilePath "' + $serverLog + '"'
-$clientExe = Join-Path $root "build\windows\x64\runner\Debug\syncwatch.exe"
-$clientErrLog = Join-Path $logDir "client_stderr.log"
-$client = 'Set-Location "' + $root + '"; ' +
-  '$process = Start-Process -FilePath "' + $clientExe + '" ' +
-  '-RedirectStandardOutput "' + $clientLog + '" ' +
-  '-RedirectStandardError "' + $clientErrLog + '" -PassThru; ' +
-  '$process.WaitForExit()'
-$peer = 'Set-Location "' + $root + '"; flutter run -d windows -t lib\livekit_test_peer_app.dart 2>&1 | Tee-Object -FilePath "' + $peerLog + '"'
+$server = 'Set-Location "' + (Join-Path $root "server") + '"; dart run bin\server.dart'
+$client = 'Set-Location "' + $root + '"; .\build\windows\x64\runner\Debug\syncwatch.exe'
+$peer = 'Set-Location "' + $root + '"; flutter run -d windows -t lib\livekit_test_peer_app.dart'
 
 Write-Host "Starting server, SyncWatch, and Test Peer in separate PowerShell windows..."
 Start-SyncWatchShell -Title "SyncWatch Server" -Command $server
@@ -83,9 +66,3 @@ Write-Host "Started:"
 Write-Host "  1. SyncWatch Server"
 Write-Host "  2. SyncWatch Client"
 Write-Host "  3. SyncWatch Test Peer"
-Write-Host ""
-Write-Host "Logs:"
-Write-Host "  Client:    $clientLog"
-Write-Host "  Client err:$clientErrLog"
-Write-Host "  Test Peer: $peerLog"
-Write-Host "  Server:    $serverLog"
