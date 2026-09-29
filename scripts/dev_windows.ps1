@@ -39,24 +39,9 @@ Write-Host "  $logDir"
 Write-Host "Stopping stale SyncWatch processes..."
 Get-Process syncwatch -ErrorAction SilentlyContinue | Stop-Process -Force
 
-$windowsBuild = Join-Path $root "build\windows"
-if (Test-Path $windowsBuild) {
-  Write-Host "Cleaning stale Windows build artifacts..."
-  Remove-Item $windowsBuild -Recurse -Force
-}
-
 Write-Host "Resolving Flutter dependencies..."
 flutter pub get
 if ($LASTEXITCODE -ne 0) { throw "flutter pub get failed." }
-
-Write-Host "Resolving server dependencies..."
-Push-Location (Join-Path $root "server")
-try {
-  dart pub get
-  if ($LASTEXITCODE -ne 0) { throw "dart pub get failed for server." }
-} finally {
-  Pop-Location
-}
 
 Write-Host "Configuring Windows multi-view runner..."
 & (Join-Path $PSScriptRoot "enable_multiview_windows.ps1")
