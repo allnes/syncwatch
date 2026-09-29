@@ -885,8 +885,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     bool compact = false,
     required bool fullscreenMode,
   }) {
-    final barColor =
-        _isLight ? const Color(0xFFBFD7F2) : const Color(0xFF7357C8);
+    final barColor = _playerChrome;
     final barHeight = compact ? 40.0 : 32.0;
     final titleFontSize = compact ? 12.5 : 12.0;
     const buttonWidth = 46.0;
