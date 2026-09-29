@@ -121,6 +121,29 @@ class _CallWindowViewState extends State<CallWindowView> {
     }
   }
 
+  Future<void> _runUiAction(
+    String action,
+    FutureOr<void> Function() callback,
+  ) async {
+    final clock = Stopwatch()..start();
+    debugPrint('[SyncWatch][UI] TAP surface=call action=$action');
+    debugPrint('[SyncWatch][UI] ACTION_BEGIN surface=call action=$action');
+    try {
+      await Future<void>.sync(callback);
+      debugPrint(
+        '[SyncWatch][UI] ACTION_DONE surface=call action=$action '
+        'elapsedMs=${clock.elapsedMilliseconds}',
+      );
+    } catch (error, stackTrace) {
+      debugPrint(
+        '[SyncWatch][UI] ACTION_ERROR surface=call action=$action '
+        'elapsedMs=${clock.elapsedMilliseconds} error=$error',
+      );
+      debugPrintStack(stackTrace: stackTrace);
+      rethrow;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final localTrack =
@@ -347,7 +370,7 @@ class _CallWindowViewState extends State<CallWindowView> {
         shape: const CircleBorder(),
         child: InkWell(
           customBorder: const CircleBorder(),
-          onTap: () => unawaited(Future<void>.sync(onPressed)),
+          onTap: () => unawaited(_runUiAction(tooltip, onPressed)),
           child: SizedBox(
             width: 34 * scale,
             height: 34 * scale,
@@ -367,8 +390,13 @@ class _CallWindowViewState extends State<CallWindowView> {
     bool destructive = false,
     double scale = 1.0,
   }) {
+    final action = destructive
+        ? 'hang_up'
+        : icon == Icons.mic_rounded || icon == Icons.mic_off_rounded
+            ? 'microphone'
+            : 'camera';
     return FilledButton(
-      onPressed: () => unawaited(Future<void>.sync(onPressed)),
+      onPressed: () => unawaited(_runUiAction(action, onPressed)),
       style: FilledButton.styleFrom(
         shape: const CircleBorder(),
         padding: EdgeInsets.all(12 * scale),
