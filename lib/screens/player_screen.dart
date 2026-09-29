@@ -108,7 +108,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   bool _resumeFullscreenWhenActivated = false;
   bool topControlsVisible = true;
   bool bottomControlsVisible = true;
-  Offset _lastPointerPosition = Offset.zero;
   late int currentIndex;
   late MovieItem currentMovie;
   Set<String>? sharedMovieIds;
@@ -588,7 +587,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             child: Listener(
             onPointerDown: (_) => _playerFocusNode.requestFocus(),
             onPointerHover: (event) {
-              _lastPointerPosition = event.position;
 
             },
             onPointerSignal: (event) {
