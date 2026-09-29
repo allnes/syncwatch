@@ -51,7 +51,7 @@ if (!$SkipBuild) {
 }
 
 $server = 'Set-Location "' + (Join-Path $root "server") + '"; dart run bin\server.dart'
-$client = 'Set-Location "' + $root + '"; .\build\windows\x64\runner\Debug\syncwatch.exe'
+$client = 'Set-Location "' + $root + '"; flutter run -d windows'
 $peer = 'Set-Location "' + $root + '"; flutter run -d windows -t lib\livekit_test_peer_app.dart'
 
 Write-Host "Starting server, SyncWatch, and Test Peer in separate PowerShell windows..."
