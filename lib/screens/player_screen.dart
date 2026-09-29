@@ -59,7 +59,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   Color get _playerBackground =>
       _isLight ? syncLightBackgroundDeep : syncBackgroundDeep;
   Color get _playerChrome =>
-      _isLight ? syncLightSurface : syncBackgroundDeep;
+      _isLight ? syncLightBackground : syncBackground;
   Color get _playerSurface =>
       _isLight ? syncLightSurfaceRaised : syncSurfaceRaised;
   Color get _playerBorder =>
