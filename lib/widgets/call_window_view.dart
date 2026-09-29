@@ -172,10 +172,9 @@ class _CallWindowViewState extends State<CallWindowView> {
                       tooltip: _alwaysOnTop
                           ? 'Не держать поверх всех окон'
                           : 'Поверх всех окон',
-                      icon: _alwaysOnTop
-                          ? Icons.push_pin_rounded
-                          : Icons.push_pin_outlined,
+                      icon: Icons.push_pin_rounded,
                       active: _alwaysOnTop,
+                      quarterTurns: _alwaysOnTop ? 1 : 0,
                       onPressed: _toggleAlwaysOnTop,
                     ),
                     const SizedBox(width: 4),
@@ -329,6 +328,7 @@ class _CallWindowViewState extends State<CallWindowView> {
     required IconData icon,
     required FutureOr<void> Function() onPressed,
     bool active = false,
+    int quarterTurns = 0,
   }) {
     return Tooltip(
       message: tooltip,
@@ -341,7 +341,10 @@ class _CallWindowViewState extends State<CallWindowView> {
           child: SizedBox(
             width: 34,
             height: 34,
-            child: Icon(icon, size: 19, color: Colors.white),
+            child: RotatedBox(
+              quarterTurns: quarterTurns,
+              child: Icon(icon, size: 19, color: Colors.white),
+            ),
           ),
         ),
       ),
