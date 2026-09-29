@@ -1474,8 +1474,24 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       if (_previewPlayer == null) {
         final preview = Player();
         _previewPlayer = preview;
-        _previewVideoController = VideoController(preview);
-        _playbackLog('PREVIEW_PLAYER_CREATED request=$request');
+        final nativePreview = preview.platform;
+        if (nativePreview is NativePlayer) {
+          // Timeline thumbnails are tiny. Keep their decoder off the main
+          // D3D11VA path so preview work cannot contend with movie playback.
+          await nativePreview.setProperty('hwdec', 'no');
+        }
+        _previewVideoController = VideoController(
+          preview,
+          configuration: const VideoControllerConfiguration(
+            width: 192,
+            height: 108,
+            enableHardwareAcceleration: false,
+          ),
+        );
+        _playbackLog(
+          'PREVIEW_PLAYER_CREATED request=$request '
+          'output=192x108 hwdec=no renderer=cpu',
+        );
 
         if (mounted) {
           setState(() {});
