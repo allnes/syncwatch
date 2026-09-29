@@ -293,6 +293,55 @@ if ($proc.Contains($oldProcHit)) {
 } elseif ($proc -notmatch 'const int border = native_border > 8') {
   throw "Pinned multiview_desktop plugin WM_NCHITTEST block changed unexpectedly."
 }
+# Enforce min/max constraints in the first native message hook as well.
+# HandleWindowProc runs before the host WndProc, so returning here guarantees
+# Windows receives the constraints for frameless secondary windows.
+$oldProcMinMax = @'
+        } else if (message == WM_GETMINMAXINFO) {
+            MINMAXINFO *info = reinterpret_cast<MINMAXINFO *>(lparam);
+            if (window->minimum_size_.x != 0) {
+                info->ptMinTrackSize.x = static_cast<LONG>(
+                        window->minimum_size_.x * window->pixel_ratio_);
+            }
+            if (window->minimum_size_.y != 0) {
+                info->ptMinTrackSize.y = static_cast<LONG>(
+                        window->minimum_size_.y * window->pixel_ratio_);
+            }
+            if (window->maximum_size_.x != -1) {
+                info->ptMaxTrackSize.x = static_cast<LONG>(
+                        window->maximum_size_.x * window->pixel_ratio_);
+            }
+            if (window->maximum_size_.y != -1) {
+                info->ptMaxTrackSize.y = static_cast<LONG>(
+                        window->maximum_size_.y * window->pixel_ratio_);
+            }
+            result = 0;
+'@
+$newProcMinMax = @'
+        } else if (message == WM_GETMINMAXINFO) {
+            MINMAXINFO *info = reinterpret_cast<MINMAXINFO *>(lparam);
+            if (window->minimum_size_.x != 0) {
+                info->ptMinTrackSize.x = static_cast<LONG>(
+                        window->minimum_size_.x * window->pixel_ratio_);
+            }
+            if (window->minimum_size_.y != 0) {
+                info->ptMinTrackSize.y = static_cast<LONG>(
+                        window->minimum_size_.y * window->pixel_ratio_);
+            }
+            if (window->maximum_size_.x != -1) {
+                info->ptMaxTrackSize.x = static_cast<LONG>(
+                        window->maximum_size_.x * window->pixel_ratio_);
+            }
+            if (window->maximum_size_.y != -1) {
+                info->ptMaxTrackSize.y = static_cast<LONG>(
+                        window->maximum_size_.y * window->pixel_ratio_);
+            }
+            return 0;
+'@
+if ($proc.Contains($oldProcMinMax)) {
+  $proc = $proc.Replace($oldProcMinMax, $newProcMinMax)
+}
+
 Write-Utf8NoBom $pluginProcCpp $proc
 
 $pluginBuild = Join-Path $root "build\windows\x64\plugins\multiview_desktop"
