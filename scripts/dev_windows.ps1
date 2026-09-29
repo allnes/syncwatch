@@ -63,7 +63,12 @@ $peerLog = Join-Path $logDir "test_peer.log"
 
 $server = 'Set-Location "' + (Join-Path $root "server") + '"; dart run bin\server.dart 2>&1 | Tee-Object -FilePath "' + $serverLog + '"'
 $clientExe = Join-Path $root "build\windows\x64\runner\Debug\syncwatch.exe"
-$client = 'Set-Location "' + $root + '"; & "' + $clientExe + '" 2>&1 | Tee-Object -FilePath "' + $clientLog + '"'
+$clientErrLog = Join-Path $logDir "client_stderr.log"
+$client = 'Set-Location "' + $root + '"; ' +
+  '$process = Start-Process -FilePath "' + $clientExe + '" ' +
+  '-RedirectStandardOutput "' + $clientLog + '" ' +
+  '-RedirectStandardError "' + $clientErrLog + '" -PassThru; ' +
+  '$process.WaitForExit()'
 $peer = 'Set-Location "' + $root + '"; flutter run -d windows -t lib\livekit_test_peer_app.dart 2>&1 | Tee-Object -FilePath "' + $peerLog + '"'
 
 Write-Host "Starting server, SyncWatch, and Test Peer in separate PowerShell windows..."
@@ -81,5 +86,6 @@ Write-Host "  3. SyncWatch Test Peer"
 Write-Host ""
 Write-Host "Logs:"
 Write-Host "  Client:    $clientLog"
+Write-Host "  Client err:$clientErrLog"
 Write-Host "  Test Peer: $peerLog"
 Write-Host "  Server:    $serverLog"
