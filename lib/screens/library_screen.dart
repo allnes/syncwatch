@@ -439,8 +439,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
         onHangUp: () => _endCall(closeWindow: false),
       ),
       options: const WindowOptions(
-        size: Size(360, 260),
-        minimumSize: Size(360, 260),
+        size: Size(300, 210),
+        minimumSize: Size(260, 190),
         maximumSize: Size(1280, 900),
         title: 'SyncWatch Call',
         titleBarStyle: TitleBarStyle.hidden,
@@ -455,11 +455,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
     // managers can initially inherit the anchor window bounds.
     await callWindow.setResizable(true);
     await callWindow.setMovable(true);
-    await callWindow.setMinimumSize(const Size(360, 260));
+    await callWindow.setMinimumSize(const Size(260, 190));
     await callWindow.setMaximumSize(const Size(1280, 900));
-    await callWindow.setSize(const Size(360, 260));
+    await callWindow.setSize(const Size(300, 210));
     await callWindow.center();
-    final requestedCallSize = const Size(360, 260);
+    final requestedCallSize = const Size(300, 210);
     final firstActualSize = await callWindow.getSize();
     _roomLog(
       'CALL WINDOW requested=${requestedCallSize.width.toInt()}x'
@@ -473,7 +473,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     // frame. Re-assert compact bounds after that frame has settled.
     await Future<void>.delayed(const Duration(milliseconds: 120));
     await callWindow.setResizable(true);
-    await callWindow.setMinimumSize(const Size(360, 260));
+    await callWindow.setMinimumSize(const Size(260, 190));
     await callWindow.setMaximumSize(const Size(1280, 900));
     await callWindow.setSize(requestedCallSize);
     final settledActualSize = await callWindow.getSize();
