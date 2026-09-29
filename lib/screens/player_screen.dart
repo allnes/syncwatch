@@ -1529,7 +1529,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         final previewController = _previewVideoController;
         if (previewController != null) {
           await previewController.setSize(
-            const Size(192, 108),
+            width: 192,
+            height: 108,
           );
           _playbackLog('PREVIEW_OUTPUT_RESIZED 192x108 request=$request');
         }
