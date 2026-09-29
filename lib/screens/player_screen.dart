@@ -179,7 +179,12 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     player = Player();
     final nativePlayer = player.platform;
     if (nativePlayer is NativePlayer) {
-      unawaited(nativePlayer.setProperty('autosync', '30'));
+      // Keep this experiment entirely inside libmpv's public runtime API.
+      // 24 FPS content on a higher-refresh display otherwise uses uneven
+      // frame repetition in audio-sync mode, which is perceived as judder.
+      unawaited(nativePlayer.setProperty('video-sync', 'display-resample'));
+      unawaited(nativePlayer.setProperty('interpolation', 'yes'));
+      unawaited(nativePlayer.setProperty('tscale', 'oversample'));
     }
     videoController = VideoController(player);
     _playbackSessionClock.start();
