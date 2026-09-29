@@ -28,8 +28,9 @@ Future<void> main(List<String> args) async {
       generalParams: const mv.MultiPlatformParams(
         closeMode: mv.CloseMode.softCascade,
       ),
+      // Keep main-window constraints on window_manager only. Multi-view
+      // global options are inherited by every secondary OS window.
       globalWindowOptions: const mv.WindowOptions(
-        minimumSize: Size(1100, 760),
         title: 'SyncWatch',
       ),
     ),
