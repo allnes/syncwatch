@@ -344,6 +344,41 @@ if ($proc.Contains($oldProcMinMax)) {
 
 Write-Utf8NoBom $pluginProcCpp $proc
 
+# Patch media_kit_video's Windows libmpv render loop so mpv receives
+# presentation feedback. Without report_swap, display FPS/vsync timing stays
+# unknown and 24 FPS motion can exhibit judder despite zero decoded-frame loss.
+$mkPackage = $config.packages | Where-Object { $_.name -eq "media_kit_video" } | Select-Object -First 1
+if ($null -eq $mkPackage) {
+  throw "media_kit_video is missing from package_config.json."
+}
+$mkRootUri = [Uri]$mkPackage.rootUri
+if ($mkRootUri.IsAbsoluteUri -and $mkRootUri.Scheme -eq "file") {
+  $mkRoot = $mkRootUri.LocalPath
+} else {
+  $mkRoot = [IO.Path]::GetFullPath((Join-Path (Split-Path $packageConfig -Parent) $mkPackage.rootUri))
+}
+$mkVideoOutput = Join-Path $mkRoot "windows\video_output.cc"
+if (!(Test-Path $mkVideoOutput)) {
+  throw "Missing media_kit_video Windows source: $mkVideoOutput"
+}
+$mk = Get-Content $mkVideoOutput -Raw
+if ($mk -notmatch "SyncWatch presentation timing feedback") {
+  $renderCall = "        mpv_render_context_render(render_context_, params);"
+  if (!$mk.Contains($renderCall)) {
+    throw "media_kit_video Windows render call changed unexpectedly."
+  }
+  $renderWithSwap = $renderCall + [Environment]::NewLine +
+    "        // SyncWatch presentation timing feedback" + [Environment]::NewLine +
+    "        mpv_render_context_report_swap(render_context_);"
+  $mk = $mk.Replace($renderCall, $renderWithSwap)
+  Write-Utf8NoBom $mkVideoOutput $mk
+}
+
+$mediaKitBuild = Join-Path $root "build\windows\x64\plugins\media_kit_video"
+if (Test-Path $mediaKitBuild) {
+  Remove-Item $mediaKitBuild -Recurse -Force
+}
+
 $pluginBuild = Join-Path $root "build\windows\x64\plugins\multiview_desktop"
 if (Test-Path $pluginBuild) {
   Remove-Item $pluginBuild -Recurse -Force
