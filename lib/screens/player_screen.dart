@@ -589,12 +589,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             onPointerDown: (_) => _playerFocusNode.requestFocus(),
             onPointerHover: (event) {
               _lastPointerPosition = event.position;
-              if (isFullscreen &&
-                  !topControlsVisible &&
-                  event.position.dy >= 32 &&
-                  event.position.dy < 72) {
-                setState(() => topControlsVisible = true);
-              }
+
             },
             onPointerSignal: (event) {
               if (event is PointerScrollEvent) {
@@ -675,7 +670,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                     left: 0,
                     right: 0,
                     top: 0,
-                    height: 8,
+                    height: 12,
                     child: Listener(
                       behavior: HitTestBehavior.opaque,
                       onPointerHover: (_) => _showFullscreenControls(),
@@ -2171,14 +2166,12 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         await windowManager.setFullScreen(true);
 
         if (!mounted) return;
-        final pointerInHeaderTrigger =
-            _lastPointerPosition.dy >= 32 && _lastPointerPosition.dy < 72;
         setState(() {
           isFullscreen = true;
-          // Entering fullscreen can happen while the pointer is already over
-          // the future header trigger area. There is then no MouseRegion enter
-          // event, so reveal it immediately from the tracked pointer position.
-          topControlsVisible = pointerInHeaderTrigger;
+          // Fullscreen chrome has one state: both bars are either visible or
+          // hidden. Do not infer visibility from the pointer coordinates from
+          // the pre-fullscreen window.
+          topControlsVisible = false;
           bottomControlsVisible = false;
         });
       } else {
