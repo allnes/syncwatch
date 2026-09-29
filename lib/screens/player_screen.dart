@@ -75,6 +75,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   Timer? _volumeOsdTimer;
   Timer? _seekDebounceTimer;
   Timer? _previewDebounceTimer;
+  Timer? _previewIdleDisposeTimer;
   Timer? _duckingRampTimer;
   Timer? _duckingReleaseTimer;
   Timer? _fullscreenControlsHideTimer;
@@ -100,6 +101,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   bool _timelineHovering = false;
   bool _previewFailed = false;
   int _previewRequestSerial = 0;
+  bool _previewLoadInFlight = false;
+  double? _pendingPreviewSeconds;
+  int? _pendingPreviewBucket;
   final Map<int, Uint8List> _previewCache = <int, Uint8List>{};
 
   bool playing = false;
@@ -616,6 +620,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     _volumeOsdTimer?.cancel();
     _seekDebounceTimer?.cancel();
     _previewDebounceTimer?.cancel();
+    _previewIdleDisposeTimer?.cancel();
     _duckingRampTimer?.cancel();
     _duckingReleaseTimer?.cancel();
     _fullscreenControlsHideTimer?.cancel();
@@ -1300,6 +1305,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   }
 
   void _onTimelineHover(PointerHoverEvent event, double width) {
+    _previewIdleDisposeTimer?.cancel();
     if (!widget.controller.timelinePreview || durationSeconds <= 0 || width <= 0) {
       return;
     }
@@ -1327,18 +1333,49 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     _previewDebounceTimer?.cancel();
     _previewDebounceTimer = Timer(
       const Duration(milliseconds: 110),
-      () => unawaited(_loadTimelinePreview(seconds, bucket)),
+      () => _queueTimelinePreviewLoad(seconds, bucket),
     );
   }
 
   void _hideTimelinePreview() {
     _previewDebounceTimer?.cancel();
-    if (!_timelineHovering) return;
-    setState(() => _timelineHovering = false);
+    _previewRequestSerial++;
+    _pendingPreviewSeconds = null;
+    _pendingPreviewBucket = null;
+    if (_timelineHovering) {
+      setState(() => _timelineHovering = false);
+    }
+    _previewIdleDisposeTimer?.cancel();
+    _previewIdleDisposeTimer = Timer(const Duration(milliseconds: 700), () {
+      final preview = _previewPlayer;
+      _previewPlayer = null;
+      _previewVideoController = null;
+      _previewMediaPath = null;
+      _previewLoadInFlight = false;
+      if (preview != null) {
+        unawaited(preview.dispose());
+        _playbackLog('PREVIEW_PLAYER_DISPOSED idle');
+      }
+    });
+  }
+
+  void _queueTimelinePreviewLoad(double seconds, int bucket) {
+    if (_previewLoadInFlight) {
+      _pendingPreviewSeconds = seconds;
+      _pendingPreviewBucket = bucket;
+      return;
+    }
+    unawaited(_loadTimelinePreview(seconds, bucket));
   }
 
   Future<void> _loadTimelinePreview(double seconds, int bucket) async {
     if (!mounted || !widget.controller.timelinePreview) return;
+    if (_previewLoadInFlight) {
+      _pendingPreviewSeconds = seconds;
+      _pendingPreviewBucket = bucket;
+      return;
+    }
+    _previewLoadInFlight = true;
 
     final previewClock = Stopwatch()..start();
     final request = ++_previewRequestSerial;
@@ -1440,6 +1477,18 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       debugPrint('[SyncWatch][PLAYBACK] PREVIEW_STACK $stackTrace');
       if (mounted && request == _previewRequestSerial) {
         setState(() => _previewFailed = true);
+      }
+    } finally {
+      _previewLoadInFlight = false;
+      final pendingSeconds = _pendingPreviewSeconds;
+      final pendingBucket = _pendingPreviewBucket;
+      _pendingPreviewSeconds = null;
+      _pendingPreviewBucket = null;
+      if (mounted &&
+          _timelineHovering &&
+          pendingSeconds != null &&
+          pendingBucket != null) {
+        _queueTimelinePreviewLoad(pendingSeconds, pendingBucket);
       }
     }
   }
