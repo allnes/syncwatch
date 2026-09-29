@@ -94,16 +94,72 @@ class LiveKitCallEngine implements CallEngine {
   @override
   Future<void> setCameraEnabled(bool enabled) async {
     _cameraEnabled = enabled;
-    _log('CAMERA enabled=$enabled');
+    const quality = '480p';
+    const captureOptions = CameraCaptureOptions(
+      params: VideoParameters(
+        dimensions: VideoDimensionsPresets.h480_43,
+        description: quality,
+      ),
+      maxFrameRate: 30.0,
+    );
+    const publishOptions = VideoPublishOptions(simulcast: false);
+
+    _log(
+      'CAMERA request enabled=$enabled uiQuality=$quality '
+      'capture=${captureOptions.params.dimensions} maxFps=${captureOptions.maxFrameRate} '
+      'simulcast=${publishOptions.simulcast}',
+    );
+
+    final participant = _room?.localParticipant;
+    if (participant == null) {
+      _log('CAMERA deferred enabled=$enabled reason=room-not-connected');
+      return;
+    }
+
     try {
-      await _room?.localParticipant?.setCameraEnabled(enabled);
-      _log('CAMERA toggle ok enabled=$enabled');
+      if (!enabled) {
+        await participant.setCameraEnabled(false);
+        _log('CAMERA disabled ok');
+        return;
+      }
+
+      final track = await LocalVideoTrack.createCameraTrack(captureOptions);
+      _log(
+        'CAMERA track created options=${track.currentOptions} '
+        'mediaTrackId=${track.mediaStreamTrack.id}',
+      );
+      try {
+        final dynamic mediaTrack = track.mediaStreamTrack;
+        final dynamic settings = await mediaTrack.getSettings();
+        _log('CAMERA capture actual settings=$settings');
+      } catch (error) {
+        _log('CAMERA capture settings unavailable error=$error');
+      }
+
+      final publication = await participant.publishVideoTrack(
+        track,
+        publishOptions: publishOptions,
+      );
+      _log(
+        'CAMERA published sid=${publication.sid} source=${publication.source} '
+        'muted=${publication.muted} simulcast=${publishOptions.simulcast} '
+        'capture=${track.currentOptions} publish=${track.lastPublishOptions}',
+      );
+
+      Future<void>.delayed(const Duration(seconds: 3), () async {
+        if (_room == null || !_cameraEnabled || track.isDisposed) return;
+        try {
+          final stats = await track.getSenderStats();
+          _log('CAMERA sender stats t+3s count=${stats.length} stats=$stats');
+        } catch (error) {
+          _log('CAMERA sender stats t+3s failed error=$error');
+        }
+      });
     } catch (error) {
-      _log('CAMERA toggle failed error=$error');
+      _log('CAMERA toggle failed enabled=$enabled error=$error');
       rethrow;
     }
   }
-
   @override
   Future<void> stopCallMedia() async {
     _microphoneEnabled = false;
