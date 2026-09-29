@@ -177,6 +177,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           ];
 
     player = Player();
+    final nativePlayer = player.platform;
+    if (nativePlayer is NativePlayer) {
+      unawaited(nativePlayer.setProperty('autosync', '30'));
+    }
     videoController = VideoController(player);
     _playbackSessionClock.start();
     _playbackLog(
@@ -454,13 +458,17 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         property('frame-drop-count'),
         property('decoder-frame-drop-count'),
         property('video-sync'),
+        property('autosync'),
+        property('avsync'),
+        property('total-avsync-change'),
       ]);
       _playbackLog(
         'MPV_HEALTH codec=${values[0]} format=${values[1]} '
         'hwdec=${values[2]} containerFps=${values[3]} '
         'estimatedFps=${values[4]} displayFps=${values[5]} '
         'frameDrops=${values[6]} decoderDrops=${values[7]} '
-        'videoSync=${values[8]}',
+        'videoSync=${values[8]} autosync=${values[9]} '
+        'avsync=${values[10]} totalAvsyncChange=${values[11]}',
       );
     } finally {
       _mpvHealthLogInFlight = false;
