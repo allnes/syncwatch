@@ -258,8 +258,8 @@ $proc = Get-Content $pluginProcCpp -Raw
 # contains a Unicode em dash inside a C++ string literal; after PowerShell
 # rewrites the shared source, some Windows code pages diagnose it as C4876.
 # Keep patched C++ source ASCII-only.
-$proc = $proc.Replace([char]0x2014, "-")
-$proc = $proc.Replace([char]0x2026, "...")
+$proc = $proc.Replace([string][char]0x2014, "-")
+$proc = $proc.Replace([string][char]0x2026, "...")
 
 # Normalize stale SyncWatch edits in the shared PUB_CACHE before applying the
 # current patch. flutter pub get may reuse the same Git checkout between runs.
