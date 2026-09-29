@@ -91,6 +91,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   Stopwatch? _bufferingClock;
   DateTime? _lastPlaybackHealthLog;
   bool? _lastBufferingState;
+  bool _mpvHealthLogInFlight = false;
 
   Player? _previewPlayer;
   VideoController? _previewVideoController;
@@ -206,6 +207,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             'previewHover=$_timelineHovering '
             'previewCache=${_previewCache.length}',
           );
+          unawaited(_logMpvPlaybackHealth());
         }
         setState(() => positionSeconds = seconds);
       }),
@@ -422,6 +424,47 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       '[SyncWatch][PLAYBACK] '
       't=${_playbackSessionClock.elapsedMilliseconds}ms $message',
     );
+  }
+
+  Future<void> _logMpvPlaybackHealth() async {
+    if (_mpvHealthLogInFlight) return;
+    final native = player.platform;
+    if (native is! NativePlayer) {
+      _playbackLog('MPV_HEALTH unavailable platform=${native.runtimeType}');
+      return;
+    }
+
+    _mpvHealthLogInFlight = true;
+    try {
+      Future<String> property(String name) async {
+        try {
+          return await native.getProperty(name);
+        } catch (_) {
+          return 'n/a';
+        }
+      }
+
+      final values = await Future.wait(<Future<String>>[
+        property('video-codec'),
+        property('video-format'),
+        property('hwdec-current'),
+        property('container-fps'),
+        property('estimated-vf-fps'),
+        property('display-fps'),
+        property('frame-drop-count'),
+        property('decoder-frame-drop-count'),
+        property('video-sync'),
+      ]);
+      _playbackLog(
+        'MPV_HEALTH codec=${values[0]} format=${values[1]} '
+        'hwdec=${values[2]} containerFps=${values[3]} '
+        'estimatedFps=${values[4]} displayFps=${values[5]} '
+        'frameDrops=${values[6]} decoderDrops=${values[7]} '
+        'videoSync=${values[8]}',
+      );
+    } finally {
+      _mpvHealthLogInFlight = false;
+    }
   }
 
   Future<void> _openMedia() async {
