@@ -1521,6 +1521,17 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           'request=$request',
         );
 
+        // media_kit may resize the software output to the source dimensions
+        // after opening media. Force the thumbnail surface back to its actual
+        // UI size so preview never keeps a 1920x1080 software texture alive.
+        final previewController = _previewVideoController;
+        if (previewController != null) {
+          await previewController.setSize(
+            const Size(192, 108),
+          );
+          _playbackLog('PREVIEW_OUTPUT_RESIZED 192x108 request=$request');
+        }
+
         // Wait until the decoder has actual media metadata before seeking.
         try {
           await preview.stream.duration
