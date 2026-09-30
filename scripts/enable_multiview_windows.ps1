@@ -250,6 +250,10 @@ if ($p -notmatch "SyncWatch refresh native frame") {
   $p = $p.Substring(0, $setResizablePos) + $section + $p.Substring($setResizableEnd)
 }
 
+# MSVC on Russian Windows compiles this generated plugin source under CP1251.
+# Strip accidental non-ASCII bytes that can survive in ephemeral patched source
+# and turn into invalid multibyte characters inside C++ string literals.
+$p = [regex]::Replace($p, '[^\x00-\x7F]', '')
 Write-Utf8NoBom $pluginCpp $p
 
 $proc = Get-Content $pluginProcCpp -Raw
