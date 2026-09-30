@@ -32,6 +32,11 @@ class CallWindowView extends StatefulWidget {
   State<CallWindowView> createState() => _CallWindowViewState();
 }
 
+// The regular call UI members are intentionally retained while the static
+// secondary-view A/B diagnostic replaces build(). They become referenced again
+// when the diagnostic is reverted.
+// ignore_for_file: unused_field, unused_element
+
 class _CallWindowViewState extends State<CallWindowView> {
   // Temporary A/B diagnostic: keep the real secondary call window and all
   // media tracks active, but do not attach WebRTC video renderers/textures.
