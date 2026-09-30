@@ -67,6 +67,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String? metadataPath;
   bool microphoneEnabled = true;
   bool cameraEnabled = true;
+  // Temporary A/B diagnostic: keep the LiveKit room/data channel alive while
+  // starting the call UI without creating or publishing any audio/video media.
+  static const bool _mediaFreeCallDiagnostic = true;
   late final CallEngine callEngine;
   LiveKitSyncEngine? roomSyncEngine;
   EventsListener<RoomEvent>? roomPresenceListener;
@@ -419,20 +422,44 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
     if (!roomConnected) return;
 
-    await callEngine.setMicrophoneEnabled(microphoneEnabled);
-    await callEngine.setCameraEnabled(cameraEnabled);
+    final callMicrophoneEnabled =
+        _mediaFreeCallDiagnostic ? false : microphoneEnabled;
+    final callCameraEnabled =
+        _mediaFreeCallDiagnostic ? false : cameraEnabled;
+
+    if (_mediaFreeCallDiagnostic) {
+      _roomLog(
+        'CALL DIAGNOSTIC media-free: room/data stay connected; '
+        'audio/video tracks are NOT created or published',
+      );
+    } else {
+      await callEngine.setMicrophoneEnabled(callMicrophoneEnabled);
+      await callEngine.setCameraEnabled(callCameraEnabled);
+    }
 
     final viewId = await openWindow(
       (_, __) => CallWindowView(
         controller: widget.controller,
         callEngine: callEngine,
-        microphoneEnabled: microphoneEnabled,
-        cameraEnabled: cameraEnabled,
+        microphoneEnabled: callMicrophoneEnabled,
+        cameraEnabled: callCameraEnabled,
         onMicrophoneChanged: (enabled) async {
+          if (_mediaFreeCallDiagnostic) {
+            _roomLog(
+              'CALL DIAGNOSTIC microphone toggle ignored; media-free mode',
+            );
+            return;
+          }
           await callEngine.setMicrophoneEnabled(enabled);
           if (mounted) setState(() => microphoneEnabled = enabled);
         },
         onCameraChanged: (enabled) async {
+          if (_mediaFreeCallDiagnostic) {
+            _roomLog(
+              'CALL DIAGNOSTIC camera toggle ignored; media-free mode',
+            );
+            return;
+          }
           await callEngine.setCameraEnabled(enabled);
           if (mounted) setState(() => cameraEnabled = enabled);
         },
