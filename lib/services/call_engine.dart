@@ -102,12 +102,19 @@ class LiveKitCallEngine implements CallEngine {
       ),
       maxFrameRate: 15.0,
     );
-    const publishOptions = VideoPublishOptions(simulcast: false);
+    const publishOptions = VideoPublishOptions(
+      simulcast: false,
+      videoEncoding: VideoEncoding(
+        maxFramerate: 15,
+        maxBitrate: 850000,
+      ),
+    );
 
     _log(
       'CAMERA request enabled=$enabled uiQuality=$quality '
       'capture=${captureOptions.params.dimensions} maxFps=${captureOptions.maxFrameRate} '
-      'simulcast=${publishOptions.simulcast}',
+      'simulcast=${publishOptions.simulcast} '
+      'sendEncoding=${publishOptions.videoEncoding}',
     );
 
     final participant = _room?.localParticipant;
