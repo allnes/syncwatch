@@ -19,7 +19,7 @@ class AppController extends ChangeNotifier {
   bool remoteSpeaking = false;
   bool scanSubfolders = true;
   bool automaticRefresh = false;
-  bool timelinePreview = true;
+  bool timelinePreview = false;
   double subtitleFontSize = 30.0;
   String subtitlePosition = 'bottom';
   double subtitleVerticalOffset = 0.0;
