@@ -257,6 +257,24 @@ $p = [regex]::Replace($p, '[^\x00-\x7F]', '')
 Write-Utf8NoBom $pluginCpp $p
 
 $proc = Get-Content $pluginProcCpp -Raw
+
+# A previous failed patch may have left a stale SyncWatch WM_NCHITTEST body in
+# the shared Git package cache. Restore that whole branch to the pinned
+# upstream shape before applying the current patch below.
+$procHitStart = $proc.IndexOf('        } else if (message == WM_NCHITTEST) {')
+if ($procHitStart -ge 0) {
+  $procHitEnd = $proc.IndexOf('        } else if (message == WM_GETMINMAXINFO) {', $procHitStart)
+  if ($procHitEnd -gt $procHitStart) {
+    $upstreamProcHit = @'
+        } else if (message == WM_NCHITTEST) {
+            if (!window->is_resizable_) {
+                return HTNOWHERE;
+            }
+'@
+    $proc = $proc.Substring(0, $procHitStart) + $upstreamProcHit +
+            [Environment]::NewLine + $proc.Substring($procHitEnd)
+  }
+}
 $oldProcHit = @'
         } else if (message == WM_NCHITTEST) {
             if (!window->is_resizable_) {
