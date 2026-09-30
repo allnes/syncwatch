@@ -1396,11 +1396,17 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   }
 
   void _onTimelineHover(PointerHoverEvent event, double width) {
-    _previewIdleDisposeTimer?.cancel();
-    if (!widget.controller.timelinePreview || durationSeconds <= 0 || width <= 0) {
-      return;
+    if (durationSeconds <= 0 || width <= 0) return;
+
+    if (!_timelineHovering) {
+      setState(() => _timelineHovering = true);
     }
 
+    // Timeline hover highlighting is independent from the expensive frame
+    // preview. When preview is disabled, hovering only changes track styling.
+    if (!widget.controller.timelinePreview) return;
+
+    _previewIdleDisposeTimer?.cancel();
     const edge = 10.0;
     final usableWidth = (width - edge * 2).clamp(1.0, double.infinity);
     final x = (event.localPosition.dx - edge).clamp(0.0, usableWidth);
@@ -1687,7 +1693,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                       onExit: (_) => _hideTimelinePreview(),
                       child: SliderTheme(
                         data: SliderTheme.of(context).copyWith(
-                          trackHeight: 2,
+                          trackHeight: _timelineHovering ? 3 : 2,
+                          inactiveTrackColor: _timelineHovering
+                              ? _playerSecondary.withValues(alpha: 0.58)
+                              : _playerSecondary.withValues(alpha: 0.28),
                           thumbShape: const RoundSliderThumbShape(
                             enabledThumbRadius: 5,
                           ),
