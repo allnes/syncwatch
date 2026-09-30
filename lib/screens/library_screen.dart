@@ -67,9 +67,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String? metadataPath;
   bool microphoneEnabled = true;
   bool cameraEnabled = true;
-  // Temporary A/B diagnostic: keep the LiveKit room/data channel alive while
-  // starting the call UI without creating or publishing any audio/video media.
-  static const bool _mediaFreeCallDiagnostic = true;
+  // Temporary A/B diagnostic: run the real media call without creating a
+  // secondary Flutter/MultiView window. This isolates window/render contention.
+  static const bool _callWithoutWindowDiagnostic = true;
   late final CallEngine callEngine;
   LiveKitSyncEngine? roomSyncEngine;
   EventsListener<RoomEvent>? roomPresenceListener;
@@ -417,49 +417,43 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   Future<void> _startCall() async {
     if (callActive) {
-      await _focusCallWindow();
+      if (_callWithoutWindowDiagnostic) {
+        _roomLog('CALL DIAGNOSTIC stop requested from main call button');
+        await _endCall();
+      } else {
+        await _focusCallWindow();
+      }
       return;
     }
     if (!roomConnected) return;
 
-    final callMicrophoneEnabled =
-        _mediaFreeCallDiagnostic ? false : microphoneEnabled;
-    final callCameraEnabled =
-        _mediaFreeCallDiagnostic ? false : cameraEnabled;
+    await callEngine.setMicrophoneEnabled(microphoneEnabled);
+    await callEngine.setCameraEnabled(cameraEnabled);
 
-    if (_mediaFreeCallDiagnostic) {
+    if (_callWithoutWindowDiagnostic) {
+      if (!mounted) return;
+      setState(() {
+        callActive = true;
+        callWindowViewId = null;
+      });
       _roomLog(
-        'CALL DIAGNOSTIC media-free: room/data stay connected; '
-        'audio/video tracks are NOT created or published',
+        'CALL DIAGNOSTIC real media active WITHOUT secondary Flutter window '
+        'mic=$microphoneEnabled camera=$cameraEnabled',
       );
-    } else {
-      await callEngine.setMicrophoneEnabled(callMicrophoneEnabled);
-      await callEngine.setCameraEnabled(callCameraEnabled);
+      return;
     }
 
     final viewId = await openWindow(
       (_, __) => CallWindowView(
         controller: widget.controller,
         callEngine: callEngine,
-        microphoneEnabled: callMicrophoneEnabled,
-        cameraEnabled: callCameraEnabled,
+        microphoneEnabled: microphoneEnabled,
+        cameraEnabled: cameraEnabled,
         onMicrophoneChanged: (enabled) async {
-          if (_mediaFreeCallDiagnostic) {
-            _roomLog(
-              'CALL DIAGNOSTIC microphone toggle ignored; media-free mode',
-            );
-            return;
-          }
           await callEngine.setMicrophoneEnabled(enabled);
           if (mounted) setState(() => microphoneEnabled = enabled);
         },
         onCameraChanged: (enabled) async {
-          if (_mediaFreeCallDiagnostic) {
-            _roomLog(
-              'CALL DIAGNOSTIC camera toggle ignored; media-free mode',
-            );
-            return;
-          }
           await callEngine.setCameraEnabled(enabled);
           if (mounted) setState(() => cameraEnabled = enabled);
         },
@@ -478,8 +472,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
 
     final callWindow = MultiViewDesktop.fromId(viewId);
-    // Enforce native geometry after the view exists. Some Windows window
-    // managers can initially inherit the anchor window bounds.
     await callWindow.setResizable(true);
     await callWindow.setMovable(true);
     await callWindow.setMinimumSize(const Size(160, 210));
@@ -496,8 +488,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
       'resizable=${await callWindow.isResizable()}',
     );
 
-    // The secondary Flutter view can update native geometry during its first
-    // frame. Re-assert compact bounds after that frame has settled.
     await Future<void>.delayed(const Duration(milliseconds: 120));
     await callWindow.setResizable(true);
     await callWindow.setMinimumSize(const Size(160, 210));
@@ -521,7 +511,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
     });
     _roomLog('CALL started view=$viewId');
   }
-
   Future<void> _endCall({bool closeWindow = true}) async {
     final viewId = callWindowViewId;
     callWindowViewId = null;
