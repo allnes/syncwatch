@@ -36,6 +36,49 @@ Remove-Item (Join-Path $logDir "*.log") -Force -ErrorAction SilentlyContinue
 Write-Host "Runtime logs will be written to:"
 Write-Host "  $logDir"
 
+$resourceLog = Join-Path $logDir "resources.log"
+$resourceScript = Join-Path $logDir "resource_monitor.ps1"
+$resourceMonitor = @'
+$ErrorActionPreference = "SilentlyContinue"
+$log = "__RESOURCE_LOG__"
+$intervalSeconds = 2
+$lastCpu = @{}
+$lastAt = Get-Date
+"timestamp|systemCpuPct|systemMemUsedPct|pid|process|cpuPct|workingSetMB|privateMB|gpuPct" | Set-Content -Path $log -Encoding UTF8
+while ($true) {
+  $now = Get-Date
+  $elapsed = [Math]::Max(0.001, ($now - $lastAt).TotalSeconds)
+  $lastAt = $now
+  $os = Get-CimInstance Win32_OperatingSystem
+  $cpu = (Get-CimInstance Win32_Processor | Measure-Object -Property LoadPercentage -Average).Average
+  $memUsed = if ($os.TotalVisibleMemorySize -gt 0) { 100.0 * ($os.TotalVisibleMemorySize - $os.FreePhysicalMemory) / $os.TotalVisibleMemorySize } else { 0.0 }
+  $gpuByPid = @{}
+  Get-Counter "\GPU Engine(*)\Utilization Percentage" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty CounterSamples | ForEach-Object {
+    if ($_.InstanceName -match "pid_(\d+)_") {
+      $pidValue = [int]$matches[1]
+      if (-not $gpuByPid.ContainsKey($pidValue)) { $gpuByPid[$pidValue] = 0.0 }
+      $gpuByPid[$pidValue] += [double]$_.CookedValue
+    }
+  }
+  $processes = Get-Process | Where-Object { $_.ProcessName -in @("syncwatch","dart","flutter","powershell") }
+  foreach ($p in $processes) {
+    $cpuNow = [double]$p.CPU
+    $cpuPct = 0.0
+    if ($lastCpu.ContainsKey($p.Id)) { $cpuPct = 100.0 * ($cpuNow - [double]$lastCpu[$p.Id]) / $elapsed }
+    $lastCpu[$p.Id] = $cpuNow
+    $gpu = if ($gpuByPid.ContainsKey($p.Id)) { [double]$gpuByPid[$p.Id] } else { 0.0 }
+    $line = "{0}|{1:N1}|{2:N1}|{3}|{4}|{5:N1}|{6:N1}|{7:N1}|{8:N1}" -f $now.ToString("o"), [double]$cpu, [double]$memUsed, $p.Id, $p.ProcessName, $cpuPct, ($p.WorkingSet64 / 1MB), ($p.PrivateMemorySize64 / 1MB), $gpu
+    Add-Content -Path $log -Value $line -Encoding UTF8
+  }
+  Start-Sleep -Seconds $intervalSeconds
+}
+'@
+$resourceMonitor = $resourceMonitor.Replace("__RESOURCE_LOG__", $resourceLog.Replace("'", "''"))
+Set-Content -Path $resourceScript -Value $resourceMonitor -Encoding UTF8
+$monitorCommand = '& "' + $resourceScript + '"'
+Start-SyncWatchShell -Title "SyncWatch Resource Monitor" -Command $monitorCommand
+Start-Sleep -Seconds 1
+
 Write-Host "Stopping stale SyncWatch processes..."
 Get-Process syncwatch -ErrorAction SilentlyContinue | Stop-Process -Force
 
@@ -89,3 +132,4 @@ Write-Host "  Client:    $clientLog"
 Write-Host "  Client err:$clientErrLog"
 Write-Host "  Test Peer: $peerLog"
 Write-Host "  Server:    $serverLog"
+Write-Host "  Resources: $resourceLog"
