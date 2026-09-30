@@ -506,6 +506,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   Future<void> _openMedia() async {
     final openClock = Stopwatch()..start();
     _playbackLog('OPEN_BEGIN media="${currentMovie.fileName}"');
+    debugPrint('[SyncWatch][RESOURCE_EVENT] MOVIE_OPEN_BEGIN media="${currentMovie.fileName}"');
     final resumePosition =
         widget.controller.playbackPositionFor(currentMovie.fullPath);
 
@@ -547,6 +548,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       'PLAY_REQUESTED elapsed=${openClock.elapsedMilliseconds}ms '
       'pos=${player.state.position.inMilliseconds}ms',
     );
+    debugPrint('[SyncWatch][RESOURCE_EVENT] MOVIE_PLAYING');
     if (!_applyingRemoteCommand) {
       await widget.syncEngine.start(
         currentMovie.movieId,
@@ -719,6 +721,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     // SyncEngine lifecycle is owned by LibraryScreen and shared with this player.
     _previewPlayer?.dispose();
     _previewVideoController = null;
+    debugPrint('[SyncWatch][RESOURCE_EVENT] MOVIE_CLOSED');
     player.dispose();
     _playerFocusNode.dispose();
     super.dispose();
