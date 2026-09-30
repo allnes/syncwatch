@@ -67,9 +67,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String? metadataPath;
   bool microphoneEnabled = true;
   bool cameraEnabled = true;
-  // Temporary A/B diagnostic: run the real media call without creating a
-  // secondary Flutter/MultiView window. This isolates window/render contention.
-  static const bool _callWithoutWindowDiagnostic = true;
   late final CallEngine callEngine;
   LiveKitSyncEngine? roomSyncEngine;
   EventsListener<RoomEvent>? roomPresenceListener;
@@ -417,33 +414,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   Future<void> _startCall() async {
     if (callActive) {
-      if (_callWithoutWindowDiagnostic) {
-        _roomLog('CALL DIAGNOSTIC stop requested from main call button');
-        await _endCall();
-      } else {
-        await _focusCallWindow();
-      }
+      await _focusCallWindow();
       return;
     }
     if (!roomConnected) return;
-
-    if (_callWithoutWindowDiagnostic) {
-      // A/B diagnostic: keep the real LiveKit call + camera active, but do not
-      // create/publish a microphone track. This is the mirror of the audio-only
-      // run and isolates the WebRTC video capture/encode path.
-      await callEngine.setMicrophoneEnabled(false);
-      await callEngine.setCameraEnabled(true);
-      if (!mounted) return;
-      setState(() {
-        callActive = true;
-        callWindowViewId = null;
-      });
-      _roomLog(
-        'CALL DIAGNOSTIC video-only WITHOUT secondary Flutter window '
-        'micTrack=false camera=true',
-      );
-      return;
-    }
 
     await callEngine.setMicrophoneEnabled(microphoneEnabled);
     await callEngine.setCameraEnabled(cameraEnabled);
