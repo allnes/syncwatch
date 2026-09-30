@@ -428,20 +428,25 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (!roomConnected) return;
 
     await callEngine.setMicrophoneEnabled(microphoneEnabled);
-    await callEngine.setCameraEnabled(cameraEnabled);
 
     if (_callWithoutWindowDiagnostic) {
+      // A/B diagnostic: keep the real LiveKit call + microphone active, but do
+      // not create/publish a camera track at all. This isolates camera capture
+      // and software WebRTC video encoding from the movie playback pipeline.
+      await callEngine.setCameraEnabled(false);
       if (!mounted) return;
       setState(() {
         callActive = true;
         callWindowViewId = null;
       });
       _roomLog(
-        'CALL DIAGNOSTIC real media active WITHOUT secondary Flutter window '
-        'mic=$microphoneEnabled camera=$cameraEnabled',
+        'CALL DIAGNOSTIC audio-only WITHOUT secondary Flutter window '
+        'mic=$microphoneEnabled cameraTrack=false',
       );
       return;
     }
+
+    await callEngine.setCameraEnabled(cameraEnabled);
 
     final viewId = await openWindow(
       (_, __) => CallWindowView(
