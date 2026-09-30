@@ -978,18 +978,29 @@ class _LibraryScreenState extends State<LibraryScreen> {
           Icon(
             partnerOnline ? Icons.circle : Icons.radio_button_unchecked_rounded,
             size: 10,
-            color: partnerOnline ? syncSuccess : Colors.white38,
+            color: !roomConnected
+                ? Colors.white24
+                : partnerOnline
+                    ? syncSuccess
+                    : Colors.white38,
           ),
           const SizedBox(width: 7),
           Text(
             partnerOnline
                 ? widget.controller.t('friendOnline')
                 : 'Собеседник не подключён',
+            style: TextStyle(
+              color: !roomConnected ? Colors.white30 : null,
+            ),
           ),
           const SizedBox(width: 22),
           Icon(
             callActive ? Icons.call_rounded : Icons.call_outlined,
-            color: callActive ? syncSuccess : Colors.white54,
+            color: !roomConnected
+                ? Colors.white24
+                : callActive
+                    ? syncSuccess
+                    : Colors.white54,
             size: 20,
           ),
           const SizedBox(width: 7),
@@ -997,6 +1008,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
             callActive
                 ? widget.controller.t('callActive')
                 : widget.controller.t('callInactive'),
+            style: TextStyle(
+              color: !roomConnected ? Colors.white30 : null,
+            ),
           ),
           const SizedBox(width: 22),
           const SizedBox(width: 12),
