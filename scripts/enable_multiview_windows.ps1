@@ -364,6 +364,13 @@ if ($proc.Contains($oldProcMinMax)) {
   $proc = $proc.Replace($oldProcMinMax, $newProcMinMax)
 }
 
+# multi_view_desktop_plugin.cpp is compiled by MSVC under the active Windows
+# code page. Keep our generated/patched source strictly ASCII so stale UTF-8
+# bytes in the shared PUB_CACHE cannot become invalid C++ string literals.
+$proc = [regex]::Replace($proc, '[^\x00-\x7F]', '')
+if ([regex]::IsMatch($proc, '[^\x00-\x7F]')) {
+  throw "multiview_desktop_plugin.cpp still contains non-ASCII characters after normalization."
+}
 Write-Utf8NoBom $pluginProcCpp $proc
 
 $pluginBuild = Join-Path $root "build\windows\x64\plugins\multiview_desktop"
