@@ -100,7 +100,7 @@ class LiveKitCallEngine implements CallEngine {
         dimensions: VideoDimensionsPresets.h480_43,
         description: quality,
       ),
-      maxFrameRate: 30.0,
+      maxFrameRate: 15.0,
     );
     const publishOptions = VideoPublishOptions(simulcast: false);
 
