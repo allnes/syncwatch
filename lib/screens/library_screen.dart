@@ -325,6 +325,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         roomConnecting = false;
       });
       _roomLog('CONNECTED');
+      debugPrint('[SyncWatch][RESOURCE_EVENT] ROOM_CONNECTED');
       _attachRoomPresence();
       _syncRemoteSpeakingListeners();
       await _attachRoomSync();
@@ -489,6 +490,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       callWindowViewId = viewId;
     });
     _roomLog('CALL started view=$viewId');
+    debugPrint('[SyncWatch][RESOURCE_EVENT] CALL_STARTED view=$viewId');
   }
   Future<void> _endCall({bool closeWindow = true}) async {
     final viewId = callWindowViewId;
@@ -502,6 +504,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       callActive = false;
     });
     _roomLog('CALL ended');
+    debugPrint('[SyncWatch][RESOURCE_EVENT] CALL_ENDED');
   }
 
   Future<void> _focusCallWindow() async {
