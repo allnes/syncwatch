@@ -33,6 +33,9 @@ class CallWindowView extends StatefulWidget {
 }
 
 class _CallWindowViewState extends State<CallWindowView> {
+  // Temporary A/B diagnostic: keep the real secondary call window and all
+  // media tracks active, but do not attach WebRTC video renderers/textures.
+  static const bool _disableVideoRenderingDiagnostic = true;
   EventsListener<RoomEvent>? _events;
   VideoTrack? _remoteTrack;
   bool _microphoneEnabled = true;
@@ -161,7 +164,7 @@ class _CallWindowViewState extends State<CallWindowView> {
           child: Stack(
             children: [
               Positioned.fill(
-                child: _remoteTrack == null
+                child: _disableVideoRenderingDiagnostic || _remoteTrack == null
                     ? const ColoredBox(
                         color: Color(0xFF0B1C2B),
                         child: Center(
@@ -235,7 +238,7 @@ class _CallWindowViewState extends State<CallWindowView> {
                     clipBehavior: Clip.antiAlias,
                     borderRadius: BorderRadius.circular(10),
                     color: const Color(0xFF182634),
-                    child: localTrack == null
+                    child: _disableVideoRenderingDiagnostic || localTrack == null
                         ? const Center(
                             child: Icon(
                               Icons.videocam_off_rounded,
