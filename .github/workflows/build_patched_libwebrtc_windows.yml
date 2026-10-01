@@ -27,14 +27,14 @@ jobs:
       - name: Inject SyncWatch patch into libwebrtc build
         shell: pwsh
         run: |
-          Copy-Item .\syncwatch\tools\webrtc\try_all_wmf_h265_encoders.patch .\libwebrtc-sdk\patches\syncwatch_wmf_h265_fallback.patch
           $buildScript = ".\libwebrtc-sdk\build\libwebrtc_win_build.cmd"
           $text = Get-Content $buildScript -Raw
           $needle = 'call git apply "libwebrtc\patches\allow_176k4_192k_shared_mode_formats.patch" -v --ignore-space-change --ignore-whitespace --whitespace=nowarn'
-          $injected = $needle + [Environment]::NewLine + 'call git apply "libwebrtc\patches\syncwatch_wmf_h265_fallback.patch" -v --ignore-space-change --ignore-whitespace --whitespace=nowarn'
+          $injected = $needle + [Environment]::NewLine + 'powershell -NoProfile -ExecutionPolicy Bypass -File "%COMMAND_DIR%..\syncwatch_patch_wmf.ps1"'
           if (-not $text.Contains($needle)) { throw "Could not locate upstream patch stage." }
           $text = $text.Replace($needle, $injected)
           Set-Content $buildScript $text -Encoding ascii
+          Copy-Item .\syncwatch\tools\webrtc\syncwatch_patch_wmf.ps1 .\libwebrtc-sdk\syncwatch_patch_wmf.ps1
 
       - name: Install Ninja
         shell: pwsh
