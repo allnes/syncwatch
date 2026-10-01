@@ -1,0 +1,62 @@
+name: Build patched Windows libwebrtc
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows-x64:
+    runs-on: windows-2022
+    timeout-minutes: 180
+    steps:
+      - name: Checkout SyncWatch
+        uses: actions/checkout@v5
+        with:
+          path: syncwatch
+
+      - name: Checkout libwebrtc SDK
+        uses: actions/checkout@v5
+        with:
+          repository: webrtc-sdk/libwebrtc
+          ref: main
+          submodules: true
+          path: libwebrtc-sdk
+
+      - name: Patch WMF H265 encoder selection
+        shell: pwsh
+        run: |
+          Set-Location libwebrtc-sdk
+          git apply ..\syncwatch\tools\webrtc\try_all_wmf_h265_encoders.patch
+          git diff --check
+          git diff -- src/win/wmf_h265_encoder.cc
+
+      - name: Install Ninja
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/ninja-build/ninja/releases/latest/download/ninja-win.zip" -OutFile ninja.zip
+          Expand-Archive -Path ninja.zip -DestinationPath "${{ github.workspace }}\ninja"
+          "${{ github.workspace }}\ninja" | Out-File -Append -Encoding utf8 -FilePath $Env:GITHUB_PATH
+
+      - name: Configure Windows target
+        shell: bash
+        working-directory: libwebrtc-sdk/build
+        run: echo -e '\ntarget_os = ["win"]' >> .gclient
+
+      - name: Build patched Windows x64 release
+        shell: cmd
+        working-directory: libwebrtc-sdk/build
+        run: libwebrtc_win_build.cmd --arch x64 --profile release
+
+      - name: Package artifact
+        shell: pwsh
+        run: |
+          Compress-Archive -Path .\libwebrtc-sdk\build\libwebrtc-x64-release -DestinationPath .\libwebrtc-win-x64-release-patched.zip
+
+      - name: Upload patched libwebrtc
+        uses: actions/upload-artifact@v4
+        with:
+          name: libwebrtc-win-x64-release-patched
+          path: libwebrtc-win-x64-release-patched.zip
+          retention-days: 14
