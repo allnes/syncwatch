@@ -11,8 +11,32 @@ Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
 
   if (args.contains('--call-process-diagnostic')) {
-    await windowManager.ensureInitialized();
-    runApp(const CallProcessDiagnosticApp());
+    final logFile = File(
+      '${Directory.current.path}${Platform.pathSeparator}logs'
+      '${Platform.pathSeparator}call_process.log',
+    );
+    await logFile.parent.create(recursive: true);
+    void log(String message) {
+      final line = '[${DateTime.now().toIso8601String()}] [MAIN] $message';
+      debugPrint(line);
+      logFile.writeAsStringSync('$line\n', mode: FileMode.append, flush: true);
+    }
+
+    log(
+      'START pid=$pid args=$args executable="${Platform.resolvedExecutable}" '
+      'cwd="${Directory.current.path}"',
+    );
+    try {
+      log('windowManager.ensureInitialized BEGIN');
+      await windowManager.ensureInitialized();
+      log('windowManager.ensureInitialized DONE');
+      log('runApp BEGIN');
+      runApp(CallProcessDiagnosticApp(logFilePath: logFile.path));
+      log('runApp RETURNED');
+    } catch (error, stack) {
+      log('FATAL error=$error stack=$stack');
+      rethrow;
+    }
     return;
   }
 
