@@ -442,6 +442,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
       await _setCameraDiagnostic(false);
     } else if (action == 'camera_on') {
       await _setCameraDiagnostic(true);
+    } else if (action == 'microphone_off') {
+      await callEngine.setMicrophoneEnabled(false);
+      if (mounted) setState(() => microphoneEnabled = false);
+    } else if (action == 'microphone_on') {
+      await callEngine.setMicrophoneEnabled(true);
+      if (mounted) setState(() => microphoneEnabled = true);
     } else if (action == 'hangup') {
       await _endCall();
       return;
