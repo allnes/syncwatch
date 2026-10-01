@@ -105,7 +105,7 @@ class LiveKitCallEngine implements CallEngine {
       maxFrameRate: 15.0,
     );
     const publishOptions = VideoPublishOptions(
-      videoCodec: 'h264',
+      videoCodec: 'h265',
       simulcast: false,
       videoEncoding: VideoEncoding(
         maxFramerate: 15,
