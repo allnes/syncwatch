@@ -120,6 +120,25 @@ LRESULT FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
 
 $m = Get-Content $main -Raw
 $m = $m.Replace('window.SetQuitOnClose(true);', 'window.SetQuitOnClose(false);')
+
+# Diagnostic A/B switch for Flutter's Windows renderer. Flutter 3.47+ enables
+# Impeller by default on Windows. Keep the normal build untouched unless the
+# dev launcher explicitly requests the Skia comparison path.
+$impellerLine = '  project.set_impeller_switch(flutter::ImpellerSwitch::Disabled);  // SyncWatch diagnostic'
+$m = $m.Replace($impellerLine + [Environment]::NewLine, '')
+if ($env:SYNCWATCH_DISABLE_IMPELLER -eq "1") {
+  $projectLine = '  flutter::DartProject project(L"data");'
+  if (!$m.Contains($projectLine)) {
+    throw "Could not locate DartProject construction in $main"
+  }
+  $m = $m.Replace(
+    $projectLine,
+    $projectLine + [Environment]::NewLine + $impellerLine
+  )
+  Write-Host "SyncWatch diagnostic renderer: Impeller DISABLED (Skia)."
+} else {
+  Write-Host "SyncWatch renderer: Flutter default (Impeller)."
+}
 Write-Utf8NoBom $main $m
 
 # Generate a tiny native helper used by the main SyncWatch process to activate
