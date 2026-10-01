@@ -96,10 +96,10 @@ class LiveKitCallEngine implements CallEngine {
   @override
   Future<void> setCameraEnabled(bool enabled) async {
     _cameraEnabled = enabled;
-    const quality = '480p';
+    const quality = '360p16x9';
     const captureOptions = CameraCaptureOptions(
       params: VideoParameters(
-        dimensions: VideoDimensionsPresets.h480_43,
+        dimensions: VideoDimensionsPresets.h360_169,
         description: quality,
       ),
       maxFrameRate: 15.0,
