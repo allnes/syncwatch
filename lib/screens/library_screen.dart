@@ -1710,16 +1710,22 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       onPressed: !roomConnected || roomReconnecting
                           ? null
                           : callActive
-                              ? _focusCallWindow
+                              ? _endCall
                               : _startCall,
+                      style: callActive
+                          ? FilledButton.styleFrom(
+                              backgroundColor: Colors.red.shade700,
+                              foregroundColor: Colors.white,
+                            )
+                          : null,
                       icon: Icon(
                         callActive
-                            ? Icons.open_in_new_rounded
+                            ? Icons.call_end_rounded
                             : Icons.video_call_rounded,
                       ),
                       label: Text(
                         callActive
-                            ? widget.controller.t('goToCall')
+                            ? 'Завершить звонок'
                             : widget.controller.t('startCall'),
                       ),
                     ),
