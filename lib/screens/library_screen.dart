@@ -81,8 +81,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
   final List<({String text, DateTime time})> roomActivity = [];
   int selectedAudioIndex = 0;
   int selectedSubtitleIndex = 0;
-  Timer? _lastDiagnosticTimer;
-  bool _lastDiagnosticRunning = false;
   String? expandedTrackMenu;
   final ScrollController trackMenuScrollController = ScrollController();
   final GlobalKey audioSelectorKey = GlobalKey();
@@ -115,7 +113,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
   void dispose() {
     trackMenuScrollController.dispose();
     partnerResyncTimer?.cancel();
-    _lastDiagnosticTimer?.cancel();
     roomPresenceListener?.dispose();
     roomPresenceListener = null;
     for (final listener in remoteSpeakingListeners.values) {
@@ -477,50 +474,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
   }
 
-  void _scheduleLastDiagnosticRun() {
-    _lastDiagnosticTimer?.cancel();
-    _lastDiagnosticRunning = true;
-    var phase = 0;
-    void mark(String name) {
-      _roomLog('LAST_DIAG_PHASE phase=$phase name=$name camera=$cameraEnabled');
-      debugPrint('[SyncWatch][RESOURCE_EVENT] LAST_DIAG_PHASE_${phase}_$name');
-    }
-
-    mark('CALL_VIDEO_ON');
-    _lastDiagnosticTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
-      unawaited(() async {
-        if (!mounted || !callActive || !_lastDiagnosticRunning) {
-          timer.cancel();
-          return;
-        }
-        phase++;
-        if (phase == 1) {
-          mark('CAMERA_OFF_BEGIN');
-          await _setCameraDiagnostic(false);
-          mark('CAMERA_OFF_STEADY');
-        } else if (phase == 2) {
-          mark('CAMERA_ON_BEGIN');
-          await _setCameraDiagnostic(true);
-          mark('CAMERA_ON_STEADY');
-        } else if (phase == 3) {
-          mark('CAMERA_OFF_2_BEGIN');
-          await _setCameraDiagnostic(false);
-          mark('CAMERA_OFF_2_STEADY');
-        } else if (phase == 4) {
-          mark('CAMERA_ON_2_BEGIN');
-          await _setCameraDiagnostic(true);
-          mark('CAMERA_ON_2_STEADY');
-        } else {
-          timer.cancel();
-          _lastDiagnosticRunning = false;
-          mark('COMPLETE');
-          _roomLog('LAST_DIAG_COMPLETE durationSec=75');
-          debugPrint('[SyncWatch][RESOURCE_EVENT] LAST_DIAG_COMPLETE');
-        }
-      }());
-    });
-  }
-
   Future<void> _startCall() async {
     if (callActive) {
       return;
@@ -594,7 +547,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
     debugPrint(
       '[SyncWatch][RESOURCE_EVENT] CALL_STARTED isolatedProcessPid=${process.pid}',
     );
-    _scheduleLastDiagnosticRun();
     unawaited(Future<void>.delayed(const Duration(milliseconds: 900), () async {
       if (!mounted || callWindowProcess?.pid != process.pid || !callActive) return;
       _roomLog('CALL_PROCESS initial focus requested pid=${process.pid}');
@@ -603,9 +555,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _endCall({bool closeWindow = true}) async {
-    _lastDiagnosticRunning = false;
-    _lastDiagnosticTimer?.cancel();
-    _lastDiagnosticTimer = null;
     final process = callWindowProcess;
     callWindowProcess = null;
     await callEngine.stopCallMedia();
