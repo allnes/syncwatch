@@ -29,6 +29,8 @@ class LiveKitCallEngine implements CallEngine {
   Room? _room;
   bool _microphoneEnabled = false;
   bool _cameraEnabled = false;
+  LocalVideoTrack? _ownedCameraTrack;
+  String? _ownedCameraPublicationSid;
 
   @override
   Room? get room => _room;
@@ -125,12 +127,44 @@ class LiveKitCallEngine implements CallEngine {
 
     try {
       if (!enabled) {
-        await participant.setCameraEnabled(false);
-        _log('CAMERA disabled ok');
+        final sid = _ownedCameraPublicationSid;
+        final track = _ownedCameraTrack;
+        if (sid != null) {
+          try {
+            await participant.removePublishedTrack(sid);
+            _log('CAMERA unpublished sid=$sid');
+          } catch (error) {
+            _log('CAMERA unpublish failed sid=$sid error=$error');
+          }
+        }
+        if (track != null && !track.isDisposed) {
+          try {
+            await track.dispose();
+            _log('CAMERA track disposed');
+          } catch (error) {
+            _log('CAMERA track dispose failed error=$error');
+          }
+        }
+        _ownedCameraPublicationSid = null;
+        _ownedCameraTrack = null;
+        _log('CAMERA disabled ok fullyDisposed=true');
         return;
       }
 
+      // Never retain a stale manually-created camera track across OFF -> ON.
+      final staleSid = _ownedCameraPublicationSid;
+      final staleTrack = _ownedCameraTrack;
+      if (staleSid != null) {
+        try { await participant.removePublishedTrack(staleSid); } catch (_) {}
+      }
+      if (staleTrack != null && !staleTrack.isDisposed) {
+        try { await staleTrack.dispose(); } catch (_) {}
+      }
+      _ownedCameraPublicationSid = null;
+      _ownedCameraTrack = null;
+
       final track = await LocalVideoTrack.createCameraTrack(captureOptions);
+      _ownedCameraTrack = track;
       _log(
         'CAMERA track created options=${track.currentOptions} '
         'mediaTrackId=${track.mediaStreamTrack.id}',
@@ -147,6 +181,7 @@ class LiveKitCallEngine implements CallEngine {
         track,
         publishOptions: publishOptions,
       );
+      _ownedCameraPublicationSid = publication.sid;
       _log(
         'CAMERA published sid=${publication.sid} source=${publication.source} '
         'muted=${publication.muted} simulcast=${publishOptions.simulcast} '
@@ -173,6 +208,20 @@ class LiveKitCallEngine implements CallEngine {
     _cameraEnabled = false;
     final participant = _room?.localParticipant;
     if (participant == null) return;
+
+    // Dispose the manually-owned camera track first; removePublishedTrack alone
+    // does not guarantee that the capture source is released.
+    final ownedTrack = _ownedCameraTrack;
+    _ownedCameraTrack = null;
+    _ownedCameraPublicationSid = null;
+    if (ownedTrack != null && !ownedTrack.isDisposed) {
+      try {
+        await ownedTrack.dispose();
+        _log('MEDIA camera track disposed');
+      } catch (error) {
+        _log('MEDIA camera track dispose failed error=$error');
+      }
+    }
 
     final publications = participant.trackPublications.values
         .where((publication) =>
