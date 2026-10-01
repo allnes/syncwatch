@@ -122,6 +122,35 @@ $m = Get-Content $main -Raw
 $m = $m.Replace('window.SetQuitOnClose(true);', 'window.SetQuitOnClose(false);')
 Write-Utf8NoBom $main $m
 
+# Generate a tiny native helper used by the main SyncWatch process to activate
+# the isolated call window. SetForegroundWindow from the background helper
+# itself is rejected by Windows; the foreground client performs the activation.
+$focusCpp = Join-Path $runner "syncwatch_focus_window.cpp"
+$focusExe = Join-Path $runner "syncwatch_focus_window.exe"
+$focusSource = @'
+#include <windows.h>
+#include <cwchar>
+
+int wmain(int argc, wchar_t** argv) {
+  if (argc < 2) return 2;
+  const wchar_t* title = argv[1];
+  HWND hwnd = FindWindowW(nullptr, title);
+  if (hwnd == nullptr) return 3;
+  if (IsIconic(hwnd)) ShowWindow(hwnd, SW_RESTORE);
+  else ShowWindow(hwnd, SW_SHOW);
+  BringWindowToTop(hwnd);
+  SetForegroundWindow(hwnd);
+  SetActiveWindow(hwnd);
+  SetFocus(hwnd);
+  return GetForegroundWindow() == hwnd ? 0 : 4;
+}
+'@
+Write-Utf8NoBom $focusCpp $focusSource
+$cl = Get-Command cl.exe -ErrorAction SilentlyContinue
+if ($null -ne $cl) {
+  & $cl.Source /nologo /EHsc /utf-8 $focusCpp /Fe:$focusExe user32.lib | Out-Null
+}
+
 # multiview_desktop is pinned to a known Git revision in pubspec.yaml.
 # Patch the exact package source selected by Flutter rather than assuming a
 # pub.dev cache path/version.
