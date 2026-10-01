@@ -1,5 +1,6 @@
 param(
-  [switch]$SkipBuild
+  [switch]$SkipBuild,
+  [switch]$DisableImpeller
 )
 
 $ErrorActionPreference = "Stop"
@@ -33,6 +34,7 @@ $logDir = Join-Path $root "logs"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 Remove-Item (Join-Path $logDir "*.log") -Force -ErrorAction SilentlyContinue
 
+Write-Host "Renderer: $(if ($DisableImpeller) { 'Skia (Impeller disabled)' } else { 'default Flutter renderer' })"
 Write-Host "Runtime logs will be written to:"
 Write-Host "  $logDir"
 
@@ -44,7 +46,10 @@ flutter pub get
 if ($LASTEXITCODE -ne 0) { throw "flutter pub get failed." }
 
 Write-Host "Configuring Windows multi-view runner..."
+$previousDisableImpeller = $env:SYNCWATCH_DISABLE_IMPELLER
+$env:SYNCWATCH_DISABLE_IMPELLER = if ($DisableImpeller) { "1" } else { "0" }
 & (Join-Path $PSScriptRoot "enable_multiview_windows.ps1")
+$env:SYNCWATCH_DISABLE_IMPELLER = $previousDisableImpeller
 if ($LASTEXITCODE -ne 0) { throw "enable_multiview_windows.ps1 failed." }
 
 Write-Host "Analyzing client..."
