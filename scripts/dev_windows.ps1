@@ -96,35 +96,56 @@ Copy-Item $patchedDll.FullName $runtimeDll -Force
 Write-Host "Installed patched libwebrtc.dll:"
 Write-Host "  $($patchedDll.FullName) -> $runtimeDll"
 
-# The test-peer flutter run uses the same Windows output directory and can
-# overwrite syncwatch.exe. Preserve a complete client runtime for isolated
-# call-process launches before starting the test peer.
+# Preserve the fully patched main runtime before building Test Peer.
+$clientRuntime = Join-Path $root "build\windows\client_runtime"
 $callHelperRuntime = Join-Path $root "build\windows\call_helper"
-if (Test-Path $callHelperRuntime) {
-  Remove-Item $callHelperRuntime -Recurse -Force
+foreach ($runtime in @($clientRuntime, $callHelperRuntime)) {
+  if (Test-Path $runtime) { Remove-Item $runtime -Recurse -Force }
+  New-Item -ItemType Directory -Force -Path $runtime | Out-Null
+  Copy-Item (Join-Path $debugRuntime "*") $runtime -Recurse -Force
 }
-New-Item -ItemType Directory -Force -Path $callHelperRuntime | Out-Null
-Copy-Item (Join-Path $debugRuntime "*") $callHelperRuntime -Recurse -Force
+$clientExe = Join-Path $clientRuntime "syncwatch.exe"
 $callHelperExe = Join-Path $callHelperRuntime "syncwatch.exe"
-if (!(Test-Path $callHelperExe)) {
-  throw "Failed to preserve isolated call helper executable."
+if (!(Test-Path $clientExe) -or !(Test-Path $callHelperExe)) {
+  throw "Failed to preserve main/call-helper runtimes."
 }
-Write-Host "Preserved isolated call helper runtime:"
-Write-Host "  $callHelperExe"
+
+# Build Test Peer before any SyncWatch process is running. Flutter uses the
+# same Windows output directory for both targets, so compiling it after the
+# client starts can fail when INSTALL.vcxproj tries to overwrite loaded DLLs.
+Write-Host "Building Windows Test Peer..."
+flutter build windows --debug -t lib\livekit_test_peer_app.dart
+if ($LASTEXITCODE -ne 0) { throw "Test Peer Windows build failed." }
+
+# The Test Peer must use the same patched WebRTC DLL.
+Copy-Item $patchedDll.FullName (Join-Path $debugRuntime "libwebrtc.dll") -Force
+$peerRuntime = Join-Path $root "build\windows\test_peer_runtime"
+if (Test-Path $peerRuntime) { Remove-Item $peerRuntime -Recurse -Force }
+New-Item -ItemType Directory -Force -Path $peerRuntime | Out-Null
+Copy-Item (Join-Path $debugRuntime "*") $peerRuntime -Recurse -Force
+$peerExe = Join-Path $peerRuntime "syncwatch.exe"
+if (!(Test-Path $peerExe)) { throw "Failed to preserve Test Peer runtime." }
+
+Write-Host "Prepared isolated runtimes:"
+Write-Host "  Client:    $clientExe"
+Write-Host "  Call:      $callHelperExe"
+Write-Host "  Test Peer: $peerExe"
 
 $serverLog = Join-Path $logDir "server.log"
 $clientLog = Join-Path $logDir "client.log"
 $peerLog = Join-Path $logDir "test_peer.log"
 
 $server = 'Set-Location "' + (Join-Path $root "server") + '"; dart run bin\server.dart 2>&1 | Tee-Object -FilePath "' + $serverLog + '"'
-$clientExe = Join-Path $root "build\windows\x64\runner\Debug\syncwatch.exe"
 $clientErrLog = Join-Path $logDir "client_stderr.log"
 $client = 'Set-Location "' + $root + '"; ' +
   '$process = Start-Process -FilePath "' + $clientExe + '" ' +
   '-RedirectStandardOutput "' + $clientLog + '" ' +
   '-RedirectStandardError "' + $clientErrLog + '" -PassThru; ' +
   '$process.WaitForExit()'
-$peer = 'Set-Location "' + $root + '"; flutter run -d windows -t lib\livekit_test_peer_app.dart 2>&1 | Tee-Object -FilePath "' + $peerLog + '"'
+$peer = 'Set-Location "' + $root + '"; ' +
+  '$process = Start-Process -FilePath "' + $peerExe + '" ' +
+  '-RedirectStandardOutput "' + $peerLog + '" -PassThru; ' +
+  '$process.WaitForExit()'
 
 Write-Host "Starting server, SyncWatch, and Test Peer in separate PowerShell windows..."
 Start-SyncWatchShell -Title "SyncWatch Server" -Command $server
