@@ -150,6 +150,10 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
         // only visible border. Resizing remains available through the native
         // frameless hit-test path.
         await windowManager.setAsFrameless();
+        // Make the native HWND surface genuinely transparent. ClipRRect alone
+        // only clips Flutter content and otherwise leaves black pixels in the
+        // four corners of the rectangular Windows surface.
+        await windowManager.setBackgroundColor(Colors.transparent);
         await windowManager.setResizable(true);
         await windowManager.setPreventClose(false);
         await windowManager.hide();
