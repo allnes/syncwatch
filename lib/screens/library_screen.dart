@@ -411,6 +411,30 @@ class _LibraryScreenState extends State<LibraryScreen> {
     ]);
   }
 
+  Future<void> _setCameraDiagnostic(bool enabled) async {
+    if (!callActive) return;
+    _roomLog('AB_CAMERA_BEGIN target=${enabled ? "ON" : "OFF"}');
+    debugPrint(
+      '[SyncWatch][RESOURCE_EVENT] AB_CAMERA_${enabled ? "ON" : "OFF"}_BEGIN',
+    );
+    try {
+      await callEngine.setCameraEnabled(enabled);
+      if (!mounted) return;
+      setState(() {
+        cameraEnabled = enabled;
+      });
+      _roomLog(
+        'AB_CAMERA_DONE state=${enabled ? "ON" : "OFF"} '
+        'videoTrack=${callEngine.localVideoTrack != null}',
+      );
+      debugPrint(
+        '[SyncWatch][RESOURCE_EVENT] AB_CAMERA_${enabled ? "ON" : "OFF"}_DONE',
+      );
+    } catch (error) {
+      _roomLog('AB_CAMERA_FAILED target=${enabled ? "ON" : "OFF"} error=$error');
+    }
+  }
+
   Future<void> _startCall() async {
     if (callActive) {
       return;
@@ -1001,6 +1025,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
               tooltip: widget.controller.t('goToCall'),
               onPressed: _focusCallWindow,
               icon: const Icon(Icons.videocam_rounded),
+            ),
+          if (callActive)
+            IconButton(
+              tooltip: cameraEnabled
+                  ? 'A/B: остановить захват камеры'
+                  : 'A/B: включить захват камеры',
+              onPressed: () => _setCameraDiagnostic(!cameraEnabled),
+              icon: Icon(
+                cameraEnabled
+                    ? Icons.pause_circle_outline_rounded
+                    : Icons.play_circle_outline_rounded,
+              ),
             ),
           IconButton(
             tooltip: widget.controller.t('settings'),
