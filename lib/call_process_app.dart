@@ -119,16 +119,32 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp> wit
       await windowManager.waitUntilReadyToShow(options, () async {
         _log('READY_CALLBACK');
         await windowManager.setResizable(true);
-        // Do not intercept the native close button. With preventClose=false
-        // Windows performs the normal close path and terminates this helper.
         await windowManager.setPreventClose(false);
-        _log('setResizable/setPreventClose(false) DONE');
+
+        // Keep the native window hidden until Flutter has had additional
+        // frames to submit the initialized surface. Showing it immediately
+        // after the first Dart frame can expose the unpainted white HWND on
+        // Windows until a later resize/minimize forces invalidation.
+        await windowManager.hide();
+        _log('READY hidden; waiting for stable Flutter surface');
+        await WidgetsBinding.instance.endOfFrame;
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+        await WidgetsBinding.instance.endOfFrame;
+
+        // Force one real native resize while hidden. This invalidates the
+        // backing surface in the same way the previously successful manual
+        // minimize/restore did, without exposing the white startup frame.
+        const warmSize = Size(301, 211);
+        const finalSize = Size(300, 210);
+        await windowManager.setSize(warmSize);
+        await Future<void>.delayed(const Duration(milliseconds: 16));
+        await windowManager.setSize(finalSize);
+        await WidgetsBinding.instance.endOfFrame;
+
         await windowManager.show();
         if (await windowManager.isMinimized()) {
           await windowManager.restore();
         }
-        // Raise during the ready callback itself. The main process may request
-        // focus before this helper has produced its first native window.
         await windowManager.setAlwaysOnTop(true);
         await windowManager.focus();
         await Future<void>.delayed(const Duration(milliseconds: 120));
@@ -138,12 +154,11 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp> wit
           'focused=${await windowManager.isFocused()}',
         );
       });
-      // A second raise after waitUntilReadyToShow closes the startup race on
-      // Windows where show() can report false inside the ready callback.
-      await windowManager.show();
+      // One post-show raise handles Windows foreground activation rules; the
+      // surface itself has already been warmed while hidden above.
       await windowManager.setAlwaysOnTop(true);
       await windowManager.focus();
-      await Future<void>.delayed(const Duration(milliseconds: 120));
+      await Future<void>.delayed(const Duration(milliseconds: 80));
       await windowManager.setAlwaysOnTop(false);
       _log(
         'waitUntilReadyToShow DONE visible=${await windowManager.isVisible()} '
