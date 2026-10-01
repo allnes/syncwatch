@@ -12,7 +12,9 @@ class CallProcessDiagnosticApp extends StatefulWidget {
   State<CallProcessDiagnosticApp> createState() => _CallProcessDiagnosticAppState();
 }
 
-class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp> {
+class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp> with WindowListener {
+  Timer? _commandTimer;
+  late final File _commandFile;
   void _log(String message) {
     final line = '[${DateTime.now().toIso8601String()}] [WINDOW] $message';
     debugPrint(line);
@@ -26,9 +28,56 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp> {
   void initState() {
     super.initState();
     _log('initState pid=$pid');
+    windowManager.addListener(this);
+    _commandFile = File('${Directory.current.path}${Platform.pathSeparator}logs${Platform.pathSeparator}call_window.command');
+    try { if (_commandFile.existsSync()) _commandFile.deleteSync(); } catch (_) {}
+    _commandTimer = Timer.periodic(const Duration(milliseconds: 150), (_) => _pollCommand());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_showDiagnosticWindow());
     });
+  }
+
+  Future<void> _pollCommand() async {
+    if (!_commandFile.existsSync()) return;
+    String command = '';
+    try {
+      command = _commandFile.readAsStringSync().trim();
+      _commandFile.deleteSync();
+    } catch (_) {
+      return;
+    }
+    if (command == 'focus') {
+      _log('COMMAND focus');
+      await windowManager.show();
+      await windowManager.restore();
+      await windowManager.focus();
+    } else if (command == 'close') {
+      _log('COMMAND close');
+      await _closeWindow();
+    }
+  }
+
+  Future<void> _closeWindow() async {
+    _log('CLOSE begin');
+    _commandTimer?.cancel();
+    try {
+      await windowManager.setPreventClose(false);
+      await windowManager.destroy();
+    } finally {
+      exit(0);
+    }
+  }
+
+  @override
+  void onWindowClose() {
+    unawaited(_closeWindow());
+  }
+
+  @override
+  void dispose() {
+    _commandTimer?.cancel();
+    windowManager.removeListener(this);
+    super.dispose();
   }
 
   Future<void> _showDiagnosticWindow() async {
@@ -45,7 +94,8 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp> {
       await windowManager.waitUntilReadyToShow(options, () async {
         _log('READY_CALLBACK');
         await windowManager.setResizable(true);
-        _log('setResizable DONE');
+        await windowManager.setPreventClose(true);
+        _log('setResizable/setPreventClose DONE');
         await windowManager.show();
         _log('show DONE visible=${await windowManager.isVisible()}');
         await windowManager.focus();
