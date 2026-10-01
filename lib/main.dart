@@ -42,18 +42,46 @@ Future<void> main(List<String> args) async {
   }
 
   MediaKit.ensureInitialized();
-  await windowManager.ensureInitialized();
 
-  final controller = AppController();
-  await controller.load();
-
+  // Test Peer does not need the main application's persisted UI settings.
+  // Branch before SharedPreferences/window-manager initialization so the
+  // auxiliary process cannot contend with the client during startup.
   if (args.contains('--livekit-test-peer')) {
     runApp(const LiveKitTestPeerApp());
     return;
   }
 
+  final startupLog = File(
+    '${Directory.current.path}${Platform.pathSeparator}logs'
+    '${Platform.pathSeparator}main_startup.log',
+  );
+  void startup(String message) {
+    final line = '[${DateTime.now().toIso8601String()}] $message';
+    debugPrint('[SyncWatch][STARTUP] $message');
+    try {
+      startupLog.parent.createSync(recursive: true);
+      startupLog.writeAsStringSync('$line\n', mode: FileMode.append, flush: true);
+    } catch (_) {}
+  }
 
+  startup('windowManager.ensureInitialized BEGIN');
+  await windowManager.ensureInitialized();
+  startup('windowManager.ensureInitialized DONE');
 
+  final controller = AppController();
+  startup('AppController.load BEGIN');
+  try {
+    await controller.load().timeout(const Duration(seconds: 5));
+    startup('AppController.load DONE');
+  } on TimeoutException {
+    // Never leave the native HWND waiting forever for preferences. Defaults
+    // are sufficient to render the app and settings can be changed normally.
+    startup('AppController.load TIMEOUT; continuing with defaults');
+  } catch (error, stack) {
+    startup('AppController.load ERROR error=$error stack=$stack');
+  }
+
+  startup('runMultiApp BEGIN');
   mv.runMultiApp(
     home: (_, __) => SyncWatchApp(controller: controller),
     config: mv.MultiAppConfig(
@@ -67,4 +95,5 @@ Future<void> main(List<String> args) async {
       ),
     ),
   );
+  startup('runMultiApp RETURNED');
 }
