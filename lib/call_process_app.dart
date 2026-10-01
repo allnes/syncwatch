@@ -204,11 +204,20 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
       theme: ThemeData.dark(useMaterial3: true),
       home: Scaffold(
         backgroundColor: Colors.transparent,
-        body: ClipRRect(
-          borderRadius: BorderRadius.circular(radius),
-          child: ColoredBox(
-            color: const Color(0xFF0B1C2B),
-            child: Stack(
+        body: Padding(
+          padding: const EdgeInsets.all(5),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(radius),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: const Color(0xFF0B1C2B),
+                borderRadius: BorderRadius.circular(radius),
+                border: Border.all(
+                  color: const Color(0xFF29485E),
+                  width: 1,
+                ),
+              ),
+              child: Stack(
               children: [
                 Positioned(
                   left: 10,
@@ -301,6 +310,7 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
                   ),
                 ),
               ],
+              ),
             ),
           ),
         ),
