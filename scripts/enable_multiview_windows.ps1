@@ -141,54 +141,57 @@ if ($env:SYNCWATCH_DISABLE_IMPELLER -eq "1") {
 }
 Write-Utf8NoBom $main $m
 
-# window_manager's setAsFrameless removes the native non-client frame. Restore
-# standard resize hit-testing for that frameless HWND so the isolated call
-# helper keeps its single transparent rounded Flutter surface while Windows
-# still supplies the normal edge/corner resize cursors.
+# window_manager's setAsFrameless removes the native non-client frame. Patch
+# the actual 0.5.2 top-level WindowProc branch used by the isolated helper.
 $wmProc = Join-Path $env:LOCALAPPDATA "Pub\\Cache\\hosted\\pub.dev\\window_manager-0.5.2\\windows\\window_manager_plugin.cpp"
-if (Test-Path $wmProc) {
-  $wm = Get-Content $wmProc -Raw
-  if ($wm -notmatch "SyncWatch helper frameless resize") {
-    $needle = '    case WM_NCHITTEST: {'
-    $pos = $wm.IndexOf($needle)
-    if ($pos -ge 0) {
-      $caseEnd = $wm.IndexOf('    case ', $pos + $needle.Length)
-      if ($caseEnd -gt $pos) {
-        $block = $wm.Substring($pos, $caseEnd - $pos)
-        $replacement = @'
-    case WM_NCHITTEST: {
-      if (window_manager->is_frameless_) {
-        POINT cursor = {
-            static_cast<LONG>(static_cast<short>(LOWORD(lParam))),
-            static_cast<LONG>(static_cast<short>(HIWORD(lParam)))};
-        RECT rect{};
-        GetWindowRect(hWnd, &rect);
-        const int border = 8;
-        const bool left = cursor.x < rect.left + border;
-        const bool right = cursor.x >= rect.right - border;
-        const bool top = cursor.y < rect.top + border;
-        const bool bottom = cursor.y >= rect.bottom - border;
-        if (top && left) return HTTOPLEFT;
-        if (top && right) return HTTOPRIGHT;
-        if (bottom && left) return HTBOTTOMLEFT;
-        if (bottom && right) return HTBOTTOMRIGHT;
-        if (left) return HTLEFT;
-        if (right) return HTRIGHT;
-        if (top) return HTTOP;
-        if (bottom) return HTBOTTOM;
-      }
-      // SyncWatch helper frameless resize
-'@
-        # Preserve the package's original WM_NCHITTEST logic after our
-        # frameless edge handling for all normal windows.
-        $originalBody = $block.Substring($needle.Length)
-        $wm = $wm.Substring(0, $pos) + $replacement + $originalBody +
-              $wm.Substring($caseEnd)
-        Write-Utf8NoBom $wmProc $wm
-      }
-    }
-  }
+if (!(Test-Path $wmProc)) {
+  throw "window_manager 0.5.2 Windows source not found: $wmProc"
 }
+$wm = Get-Content $wmProc -Raw
+
+# Normalize our previous version if this shared pub-cache was already patched.
+$patchedHit = @'
+  } else if (message == WM_NCHITTEST) {
+    if (!window_manager->is_resizable_) {
+      return HTNOWHERE;
+    }
+    if (window_manager->is_frameless_) {
+      POINT cursor = {
+          static_cast<LONG>(static_cast<short>(LOWORD(lParam))),
+          static_cast<LONG>(static_cast<short>(HIWORD(lParam)))};
+      RECT rect{};
+      GetWindowRect(hWnd, &rect);
+      const int border = 8;
+      const bool left = cursor.x < rect.left + border;
+      const bool right = cursor.x >= rect.right - border;
+      const bool top = cursor.y < rect.top + border;
+      const bool bottom = cursor.y >= rect.bottom - border;
+      if (top && left) return HTTOPLEFT;
+      if (top && right) return HTTOPRIGHT;
+      if (bottom && left) return HTBOTTOMLEFT;
+      if (bottom && right) return HTBOTTOMRIGHT;
+      if (left) return HTLEFT;
+      if (right) return HTRIGHT;
+      if (top) return HTTOP;
+      if (bottom) return HTBOTTOM;
+      return HTCLIENT;
+    }
+    // SyncWatch helper frameless resize
+'@
+$upstreamHit = @'
+  } else if (message == WM_NCHITTEST) {
+    if (!window_manager->is_resizable_) {
+      return HTNOWHERE;
+    }
+'@
+if ($wm.Contains($patchedHit)) {
+  # already correct
+} elseif ($wm.Contains($upstreamHit)) {
+  $wm = $wm.Replace($upstreamHit, $patchedHit)
+} else {
+  throw "window_manager WM_NCHITTEST block changed unexpectedly; refusing blind patch."
+}
+Write-Utf8NoBom $wmProc $wm
 
 # Generate a tiny native helper used by the main SyncWatch process to activate
 # the isolated call window. SetForegroundWindow from the background helper
