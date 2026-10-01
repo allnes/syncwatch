@@ -68,7 +68,14 @@ $artifactCandidates = @(
 )
 $artifact = $artifactCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 if ($null -eq $artifact) {
-  throw "Patched libwebrtc artifact not found. Expected libwebrtc-win-x64-release-patched.zip in Downloads or repository root."
+  $artifact = Join-Path $root "libwebrtc-win-x64-release-patched.zip"
+  $artifactUrl = "https://github.com/nestolen/syncwatch/actions/runs/36880639008/artifacts/11174518375"
+  Write-Host "Patched libwebrtc artifact is not cached locally."
+  Write-Host "Download it once from:"
+  Write-Host "  $artifactUrl"
+  Write-Host "and save it as:"
+  Write-Host "  $artifact"
+  throw "Patched libwebrtc artifact needs one-time download from GitHub Actions."
 }
 $patchedTemp = Join-Path $env:TEMP "syncwatch-patched-libwebrtc"
 if (Test-Path $patchedTemp) { Remove-Item $patchedTemp -Recurse -Force }
