@@ -141,16 +141,20 @@ if ($env:SYNCWATCH_DISABLE_IMPELLER -eq "1") {
 }
 Write-Utf8NoBom $main $m
 
-# window_manager's setAsFrameless removes the native non-client frame. Patch
-# the actual 0.5.2 top-level WindowProc branch used by the isolated helper.
+# window_manager's setAsFrameless removes the native non-client frame.
+# Normalize the shared pub-cache branch on every run: previous SyncWatch
+# revisions may have left a different WM_NCHITTEST body there.
 $wmProc = Join-Path $env:LOCALAPPDATA "Pub\\Cache\\hosted\\pub.dev\\window_manager-0.5.2\\windows\\window_manager_plugin.cpp"
 if (!(Test-Path $wmProc)) {
   throw "window_manager 0.5.2 Windows source not found: $wmProc"
 }
 $wm = Get-Content $wmProc -Raw
-
-# Normalize our previous version if this shared pub-cache was already patched.
-$patchedHit = @'
+$hitStart = $wm.IndexOf('  } else if (message == WM_NCHITTEST) {')
+$hitEnd = $wm.IndexOf('  } else if (message == WM_GETMINMAXINFO) {', $hitStart)
+if ($hitStart -lt 0 -or $hitEnd -le $hitStart) {
+  throw "Could not locate window_manager WM_NCHITTEST/WM_GETMINMAXINFO boundaries."
+}
+$canonicalHit = @'
   } else if (message == WM_NCHITTEST) {
     if (!window_manager->is_resizable_) {
       return HTNOWHERE;
@@ -176,22 +180,11 @@ $patchedHit = @'
       if (bottom) return HTBOTTOM;
       return HTCLIENT;
     }
-    // SyncWatch helper frameless resize
 '@
-$upstreamHit = @'
-  } else if (message == WM_NCHITTEST) {
-    if (!window_manager->is_resizable_) {
-      return HTNOWHERE;
-    }
-'@
-if ($wm.Contains($patchedHit)) {
-  # already correct
-} elseif ($wm.Contains($upstreamHit)) {
-  $wm = $wm.Replace($upstreamHit, $patchedHit)
-} else {
-  throw "window_manager WM_NCHITTEST block changed unexpectedly; refusing blind patch."
-}
+$wm = $wm.Substring(0, $hitStart) + $canonicalHit +
+      [Environment]::NewLine + $wm.Substring($hitEnd)
 Write-Utf8NoBom $wmProc $wm
+Write-Host "SyncWatch helper frameless resize hit-test configured."
 
 # Generate a tiny native helper used by the main SyncWatch process to activate
 # the isolated call window. SetForegroundWindow from the background helper
