@@ -1,21 +1,29 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
 class CallProcessDiagnosticApp extends StatefulWidget {
   const CallProcessDiagnosticApp({super.key, required this.logFilePath});
-
   final String logFilePath;
 
   @override
   State<CallProcessDiagnosticApp> createState() => _CallProcessDiagnosticAppState();
 }
 
-class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp> with WindowListener {
+class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
+    with WindowListener {
   Timer? _commandTimer;
+  Timer? _stateTimer;
   late final File _commandFile;
   late final File _actionFile;
+  late final File _stateFile;
+  bool _cameraEnabled = true;
+  bool _microphoneEnabled = true;
+  bool _fullscreen = false;
+  bool _maximized = false;
+
   void _log(String message) {
     final line = '[${DateTime.now().toIso8601String()}] [WINDOW] $message';
     debugPrint(line);
@@ -33,13 +41,44 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp> wit
     final logs = '${Directory.current.path}${Platform.pathSeparator}logs';
     _commandFile = File('$logs${Platform.pathSeparator}call_window.command');
     _actionFile = File('$logs${Platform.pathSeparator}call_window.action');
-    try { if (_commandFile.existsSync()) _commandFile.deleteSync(); } catch (_) {}
-    _commandTimer = Timer.periodic(const Duration(milliseconds: 120), (_) {
-      _pollCommand();
-    });
+    _stateFile = File('$logs${Platform.pathSeparator}call_window.state');
+    try {
+      if (_commandFile.existsSync()) _commandFile.deleteSync();
+    } catch (_) {}
+    _readState();
+    _commandTimer = Timer.periodic(
+      const Duration(milliseconds: 120),
+      (_) => _pollCommand(),
+    );
+    _stateTimer = Timer.periodic(
+      const Duration(milliseconds: 250),
+      (_) => _readState(),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_showDiagnosticWindow());
+      unawaited(_showWindow());
     });
+  }
+
+  void _readState() {
+    if (!_stateFile.existsSync()) return;
+    try {
+      final values = <String, String>{};
+      for (final line in _stateFile.readAsLinesSync()) {
+        final split = line.indexOf('=');
+        if (split > 0) {
+          values[line.substring(0, split)] = line.substring(split + 1);
+        }
+      }
+      final camera = values['camera'] != 'off';
+      final microphone = values['microphone'] != 'off';
+      if (camera != _cameraEnabled || microphone != _microphoneEnabled) {
+        if (!mounted) return;
+        setState(() {
+          _cameraEnabled = camera;
+          _microphoneEnabled = microphone;
+        });
+      }
+    } catch (_) {}
   }
 
   void _sendAction(String action) {
@@ -62,31 +101,20 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp> wit
       return;
     }
     if (command == 'focus') {
-      _log('COMMAND focus');
       await windowManager.show();
-      if (await windowManager.isMinimized()) {
-        await windowManager.restore();
-      }
-      // Windows can reject a plain SetForegroundWindow/focus request from a
-      // background process. A short topmost transition raises the existing
-      // call window above the main SyncWatch window without leaving it pinned.
+      if (await windowManager.isMinimized()) await windowManager.restore();
       await windowManager.setAlwaysOnTop(true);
       await windowManager.focus();
       await Future<void>.delayed(const Duration(milliseconds: 80));
       await windowManager.setAlwaysOnTop(false);
-      _log(
-        'COMMAND focus done visible=${await windowManager.isVisible()} '
-        'focused=${await windowManager.isFocused()}',
-      );
     } else if (command == 'close') {
-      _log('COMMAND close');
       await _closeWindow();
     }
   }
 
   Future<void> _closeWindow() async {
-    _log('CLOSE begin');
     _commandTimer?.cancel();
+    _stateTimer?.cancel();
     try {
       await windowManager.destroy();
     } finally {
@@ -95,99 +123,196 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp> wit
   }
 
   @override
-  void onWindowClose() {
-    unawaited(_closeWindow());
-  }
+  void onWindowClose() => unawaited(_closeWindow());
 
   @override
   void dispose() {
     _commandTimer?.cancel();
+    _stateTimer?.cancel();
     windowManager.removeListener(this);
     super.dispose();
   }
 
-  Future<void> _showDiagnosticWindow() async {
+  Future<void> _showWindow() async {
     _log('FIRST_FRAME');
     try {
       const options = WindowOptions(
         size: Size(300, 210),
-        minimumSize: Size(160, 210),
+        minimumSize: Size(300, 210),
         center: true,
         title: 'SyncWatch Call',
+        titleBarStyle: TitleBarStyle.hidden,
+        backgroundColor: Color(0xFF0B1C2B),
       );
-      _log('waitUntilReadyToShow BEGIN');
       await windowManager.waitUntilReadyToShow(options, () async {
-        _log('READY_CALLBACK');
         await windowManager.setResizable(true);
         await windowManager.setPreventClose(false);
-
-        // Keep the native window hidden until Flutter has had additional
-        // frames to submit the initialized surface. Showing it immediately
-        // after the first Dart frame can expose the unpainted white HWND on
-        // Windows until a later resize/minimize forces invalidation.
         await windowManager.hide();
-        _log('READY hidden; waiting for stable Flutter surface');
         await WidgetsBinding.instance.endOfFrame;
         await Future<void>.delayed(const Duration(milliseconds: 120));
         await WidgetsBinding.instance.endOfFrame;
-
-        // Force one real native resize while hidden. This invalidates the
-        // backing surface in the same way the previously successful manual
-        // minimize/restore did, without exposing the white startup frame.
-        const warmSize = Size(301, 211);
-        const finalSize = Size(300, 210);
-        await windowManager.setSize(warmSize);
+        await windowManager.setSize(const Size(301, 211));
         await Future<void>.delayed(const Duration(milliseconds: 16));
-        await windowManager.setSize(finalSize);
+        await windowManager.setSize(const Size(300, 210));
         await WidgetsBinding.instance.endOfFrame;
-
         await windowManager.show();
-        if (await windowManager.isMinimized()) {
-          await windowManager.restore();
-        }
-        await windowManager.setAlwaysOnTop(true);
         await windowManager.focus();
-        await Future<void>.delayed(const Duration(milliseconds: 120));
-        await windowManager.setAlwaysOnTop(false);
-        _log(
-          'show/focus DONE visible=${await windowManager.isVisible()} '
-          'focused=${await windowManager.isFocused()}',
-        );
       });
-      // One post-show raise handles Windows foreground activation rules; the
-      // surface itself has already been warmed while hidden above.
-      await windowManager.setAlwaysOnTop(true);
-      await windowManager.focus();
-      await Future<void>.delayed(const Duration(milliseconds: 80));
-      await windowManager.setAlwaysOnTop(false);
-      _log(
-        'waitUntilReadyToShow DONE visible=${await windowManager.isVisible()} '
-        'focused=${await windowManager.isFocused()} '
-        'size=${await windowManager.getSize()} '
-        'position=${await windowManager.getPosition()}',
-      );
+      _log('WINDOW_READY size=${await windowManager.getSize()}');
     } catch (error, stack) {
       _log('WINDOW_ERROR error=$error stack=$stack');
     }
   }
 
-  @override
-  Widget build(BuildContext context) => MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
-        home: Scaffold(
-          backgroundColor: const Color(0xFF0B1C2B),
-          body: Center(
-            child: IconButton.filled(
-              tooltip: 'Завершить звонок',
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.red.shade700,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () => _sendAction('hangup'),
-              icon: const Icon(Icons.call_end_rounded),
-            ),
-          ),
+  Future<void> _toggleFullscreen() async {
+    final next = !await windowManager.isFullScreen();
+    await windowManager.setFullScreen(next);
+    if (mounted) setState(() => _fullscreen = next);
+  }
+
+  Future<void> _toggleMaximize() async {
+    if (await windowManager.isMaximized()) {
+      await windowManager.unmaximize();
+      if (mounted) setState(() => _maximized = false);
+    } else {
+      await windowManager.maximize();
+      if (mounted) setState(() => _maximized = true);
+    }
+  }
+
+  Widget _roundButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+    Color background = const Color(0xFF183247),
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: IconButton(
+        onPressed: onPressed,
+        style: IconButton.styleFrom(
+          backgroundColor: background,
+          foregroundColor: Colors.white,
+          minimumSize: const Size(40, 40),
         ),
-      );
+        icon: Icon(icon, size: 20),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.dark(useMaterial3: true),
+      home: Scaffold(
+        backgroundColor: const Color(0xFF0B1C2B),
+        body: Stack(
+          children: [
+            const Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Color(0xFF0B1C2B),
+                  border: Border.fromBorderSide(
+                    BorderSide(color: Color(0xFF29485E), width: 1),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 8,
+              right: 8,
+              top: 6,
+              height: 38,
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onPanStart: (_) => windowManager.startDragging(),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'SyncWatch',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Свернуть',
+                      onPressed: () => windowManager.minimize(),
+                      icon: const Icon(Icons.remove_rounded, size: 18),
+                      color: Colors.white70,
+                    ),
+                    IconButton(
+                      tooltip: _maximized ? 'Восстановить' : 'Развернуть',
+                      onPressed: () => unawaited(_toggleMaximize()),
+                      icon: Icon(
+                        _maximized
+                            ? Icons.filter_none_rounded
+                            : Icons.crop_square_rounded,
+                        size: 16,
+                      ),
+                      color: Colors.white70,
+                    ),
+                    IconButton(
+                      tooltip: _fullscreen
+                          ? 'Выйти из полноэкранного режима'
+                          : 'На весь экран',
+                      onPressed: () => unawaited(_toggleFullscreen()),
+                      icon: Icon(
+                        _fullscreen
+                            ? Icons.fullscreen_exit_rounded
+                            : Icons.fullscreen_rounded,
+                        size: 20,
+                      ),
+                      color: Colors.white70,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Align(
+              alignment: const Alignment(0, 0.45),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _roundButton(
+                    tooltip: _microphoneEnabled
+                        ? 'Выключить микрофон'
+                        : 'Включить микрофон',
+                    icon: _microphoneEnabled
+                        ? Icons.mic_rounded
+                        : Icons.mic_off_rounded,
+                    onPressed: () => _sendAction(
+                      _microphoneEnabled ? 'microphone_off' : 'microphone_on',
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  _roundButton(
+                    tooltip:
+                        _cameraEnabled ? 'Выключить камеру' : 'Включить камеру',
+                    icon: _cameraEnabled
+                        ? Icons.videocam_rounded
+                        : Icons.videocam_off_rounded,
+                    onPressed: () => _sendAction(
+                      _cameraEnabled ? 'camera_off' : 'camera_on',
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  _roundButton(
+                    tooltip: 'Завершить звонок',
+                    icon: Icons.call_end_rounded,
+                    background: const Color(0xFFB3261E),
+                    onPressed: () => _sendAction('hangup'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
