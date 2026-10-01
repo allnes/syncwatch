@@ -420,10 +420,21 @@ class _LibraryScreenState extends State<LibraryScreen> {
     await callEngine.setMicrophoneEnabled(microphoneEnabled);
     await callEngine.setCameraEnabled(cameraEnabled);
 
-    final executable = File(Platform.resolvedExecutable).absolute.path;
+    final currentExecutable = File(Platform.resolvedExecutable).absolute;
+    final root = Directory.current.absolute;
+    final helperExecutable = File(
+      '${root.path}${Platform.pathSeparator}build'
+      '${Platform.pathSeparator}windows'
+      '${Platform.pathSeparator}call_helper'
+      '${Platform.pathSeparator}syncwatch.exe',
+    );
+    final executable = helperExecutable.existsSync()
+        ? helperExecutable.path
+        : currentExecutable.path;
     _roomLog(
       'CALL_PROCESS spawn executable="$executable" '
-      'exists=${File(executable).existsSync()} cwd="${Directory.current.path}"',
+      'helperExists=${helperExecutable.existsSync()} '
+      'currentExecutable="${currentExecutable.path}" cwd="${root.path}"',
     );
     final process = await Process.start(
       executable,
