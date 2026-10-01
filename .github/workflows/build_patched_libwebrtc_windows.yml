@@ -24,13 +24,17 @@ jobs:
           submodules: true
           path: libwebrtc-sdk
 
-      - name: Patch WMF H265 encoder selection
+      - name: Inject SyncWatch patch into libwebrtc build
         shell: pwsh
         run: |
-          Set-Location libwebrtc-sdk
-          git apply ..\syncwatch\tools\webrtc\try_all_wmf_h265_encoders.patch
-          git diff --check
-          git diff -- src/win/wmf_h265_encoder.cc
+          Copy-Item .\syncwatch\tools\webrtc\try_all_wmf_h265_encoders.patch .\libwebrtc-sdk\patches\syncwatch_wmf_h265_fallback.patch
+          $buildScript = ".\libwebrtc-sdk\build\libwebrtc_win_build.cmd"
+          $text = Get-Content $buildScript -Raw
+          $needle = 'call git apply "libwebrtc\patches\allow_176k4_192k_shared_mode_formats.patch" -v --ignore-space-change --ignore-whitespace --whitespace=nowarn'
+          $injected = $needle + [Environment]::NewLine + 'call git apply "libwebrtc\patches\syncwatch_wmf_h265_fallback.patch" -v --ignore-space-change --ignore-whitespace --whitespace=nowarn'
+          if (-not $text.Contains($needle)) { throw "Could not locate upstream patch stage." }
+          $text = $text.Replace($needle, $injected)
+          Set-Content $buildScript $text -Encoding ascii
 
       - name: Install Ninja
         shell: pwsh
@@ -48,6 +52,26 @@ jobs:
         shell: cmd
         working-directory: libwebrtc-sdk/build
         run: libwebrtc_win_build.cmd --arch x64 --profile release
+
+      - name: Verify patched source and binary
+        shell: pwsh
+        run: |
+          $compiledSource = ".\libwebrtc-sdk\build\src\libwebrtc\src\win\wmf_h265_encoder.cc"
+          if (!(Test-Path $compiledSource)) { throw "Compiled WMF source not found." }
+          if (!(Select-String -Path $compiledSource -SimpleMatch "SYNCWATCH_WMF_FALLBACK" -Quiet)) {
+            throw "SyncWatch WMF patch is absent from the source tree that was compiled."
+          }
+          $dll = ".\libwebrtc-sdk\build\libwebrtc-x64-release\lib\libwebrtc.dll"
+          if (!(Test-Path $dll)) { throw "Built libwebrtc.dll not found." }
+          $bytes = [System.IO.File]::ReadAllBytes($dll)
+          $ascii = [System.Text.Encoding]::ASCII.GetString($bytes)
+          if (!$ascii.Contains("SYNCWATCH_WMF_FALLBACK")) {
+            throw "Built DLL does not contain SyncWatch WMF fallback marker."
+          }
+          $hash = (Get-FileHash $dll -Algorithm SHA256).Hash
+          "SYNCWATCH_WMF_FALLBACK=1" | Set-Content ".\libwebrtc-sdk\build\libwebrtc-x64-release\SYNCWATCH_PATCH.txt"
+          "SHA256=$hash" | Add-Content ".\libwebrtc-sdk\build\libwebrtc-x64-release\SYNCWATCH_PATCH.txt"
+          Write-Host "Verified patched DLL SHA256=$hash"
 
       - name: Package artifact
         shell: pwsh
