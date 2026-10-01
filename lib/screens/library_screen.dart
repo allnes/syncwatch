@@ -4,7 +4,6 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart' hide VideoTrack;
 import 'package:livekit_client/livekit_client.dart' hide AudioTrack;
-import 'package:multiview_desktop/multiview_desktop.dart';
 
 import '../app.dart';
 import '../core/app_theme.dart';
@@ -12,7 +11,6 @@ import '../models/movie_item.dart';
 import '../services/call_engine.dart';
 import '../services/livekit_connection.dart';
 import '../services/sync_engine.dart';
-import '../widgets/call_window_view.dart';
 import 'player_screen.dart';
 import 'settings_screen.dart';
 
@@ -62,7 +60,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool roomConnected = false;
   bool roomConnecting = false;
   String? roomConnectionError;
-  int? callWindowViewId;
+  Process? callWindowProcess;
   bool metadataLoading = false;
   String? metadataPath;
   bool microphoneEnabled = true;
@@ -415,7 +413,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   Future<void> _startCall() async {
     if (callActive) {
-      await _focusCallWindow();
       return;
     }
     if (!roomConnected) return;
@@ -423,81 +420,39 @@ class _LibraryScreenState extends State<LibraryScreen> {
     await callEngine.setMicrophoneEnabled(microphoneEnabled);
     await callEngine.setCameraEnabled(cameraEnabled);
 
-    final viewId = await openWindow(
-      (_, __) => CallWindowView(
-        controller: widget.controller,
-        callEngine: callEngine,
-        microphoneEnabled: microphoneEnabled,
-        cameraEnabled: cameraEnabled,
-        onMicrophoneChanged: (enabled) async {
-          await callEngine.setMicrophoneEnabled(enabled);
-          if (mounted) setState(() => microphoneEnabled = enabled);
-        },
-        onCameraChanged: (enabled) async {
-          await callEngine.setCameraEnabled(enabled);
-          if (mounted) setState(() => cameraEnabled = enabled);
-        },
-        onHangUp: () => _endCall(closeWindow: false),
-      ),
-      options: const WindowOptions(
-        size: Size(300, 210),
-        minimumSize: Size(160, 210),
-        maximumSize: Size(1280, 900),
-        title: 'SyncWatch Call',
-        titleBarStyle: TitleBarStyle.hidden,
-        windowButtonVisibility: false,
-        backgroundColor: Color(0xFF0B1C2B),
-        alwaysOnTop: false,
-      ),
+    final executable = Platform.resolvedExecutable;
+    final process = await Process.start(
+      executable,
+      const ['--call-process-diagnostic'],
+      mode: ProcessStartMode.normal,
     );
-
-    final callWindow = MultiViewDesktop.fromId(viewId);
-    await callWindow.setResizable(true);
-    await callWindow.setMovable(true);
-    await callWindow.setMinimumSize(const Size(160, 210));
-    await callWindow.setMaximumSize(const Size(1280, 900));
-    await callWindow.setSize(const Size(300, 210));
-    await callWindow.center();
-    final requestedCallSize = const Size(300, 210);
-    final firstActualSize = await callWindow.getSize();
-    _roomLog(
-      'CALL WINDOW requested=${requestedCallSize.width.toInt()}x'
-      '${requestedCallSize.height.toInt()} actual='
-      '${firstActualSize.width.toStringAsFixed(0)}x'
-      '${firstActualSize.height.toStringAsFixed(0)} '
-      'resizable=${await callWindow.isResizable()}',
-    );
-
-    await Future<void>.delayed(const Duration(milliseconds: 120));
-    await callWindow.setResizable(true);
-    await callWindow.setMinimumSize(const Size(160, 210));
-    await callWindow.setMaximumSize(const Size(1280, 900));
-    await callWindow.setSize(requestedCallSize);
-    final settledActualSize = await callWindow.getSize();
-    _roomLog(
-      'CALL WINDOW settled actual='
-      '${settledActualSize.width.toStringAsFixed(0)}x'
-      '${settledActualSize.height.toStringAsFixed(0)} '
-      'resizable=${await callWindow.isResizable()}',
-    );
+    unawaited(process.stdout
+        .transform(SystemEncoding().decoder)
+        .forEach((line) => debugPrint('[SyncWatch][CALL_PROCESS][OUT] $line')));
+    unawaited(process.stderr
+        .transform(SystemEncoding().decoder)
+        .forEach((line) => debugPrint('[SyncWatch][CALL_PROCESS][ERR] $line')));
 
     if (!mounted) {
-      await callWindow.closeWindow();
+      process.kill();
       return;
     }
     setState(() {
       callActive = true;
-      callWindowViewId = viewId;
+      callWindowProcess = process;
     });
-    _roomLog('CALL started view=$viewId');
-    debugPrint('[SyncWatch][RESOURCE_EVENT] CALL_STARTED view=$viewId');
+    _roomLog('CALL started isolatedProcessPid=${process.pid}');
+    debugPrint(
+      '[SyncWatch][RESOURCE_EVENT] CALL_STARTED isolatedProcessPid=${process.pid}',
+    );
   }
+
   Future<void> _endCall({bool closeWindow = true}) async {
-    final viewId = callWindowViewId;
-    callWindowViewId = null;
+    final process = callWindowProcess;
+    callWindowProcess = null;
     await callEngine.stopCallMedia();
-    if (closeWindow && viewId != null) {
-      await MultiViewDesktop.fromId(viewId).closeWindow();
+    if (closeWindow && process != null) {
+      process.kill();
     }
     if (!mounted) return;
     setState(() {
@@ -508,12 +463,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _focusCallWindow() async {
-    final viewId = callWindowViewId;
-    if (!callActive || viewId == null) return;
-    final window = MultiViewDesktop.fromId(viewId);
-    await window.restore();
-    await window.show();
-    await window.focus();
+    // Diagnostic isolated process intentionally has no IPC/focus command yet.
   }
 
   Future<void> _browseFolder() async {
