@@ -57,6 +57,23 @@ if (!$SkipBuild) {
   if ($LASTEXITCODE -ne 0) { throw "flutter build windows --debug failed." }
 }
 
+# The test-peer flutter run uses the same Windows output directory and can
+# overwrite syncwatch.exe. Preserve a complete client runtime for isolated
+# call-process launches before starting the test peer.
+$debugRuntime = Join-Path $root "build\windows\x64\runner\Debug"
+$callHelperRuntime = Join-Path $root "build\windows\call_helper"
+if (Test-Path $callHelperRuntime) {
+  Remove-Item $callHelperRuntime -Recurse -Force
+}
+New-Item -ItemType Directory -Force -Path $callHelperRuntime | Out-Null
+Copy-Item (Join-Path $debugRuntime "*") $callHelperRuntime -Recurse -Force
+$callHelperExe = Join-Path $callHelperRuntime "syncwatch.exe"
+if (!(Test-Path $callHelperExe)) {
+  throw "Failed to preserve isolated call helper executable."
+}
+Write-Host "Preserved isolated call helper runtime:"
+Write-Host "  $callHelperExe"
+
 $serverLog = Join-Path $logDir "server.log"
 $clientLog = Join-Path $logDir "client.log"
 $peerLog = Join-Path $logDir "test_peer.log"
