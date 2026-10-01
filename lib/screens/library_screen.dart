@@ -420,12 +420,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
     await callEngine.setMicrophoneEnabled(microphoneEnabled);
     await callEngine.setCameraEnabled(cameraEnabled);
 
-    final executable = Platform.resolvedExecutable;
+    final executable = File(Platform.resolvedExecutable).absolute.path;
+    _roomLog('CALL_PROCESS spawn executable="$executable"');
     final process = await Process.start(
       executable,
       const ['--call-process-diagnostic'],
       mode: ProcessStartMode.normal,
+      runInShell: false,
     );
+    unawaited(process.exitCode.then(
+      (code) => _roomLog('CALL_PROCESS exit pid=${process.pid} code=$code'),
+    ));
     unawaited(process.stdout
         .transform(SystemEncoding().decoder)
         .forEach((line) => debugPrint('[SyncWatch][CALL_PROCESS][OUT] $line')));
