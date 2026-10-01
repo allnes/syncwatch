@@ -61,6 +61,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool roomConnecting = false;
   String? roomConnectionError;
   Process? callWindowProcess;
+  Timer? callWindowActionTimer;
+  File? callWindowActionFile;
+  File? callWindowStateFile;
   bool metadataLoading = false;
   String? metadataPath;
   bool microphoneEnabled = true;
@@ -411,6 +414,41 @@ class _LibraryScreenState extends State<LibraryScreen> {
     ]);
   }
 
+  void _writeCallWindowState() {
+    final file = callWindowStateFile;
+    if (file == null) return;
+    try {
+      file.writeAsStringSync(
+        'camera=${cameraEnabled ? "on" : "off"}\n'
+        'microphone=${microphoneEnabled ? "on" : "off"}\n'
+        'call=${callActive ? "active" : "inactive"}\n',
+        flush: true,
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _pollCallWindowAction() async {
+    final file = callWindowActionFile;
+    if (file == null || !file.existsSync()) return;
+    String action;
+    try {
+      action = file.readAsStringSync().trim();
+      file.deleteSync();
+    } catch (_) {
+      return;
+    }
+    _roomLog('CALL_WINDOW_ACTION action=$action');
+    if (action == 'camera_off') {
+      await _setCameraDiagnostic(false);
+    } else if (action == 'camera_on') {
+      await _setCameraDiagnostic(true);
+    } else if (action == 'hangup') {
+      await _endCall();
+      return;
+    }
+    _writeCallWindowState();
+  }
+
   Future<void> _setCameraDiagnostic(bool enabled) async {
     if (!callActive) return;
     _roomLog('AB_CAMERA_BEGIN target=${enabled ? "ON" : "OFF"}');
@@ -423,6 +461,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       setState(() {
         cameraEnabled = enabled;
       });
+      _writeCallWindowState();
       _roomLog(
         'AB_CAMERA_DONE state=${enabled ? "ON" : "OFF"} '
         'videoTrack=${callEngine.localVideoTrack != null}',
@@ -467,6 +506,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
       runInShell: false,
     );
     _roomLog('CALL_PROCESS spawned pid=${process.pid}');
+    final ipcDir = Directory('${Directory.current.path}${Platform.pathSeparator}logs');
+    ipcDir.createSync(recursive: true);
+    callWindowActionFile = File('${ipcDir.path}${Platform.pathSeparator}call_window.action');
+    callWindowStateFile = File('${ipcDir.path}${Platform.pathSeparator}call_window.state');
+    try { if (callWindowActionFile!.existsSync()) callWindowActionFile!.deleteSync(); } catch (_) {}
+    _writeCallWindowState();
+    callWindowActionTimer?.cancel();
+    callWindowActionTimer = Timer.periodic(
+      const Duration(milliseconds: 120),
+      (_) => unawaited(_pollCallWindowAction()),
+    );
     unawaited(process.exitCode.then((code) {
       _roomLog('CALL_PROCESS exit pid=${process.pid} code=$code');
       if (!mounted || callWindowProcess?.pid != process.pid) return;
@@ -1026,18 +1076,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               onPressed: _focusCallWindow,
               icon: const Icon(Icons.videocam_rounded),
             ),
-          if (callActive)
-            IconButton(
-              tooltip: cameraEnabled
-                  ? 'A/B: остановить захват камеры'
-                  : 'A/B: включить захват камеры',
-              onPressed: () => _setCameraDiagnostic(!cameraEnabled),
-              icon: Icon(
-                cameraEnabled
-                    ? Icons.pause_circle_outline_rounded
-                    : Icons.play_circle_outline_rounded,
-              ),
-            ),
+
           IconButton(
             tooltip: widget.controller.t('settings'),
             onPressed: _showSettings,
