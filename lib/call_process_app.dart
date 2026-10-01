@@ -22,7 +22,7 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
   bool _cameraEnabled = true;
   bool _microphoneEnabled = true;
   bool _fullscreen = false;
-  bool _maximized = false;
+  bool _alwaysOnTop = false;
 
   void _log(String message) {
     final line = '[${DateTime.now().toIso8601String()}] [WINDOW] $message';
@@ -170,14 +170,10 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
     if (mounted) setState(() => _fullscreen = next);
   }
 
-  Future<void> _toggleMaximize() async {
-    if (await windowManager.isMaximized()) {
-      await windowManager.unmaximize();
-      if (mounted) setState(() => _maximized = false);
-    } else {
-      await windowManager.maximize();
-      if (mounted) setState(() => _maximized = true);
-    }
+  Future<void> _toggleAlwaysOnTop() async {
+    final next = !_alwaysOnTop;
+    await windowManager.setAlwaysOnTop(next);
+    if (mounted) setState(() => _alwaysOnTop = next);
   }
 
   Widget _roundButton({
@@ -202,115 +198,124 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
 
   @override
   Widget build(BuildContext context) {
+    const radius = 22.0;
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark(useMaterial3: true),
       home: Scaffold(
-        backgroundColor: const Color(0xFF0B1C2B),
-        body: Stack(
-          children: [
-            const Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Color(0xFF0B1C2B),
-                  border: Border.fromBorderSide(
-                    BorderSide(color: Color(0xFF29485E), width: 1),
+        backgroundColor: Colors.transparent,
+        body: ClipRRect(
+          borderRadius: BorderRadius.circular(radius),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xFF0B1C2B),
+              borderRadius: BorderRadius.circular(radius),
+              border: Border.all(color: const Color(0xFF29485E), width: 1),
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  left: 10,
+                  right: 8,
+                  top: 7,
+                  height: 36,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onPanStart: (_) => windowManager.startDragging(),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'SyncWatch',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: _alwaysOnTop
+                              ? 'Открепить от переднего плана'
+                              : 'Закрепить поверх окон',
+                          onPressed: () => unawaited(_toggleAlwaysOnTop()),
+                          icon: RotatedBox(
+                            // Vertical when inactive, horizontal when pinned.
+                            quarterTurns: _alwaysOnTop ? 1 : 0,
+                            child: const Icon(Icons.push_pin_rounded, size: 18),
+                          ),
+                          color: _alwaysOnTop
+                              ? Colors.white
+                              : Colors.white70,
+                        ),
+                        IconButton(
+                          tooltip: 'Свернуть',
+                          onPressed: () => windowManager.minimize(),
+                          icon: const Icon(Icons.remove_rounded, size: 18),
+                          color: Colors.white70,
+                        ),
+                        IconButton(
+                          tooltip: _fullscreen
+                              ? 'Выйти из полноэкранного режима'
+                              : 'На весь экран',
+                          onPressed: () => unawaited(_toggleFullscreen()),
+                          icon: Icon(
+                            _fullscreen
+                                ? Icons.fullscreen_exit_rounded
+                                : Icons.fullscreen_rounded,
+                            size: 20,
+                          ),
+                          color: Colors.white70,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ),
-            Positioned(
-              left: 8,
-              right: 8,
-              top: 6,
-              height: 38,
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onPanStart: (_) => windowManager.startDragging(),
-                child: Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'SyncWatch',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 16,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _roundButton(
+                        tooltip: _microphoneEnabled
+                            ? 'Выключить микрофон'
+                            : 'Включить микрофон',
+                        icon: _microphoneEnabled
+                            ? Icons.mic_rounded
+                            : Icons.mic_off_rounded,
+                        onPressed: () => _sendAction(
+                          _microphoneEnabled
+                              ? 'microphone_off'
+                              : 'microphone_on',
                         ),
                       ),
-                    ),
-                    IconButton(
-                      tooltip: 'Свернуть',
-                      onPressed: () => windowManager.minimize(),
-                      icon: const Icon(Icons.remove_rounded, size: 18),
-                      color: Colors.white70,
-                    ),
-                    IconButton(
-                      tooltip: _maximized ? 'Восстановить' : 'Развернуть',
-                      onPressed: () => unawaited(_toggleMaximize()),
-                      icon: Icon(
-                        _maximized
-                            ? Icons.filter_none_rounded
-                            : Icons.crop_square_rounded,
-                        size: 16,
+                      const SizedBox(width: 10),
+                      _roundButton(
+                        tooltip: _cameraEnabled
+                            ? 'Выключить камеру'
+                            : 'Включить камеру',
+                        icon: _cameraEnabled
+                            ? Icons.videocam_rounded
+                            : Icons.videocam_off_rounded,
+                        onPressed: () => _sendAction(
+                          _cameraEnabled ? 'camera_off' : 'camera_on',
+                        ),
                       ),
-                      color: Colors.white70,
-                    ),
-                    IconButton(
-                      tooltip: _fullscreen
-                          ? 'Выйти из полноэкранного режима'
-                          : 'На весь экран',
-                      onPressed: () => unawaited(_toggleFullscreen()),
-                      icon: Icon(
-                        _fullscreen
-                            ? Icons.fullscreen_exit_rounded
-                            : Icons.fullscreen_rounded,
-                        size: 20,
+                      const SizedBox(width: 10),
+                      _roundButton(
+                        tooltip: 'Завершить звонок',
+                        icon: Icons.call_end_rounded,
+                        background: const Color(0xFFB3261E),
+                        onPressed: () => _sendAction('hangup'),
                       ),
-                      color: Colors.white70,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ),
-            Align(
-              alignment: const Alignment(0, 0.45),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _roundButton(
-                    tooltip: _microphoneEnabled
-                        ? 'Выключить микрофон'
-                        : 'Включить микрофон',
-                    icon: _microphoneEnabled
-                        ? Icons.mic_rounded
-                        : Icons.mic_off_rounded,
-                    onPressed: () => _sendAction(
-                      _microphoneEnabled ? 'microphone_off' : 'microphone_on',
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  _roundButton(
-                    tooltip:
-                        _cameraEnabled ? 'Выключить камеру' : 'Включить камеру',
-                    icon: _cameraEnabled
-                        ? Icons.videocam_rounded
-                        : Icons.videocam_off_rounded,
-                    onPressed: () => _sendAction(
-                      _cameraEnabled ? 'camera_off' : 'camera_on',
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  _roundButton(
-                    tooltip: 'Завершить звонок',
-                    icon: Icons.call_end_rounded,
-                    background: const Color(0xFFB3261E),
-                    onPressed: () => _sendAction('hangup'),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
