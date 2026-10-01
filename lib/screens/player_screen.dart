@@ -92,6 +92,13 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   DateTime? _lastPlaybackHealthLog;
   bool? _lastBufferingState;
   bool _mpvHealthLogInFlight = false;
+  int _frameTimingSamples = 0;
+  int _frameTimingJank = 0;
+  int _frameTimingSevere = 0;
+  int _frameTimingMaxUs = 0;
+  int _frameTimingBuildMaxUs = 0;
+  int _frameTimingRasterMaxUs = 0;
+  DateTime? _lastFrameTimingReport;
 
   Player? _previewPlayer;
   VideoController? _previewVideoController;
@@ -191,6 +198,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     _playbackLog(
       'INIT media="${currentMovie.fileName}" path="${currentMovie.fullPath}"',
     );
+    WidgetsBinding.instance.addTimingsCallback(_onFrameTimings);
 
     _subscriptions.add(
       player.stream.position.listen((position) {
@@ -458,6 +466,39 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     }
   }
 
+  void _onFrameTimings(List<FrameTiming> timings) {
+    if (!mounted || !player.state.playing) return;
+    for (final timing in timings) {
+      final totalUs = timing.totalSpan.inMicroseconds;
+      final buildUs = timing.buildDuration.inMicroseconds;
+      final rasterUs = timing.rasterDuration.inMicroseconds;
+      _frameTimingSamples++;
+      if (totalUs > 16667) _frameTimingJank++;
+      if (totalUs > 33333) _frameTimingSevere++;
+      _frameTimingMaxUs = math.max(_frameTimingMaxUs, totalUs);
+      _frameTimingBuildMaxUs = math.max(_frameTimingBuildMaxUs, buildUs);
+      _frameTimingRasterMaxUs = math.max(_frameTimingRasterMaxUs, rasterUs);
+    }
+    final now = DateTime.now();
+    if (_lastFrameTimingReport == null ||
+        now.difference(_lastFrameTimingReport!) >= const Duration(seconds: 5)) {
+      _lastFrameTimingReport = now;
+      _playbackLog(
+        'FLUTTER_FRAMES samples=$_frameTimingSamples '
+        'jank16=$_frameTimingJank severe33=$_frameTimingSevere '
+        'maxMs=${(_frameTimingMaxUs / 1000).toStringAsFixed(1)} '
+        'buildMaxMs=${(_frameTimingBuildMaxUs / 1000).toStringAsFixed(1)} '
+        'rasterMaxMs=${(_frameTimingRasterMaxUs / 1000).toStringAsFixed(1)}',
+      );
+      _frameTimingSamples = 0;
+      _frameTimingJank = 0;
+      _frameTimingSevere = 0;
+      _frameTimingMaxUs = 0;
+      _frameTimingBuildMaxUs = 0;
+      _frameTimingRasterMaxUs = 0;
+    }
+  }
+
   Future<void> _logMpvPlaybackHealth() async {
     if (_mpvHealthLogInFlight) return;
     final native = player.platform;
@@ -691,6 +732,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeTimingsCallback(_onFrameTimings);
     windowManager.removeListener(this);
     unawaited(
       windowManager.setTitleBarStyle(
