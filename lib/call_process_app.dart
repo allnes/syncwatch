@@ -139,7 +139,7 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
     try {
       const options = WindowOptions(
         size: Size(300, 210),
-        minimumSize: Size(160, 210),
+        minimumSize: Size(160, 120),
         center: true,
         title: 'SyncWatch Call',
         titleBarStyle: TitleBarStyle.hidden,
@@ -206,6 +206,7 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
     required IconData icon,
     required String tooltip,
     required VoidCallback onPressed,
+    required double size,
     Color background = const Color(0xFF183247),
   }) {
     return Tooltip(
@@ -215,24 +216,34 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
         style: IconButton.styleFrom(
           backgroundColor: background,
           foregroundColor: Colors.white,
-          minimumSize: const Size(40, 40),
+          minimumSize: Size(size, size),
+          maximumSize: Size(size, size),
+          padding: EdgeInsets.zero,
         ),
-        icon: Icon(icon, size: 20),
+        icon: Icon(icon, size: size * 0.50),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    const radius = 22.0;
+    final radius = _fullscreen ? 0.0 : 22.0;
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark(useMaterial3: true),
       home: Scaffold(
         backgroundColor: Colors.transparent,
-        body: DragToResizeArea(
-          resizeEdgeSize: 8,
-          child: ClipRRect(
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = !_fullscreen &&
+                constraints.maxWidth <= 340 &&
+                constraints.maxHeight <= 260;
+            final callButtonSize = _fullscreen ? 40.0 : (compact ? 34.0 : 40.0);
+            final callButtonGap = _fullscreen ? 10.0 : (compact ? 8.0 : 10.0);
+            final bottomInset = _fullscreen ? 16.0 : (compact ? 12.0 : 16.0);
+            return DragToResizeArea(
+              resizeEdgeSize: 8,
+              child: ClipRRect(
             borderRadius: BorderRadius.circular(radius),
             child: DecoratedBox(
               decoration: BoxDecoration(
@@ -296,7 +307,7 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
                 Positioned(
                   left: 0,
                   right: 0,
-                  bottom: 16,
+                  bottom: bottomInset,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -307,13 +318,14 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
                         icon: _microphoneEnabled
                             ? Icons.mic_rounded
                             : Icons.mic_off_rounded,
+                        size: callButtonSize,
                         onPressed: () => _sendAction(
                           _microphoneEnabled
                               ? 'microphone_off'
                               : 'microphone_on',
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: callButtonGap),
                       _roundButton(
                         tooltip: _cameraEnabled
                             ? 'Выключить камеру'
@@ -321,15 +333,17 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
                         icon: _cameraEnabled
                             ? Icons.videocam_rounded
                             : Icons.videocam_off_rounded,
+                        size: callButtonSize,
                         onPressed: () => _sendAction(
                           _cameraEnabled ? 'camera_off' : 'camera_on',
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: callButtonGap),
                       _roundButton(
                         tooltip: 'Завершить звонок',
                         icon: Icons.call_end_rounded,
                         background: const Color(0xFFB3261E),
+                        size: callButtonSize,
                         onPressed: () => _sendAction('hangup'),
                       ),
                     ],
@@ -338,7 +352,8 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
               ],
               ),
             ),
-          ),
+          );
+          },
         ),
       ),
     );
