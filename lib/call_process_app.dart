@@ -145,6 +145,11 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
         backgroundColor: Color(0xFF0B1C2B),
       );
       await windowManager.waitUntilReadyToShow(options, () async {
+        // TitleBarStyle.hidden still leaves the native Windows outline.
+        // Remove the HWND frame entirely; the Flutter contour below is the
+        // only visible border. Resizing remains available through the native
+        // frameless hit-test path.
+        await windowManager.setAsFrameless();
         await windowManager.setResizable(true);
         await windowManager.setPreventClose(false);
         await windowManager.hide();
