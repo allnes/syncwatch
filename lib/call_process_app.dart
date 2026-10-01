@@ -149,12 +149,7 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
         // Remove the HWND frame entirely; the Flutter contour below is the
         // only visible border. Resizing remains available through the native
         // frameless hit-test path.
-        await windowManager.setAsFrameless();
-        // Make the native HWND surface genuinely transparent. ClipRRect alone
-        // only clips Flutter content and otherwise leaves black pixels in the
-        // four corners of the rectangular Windows surface.
-        await windowManager.setBackgroundColor(Colors.transparent);
-        await windowManager.setResizable(true);
+        await _applyFramelessSurface();
         await windowManager.setPreventClose(false);
         await windowManager.hide();
         await WidgetsBinding.instance.endOfFrame;
@@ -173,10 +168,24 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
     }
   }
 
+  Future<void> _applyFramelessSurface() async {
+    await windowManager.setAsFrameless();
+    await windowManager.setBackgroundColor(Colors.transparent);
+    await windowManager.setResizable(true);
+  }
+
   Future<void> _toggleFullscreen() async {
-    final next = !await windowManager.isFullScreen();
-    await windowManager.setFullScreen(next);
-    if (mounted) setState(() => _fullscreen = next);
+    final entering = !await windowManager.isFullScreen();
+    _log('FULLSCREEN begin entering=$entering');
+    await windowManager.setFullScreen(entering);
+    // window_manager changes native styles while entering/leaving fullscreen.
+    // Re-apply the one-surface frameless contract after Windows has completed
+    // that transition so the rectangular native corners never come back.
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    await _applyFramelessSurface();
+    await WidgetsBinding.instance.endOfFrame;
+    if (mounted) setState(() => _fullscreen = entering);
+    _log('FULLSCREEN done entering=$entering');
   }
 
   Future<void> _toggleAlwaysOnTop() async {
