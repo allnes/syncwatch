@@ -140,10 +140,27 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp> wit
         await windowManager.setPreventClose(false);
         _log('setResizable/setPreventClose(false) DONE');
         await windowManager.show();
-        _log('show DONE visible=${await windowManager.isVisible()}');
+        if (await windowManager.isMinimized()) {
+          await windowManager.restore();
+        }
+        // Raise during the ready callback itself. The main process may request
+        // focus before this helper has produced its first native window.
+        await windowManager.setAlwaysOnTop(true);
         await windowManager.focus();
-        _log('focus DONE focused=${await windowManager.isFocused()}');
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+        await windowManager.setAlwaysOnTop(false);
+        _log(
+          'show/focus DONE visible=${await windowManager.isVisible()} '
+          'focused=${await windowManager.isFocused()}',
+        );
       });
+      // A second raise after waitUntilReadyToShow closes the startup race on
+      // Windows where show() can report false inside the ready callback.
+      await windowManager.show();
+      await windowManager.setAlwaysOnTop(true);
+      await windowManager.focus();
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      await windowManager.setAlwaysOnTop(false);
       _log(
         'waitUntilReadyToShow DONE visible=${await windowManager.isVisible()} '
         'focused=${await windowManager.isFocused()} '
