@@ -49,8 +49,20 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp> wit
     if (command == 'focus') {
       _log('COMMAND focus');
       await windowManager.show();
-      await windowManager.restore();
+      if (await windowManager.isMinimized()) {
+        await windowManager.restore();
+      }
+      // Windows can reject a plain SetForegroundWindow/focus request from a
+      // background process. A short topmost transition raises the existing
+      // call window above the main SyncWatch window without leaving it pinned.
+      await windowManager.setAlwaysOnTop(true);
       await windowManager.focus();
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      await windowManager.setAlwaysOnTop(false);
+      _log(
+        'COMMAND focus done visible=${await windowManager.isVisible()} '
+        'focused=${await windowManager.isFocused()}',
+      );
     } else if (command == 'close') {
       _log('COMMAND close');
       await _closeWindow();
@@ -61,7 +73,6 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp> wit
     _log('CLOSE begin');
     _commandTimer?.cancel();
     try {
-      await windowManager.setPreventClose(false);
       await windowManager.destroy();
     } finally {
       exit(0);
@@ -86,7 +97,6 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp> wit
       const options = WindowOptions(
         size: Size(300, 210),
         minimumSize: Size(160, 210),
-        maximumSize: Size(1280, 900),
         center: true,
         title: 'SyncWatch Call',
       );
@@ -94,8 +104,10 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp> wit
       await windowManager.waitUntilReadyToShow(options, () async {
         _log('READY_CALLBACK');
         await windowManager.setResizable(true);
-        await windowManager.setPreventClose(true);
-        _log('setResizable/setPreventClose DONE');
+        // Do not intercept the native close button. With preventClose=false
+        // Windows performs the normal close path and terminates this helper.
+        await windowManager.setPreventClose(false);
+        _log('setResizable/setPreventClose(false) DONE');
         await windowManager.show();
         _log('show DONE visible=${await windowManager.isVisible()}');
         await windowManager.focus();
