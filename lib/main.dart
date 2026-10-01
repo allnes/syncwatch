@@ -9,6 +9,13 @@ import 'call_process_app.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (args.contains('--call-process-diagnostic')) {
+    await windowManager.ensureInitialized();
+    runApp(const CallProcessDiagnosticApp());
+    return;
+  }
+
   MediaKit.ensureInitialized();
   await windowManager.ensureInitialized();
 
@@ -17,11 +24,6 @@ Future<void> main(List<String> args) async {
 
   if (args.contains('--livekit-test-peer')) {
     runApp(const LiveKitTestPeerApp());
-    return;
-  }
-
-  if (args.contains('--call-process-diagnostic')) {
-    runApp(const CallProcessDiagnosticApp());
     return;
   }
 
