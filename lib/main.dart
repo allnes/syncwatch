@@ -5,6 +5,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
 import 'livekit_test_peer_app.dart';
+import 'call_process_app.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +17,11 @@ Future<void> main(List<String> args) async {
 
   if (args.contains('--livekit-test-peer')) {
     runApp(const LiveKitTestPeerApp());
+    return;
+  }
+
+  if (args.contains('--call-process-diagnostic')) {
+    runApp(const CallProcessDiagnosticApp());
     return;
   }
 
