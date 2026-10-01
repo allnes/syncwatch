@@ -15,6 +15,9 @@ class CallProcessDiagnosticApp extends StatefulWidget {
 class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp> with WindowListener {
   Timer? _commandTimer;
   late final File _commandFile;
+  late final File _actionFile;
+  late final File _stateFile;
+  bool _cameraEnabled = true;
   void _log(String message) {
     final line = '[${DateTime.now().toIso8601String()}] [WINDOW] $message';
     debugPrint(line);
@@ -29,12 +32,40 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp> wit
     super.initState();
     _log('initState pid=$pid');
     windowManager.addListener(this);
-    _commandFile = File('${Directory.current.path}${Platform.pathSeparator}logs${Platform.pathSeparator}call_window.command');
+    final logs = '${Directory.current.path}${Platform.pathSeparator}logs';
+    _commandFile = File('$logs${Platform.pathSeparator}call_window.command');
+    _actionFile = File('$logs${Platform.pathSeparator}call_window.action');
+    _stateFile = File('$logs${Platform.pathSeparator}call_window.state');
     try { if (_commandFile.existsSync()) _commandFile.deleteSync(); } catch (_) {}
-    _commandTimer = Timer.periodic(const Duration(milliseconds: 150), (_) => _pollCommand());
+    _commandTimer = Timer.periodic(const Duration(milliseconds: 120), (_) {
+      _pollCommand();
+      _pollState();
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_showDiagnosticWindow());
     });
+  }
+
+  void _pollState() {
+    if (!_stateFile.existsSync()) return;
+    try {
+      final state = _stateFile.readAsStringSync();
+      final enabled = state.contains('camera=on');
+      if (enabled != _cameraEnabled && mounted) {
+        setState(() => _cameraEnabled = enabled);
+        _log('STATE camera=${enabled ? "on" : "off"}');
+      }
+    } catch (_) {}
+  }
+
+  void _sendAction(String action) {
+    try {
+      _actionFile.parent.createSync(recursive: true);
+      _actionFile.writeAsStringSync(action, flush: true);
+      _log('ACTION $action');
+    } catch (error) {
+      _log('ACTION_FAILED $action error=$error');
+    }
   }
 
   Future<void> _pollCommand() async {
@@ -125,11 +156,41 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp> wit
   }
 
   @override
-  Widget build(BuildContext context) => const MaterialApp(
+  Widget build(BuildContext context) => MaterialApp(
         debugShowCheckedModeBanner: false,
-        home: ColoredBox(
-          color: Color(0xFF0B1C2B),
-          child: SizedBox.expand(),
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          backgroundColor: const Color(0xFF0B1C2B),
+          body: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FilledButton.icon(
+                  onPressed: () => _sendAction(
+                    _cameraEnabled ? 'camera_off' : 'camera_on',
+                  ),
+                  icon: Icon(
+                    _cameraEnabled
+                        ? Icons.videocam_rounded
+                        : Icons.videocam_off_rounded,
+                  ),
+                  label: Text(
+                    _cameraEnabled ? 'Камера: ВКЛ' : 'Камера: ВЫКЛ',
+                  ),
+                ),
+                const SizedBox(width: 12),
+                IconButton.filled(
+                  tooltip: 'Завершить звонок',
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.red.shade700,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () => _sendAction('hangup'),
+                  icon: const Icon(Icons.call_end_rounded),
+                ),
+              ],
+            ),
+          ),
         ),
       );
 }
