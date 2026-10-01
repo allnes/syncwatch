@@ -90,6 +90,20 @@ LRESULT FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                                       WPARAM const wparam,
                                       LPARAM const lparam) noexcept {
   LRESULT result = 0;
+  static const UINT syncwatch_bring_to_front =
+      RegisterWindowMessage(L"SyncWatch.BringToFront");
+  if (message == syncwatch_bring_to_front) {
+    if (IsIconic(hwnd)) {
+      ShowWindow(hwnd, SW_RESTORE);
+    } else {
+      ShowWindow(hwnd, SW_SHOW);
+    }
+    BringWindowToTop(hwnd);
+    SetForegroundWindow(hwnd);
+    SetActiveWindow(hwnd);
+    SetFocus(hwnd);
+    return 0;
+  }
   if (message == WM_FONTCHANGE) {
     FlutterDesktopEngineReloadSystemFonts(MultiViewDesktopGetEngineRef());
   }
