@@ -14,15 +14,21 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await windowManager.setTitle('SyncWatch Call');
-      await windowManager.setSize(const Size(300, 210));
-      await windowManager.setMinimumSize(const Size(160, 210));
-      await windowManager.setMaximumSize(const Size(1280, 900));
-      await windowManager.setResizable(true);
-      await windowManager.center();
-      await windowManager.show();
-      await windowManager.focus();
-      debugPrint('[SyncWatch][CALL_PROCESS] READY pid=$pid');
+      const options = WindowOptions(
+        size: Size(300, 210),
+        minimumSize: Size(160, 210),
+        maximumSize: Size(1280, 900),
+        center: true,
+        title: 'SyncWatch Call',
+      );
+      await windowManager.waitUntilReadyToShow(options, () async {
+        await windowManager.setResizable(true);
+        await windowManager.show();
+        await windowManager.focus();
+      });
+      debugPrint(
+        '[SyncWatch][CALL_PROCESS] READY pid=$pid executable="${Platform.resolvedExecutable}"',
+      );
     });
   }
 
