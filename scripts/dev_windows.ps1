@@ -57,10 +57,41 @@ if (!$SkipBuild) {
   if ($LASTEXITCODE -ne 0) { throw "flutter build windows --debug failed." }
 }
 
+# For the WMF hardware-encoder experiment, install the patched libwebrtc
+# artifact produced by our GitHub Actions workflow. The GitHub artifact is a
+# zip containing another zip; accept either the outer artifact or inner zip.
+$debugRuntime = Join-Path $root "build\windows\x64\runner\Debug"
+$downloads = Join-Path $HOME "Downloads"
+$artifactCandidates = @(
+  (Join-Path $downloads "libwebrtc-win-x64-release-patched.zip"),
+  (Join-Path $root "libwebrtc-win-x64-release-patched.zip")
+)
+$artifact = $artifactCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if ($null -eq $artifact) {
+  throw "Patched libwebrtc artifact not found. Expected libwebrtc-win-x64-release-patched.zip in Downloads or repository root."
+}
+$patchedTemp = Join-Path $env:TEMP "syncwatch-patched-libwebrtc"
+if (Test-Path $patchedTemp) { Remove-Item $patchedTemp -Recurse -Force }
+New-Item -ItemType Directory -Force -Path $patchedTemp | Out-Null
+Expand-Archive -Path $artifact -DestinationPath $patchedTemp -Force
+$innerZip = Get-ChildItem $patchedTemp -Filter "*.zip" -File | Select-Object -First 1
+if ($null -ne $innerZip) {
+  $innerDir = Join-Path $patchedTemp "inner"
+  Expand-Archive -Path $innerZip.FullName -DestinationPath $innerDir -Force
+  $patchedDll = Get-ChildItem $innerDir -Filter "libwebrtc.dll" -File -Recurse | Select-Object -First 1
+} else {
+  $patchedDll = Get-ChildItem $patchedTemp -Filter "libwebrtc.dll" -File -Recurse | Select-Object -First 1
+}
+if ($null -eq $patchedDll) { throw "Patched artifact does not contain libwebrtc.dll." }
+$runtimeDll = Join-Path $debugRuntime "libwebrtc.dll"
+if (!(Test-Path $runtimeDll)) { throw "Built runtime libwebrtc.dll not found: $runtimeDll" }
+Copy-Item $patchedDll.FullName $runtimeDll -Force
+Write-Host "Installed patched libwebrtc.dll:"
+Write-Host "  $($patchedDll.FullName) -> $runtimeDll"
+
 # The test-peer flutter run uses the same Windows output directory and can
 # overwrite syncwatch.exe. Preserve a complete client runtime for isolated
 # call-process launches before starting the test peer.
-$debugRuntime = Join-Path $root "build\windows\x64\runner\Debug"
 $callHelperRuntime = Join-Path $root "build\windows\call_helper"
 if (Test-Path $callHelperRuntime) {
   Remove-Item $callHelperRuntime -Recurse -Force
