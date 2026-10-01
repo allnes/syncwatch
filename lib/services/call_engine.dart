@@ -136,11 +136,11 @@ class LiveKitCallEngine implements CallEngine {
           !existingTrack.isDisposed &&
           existingSid != null) {
         if (enabled) {
-          await existingTrack.unmute(stopOnMute: false);
+          await existingTrack.unmute(stopOnMute: true);
           _log('CAMERA unmuted sid=$existingSid persistentTrack=true');
         } else {
-          await existingTrack.mute(stopOnMute: false);
-          _log('CAMERA muted sid=$existingSid persistentTrack=true captureRetained=true');
+          await existingTrack.mute(stopOnMute: true);
+          _log('CAMERA muted sid=$existingSid persistentTrack=true captureStopped=true');
         }
         return;
       }
