@@ -138,7 +138,7 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
     try {
       const options = WindowOptions(
         size: Size(300, 210),
-        minimumSize: Size(300, 210),
+        minimumSize: Size(160, 210),
         center: true,
         title: 'SyncWatch Call',
         titleBarStyle: TitleBarStyle.hidden,
