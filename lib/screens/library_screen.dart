@@ -594,6 +594,26 @@ class _LibraryScreenState extends State<LibraryScreen> {
     try {
       commandFile.parent.createSync(recursive: true);
       commandFile.writeAsStringSync('focus', flush: true);
+      if (Platform.isWindows) {
+        final nativeFocus = File(
+          '${Directory.current.path}${Platform.pathSeparator}windows'
+          '${Platform.pathSeparator}runner'
+          '${Platform.pathSeparator}syncwatch_focus_window.exe',
+        );
+        if (nativeFocus.existsSync()) {
+          final result = await Process.run(
+            nativeFocus.path,
+            const ['SyncWatch Call'],
+            runInShell: false,
+          );
+          _roomLog(
+            'CALL_PROCESS native focus exit=${result.exitCode} '
+            'stderr="${result.stderr}"',
+          );
+        } else {
+          _roomLog('CALL_PROCESS native focus helper missing');
+        }
+      }
       _roomLog('CALL_PROCESS focus requested pid=${process.pid}');
     } catch (error) {
       _roomLog('CALL_PROCESS focus failed pid=${process.pid} error=$error');
