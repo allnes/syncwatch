@@ -443,9 +443,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
       runInShell: false,
     );
     _roomLog('CALL_PROCESS spawned pid=${process.pid}');
-    unawaited(process.exitCode.then(
-      (code) => _roomLog('CALL_PROCESS exit pid=${process.pid} code=$code'),
-    ));
+    unawaited(process.exitCode.then((code) {
+      _roomLog('CALL_PROCESS exit pid=${process.pid} code=$code');
+      if (!mounted || callWindowProcess?.pid != process.pid) return;
+      setState(() {
+        callWindowProcess = null;
+        callActive = false;
+      });
+      unawaited(callEngine.stopCallMedia());
+      _roomLog('CALL ended by window close');
+      debugPrint('[SyncWatch][RESOURCE_EVENT] CALL_ENDED');
+    }));
     unawaited(process.stdout
         .transform(SystemEncoding().decoder)
         .forEach((line) => debugPrint('[SyncWatch][CALL_PROCESS][OUT] $line')));
@@ -472,7 +480,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
     callWindowProcess = null;
     await callEngine.stopCallMedia();
     if (closeWindow && process != null) {
-      process.kill();
+      final commandFile = File(
+        '${Directory.current.path}${Platform.pathSeparator}logs'
+        '${Platform.pathSeparator}call_window.command',
+      );
+      try {
+        commandFile.writeAsStringSync('close', flush: true);
+        await Future<void>.delayed(const Duration(milliseconds: 350));
+      } catch (_) {}
+      if (await _processStillRunning(process)) {
+        process.kill();
+      }
     }
     if (!mounted) return;
     setState(() {
@@ -482,8 +500,25 @@ class _LibraryScreenState extends State<LibraryScreen> {
     debugPrint('[SyncWatch][RESOURCE_EVENT] CALL_ENDED');
   }
 
+  Future<bool> _processStillRunning(Process process) async {
+    if (callWindowProcess?.pid != process.pid) return false;
+    return true;
+  }
+
   Future<void> _focusCallWindow() async {
-    // Diagnostic isolated process intentionally has no IPC/focus command yet.
+    final process = callWindowProcess;
+    if (!callActive || process == null) return;
+    final commandFile = File(
+      '${Directory.current.path}${Platform.pathSeparator}logs'
+      '${Platform.pathSeparator}call_window.command',
+    );
+    try {
+      commandFile.parent.createSync(recursive: true);
+      commandFile.writeAsStringSync('focus', flush: true);
+      _roomLog('CALL_PROCESS focus requested pid=${process.pid}');
+    } catch (error) {
+      _roomLog('CALL_PROCESS focus failed pid=${process.pid} error=$error');
+    }
   }
 
   Future<void> _browseFolder() async {
