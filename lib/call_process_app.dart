@@ -206,12 +206,8 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
         backgroundColor: Colors.transparent,
         body: ClipRRect(
           borderRadius: BorderRadius.circular(radius),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: const Color(0xFF0B1C2B),
-              borderRadius: BorderRadius.circular(radius),
-              border: Border.all(color: const Color(0xFF29485E), width: 1),
-            ),
+          child: ColoredBox(
+            color: const Color(0xFF0B1C2B),
             child: Stack(
               children: [
                 Positioned(
@@ -224,16 +220,7 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
                     onPanStart: (_) => windowManager.startDragging(),
                     child: Row(
                       children: [
-                        const Expanded(
-                          child: Text(
-                            'SyncWatch',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
+                        const Spacer(),
                         IconButton(
                           tooltip: _alwaysOnTop
                               ? 'Открепить от переднего плана'
