@@ -105,7 +105,7 @@ class LiveKitCallEngine implements CallEngine {
       maxFrameRate: 15.0,
     );
     const publishOptions = VideoPublishOptions(
-      videoCodec: 'h265',
+      videoCodec: 'h264',
       simulcast: false,
       videoEncoding: VideoEncoding(
         maxFramerate: 15,
@@ -127,14 +127,64 @@ class LiveKitCallEngine implements CallEngine {
     }
 
     try {
+      // Keep one publication/transceiver for the whole call. Re-publishing on
+      // every camera toggle causes renegotiation and additional transceivers on
+      // Windows. Mute without stopping capture preserves the existing sender.
+      final existingTrack = _ownedCameraTrack;
+      final existingSid = _ownedCameraPublicationSid;
+      if (existingTrack != null &&
+          !existingTrack.isDisposed &&
+          existingSid != null) {
+        if (enabled) {
+          await existingTrack.unmute(stopOnMute: false);
+          _log('CAMERA unmuted sid=$existingSid persistentTrack=true');
+        } else {
+          await existingTrack.mute(stopOnMute: false);
+          _log('CAMERA muted sid=$existingSid persistentTrack=true captureRetained=true');
+        }
+        return;
+      }
+
       if (!enabled) {
-        final sid = _ownedCameraPublicationSid;
-        final track = _ownedCameraTrack;
-        if (sid != null) {
-          try {
-            await participant.removePublishedTrack(sid);
-            _log('CAMERA unpublished sid=$sid');
-          } catch (error) {
+        _log('CAMERA disabled before publication; no track created');
+        return;
+      }
+
+      final track = await LocalVideoTrack.createCameraTrack(captureOptions);
+      _ownedCameraTrack = track;
+      _log(
+        'CAMERA track created options=${track.currentOptions} '
+        'mediaTrackId=${track.mediaStreamTrack.id}',
+      );
+      try {
+        final dynamic mediaTrack = track.mediaStreamTrack;
+        final dynamic settings = await mediaTrack.getSettings();
+        _log('CAMERA capture actual settings=$settings');
+      } catch (error) {
+        _log('CAMERA capture settings unavailable error=$error');
+      }
+
+      final publication = await participant.publishVideoTrack(
+        track,
+        publishOptions: publishOptions,
+      );
+      _ownedCameraPublicationSid = publication.sid;
+      _log(
+        'CAMERA published sid=${publication.sid} source=${publication.source} '
+        'muted=${publication.muted} simulcast=${publishOptions.simulcast} '
+        'capture=${track.currentOptions} publish=${track.lastPublishOptions}',
+      );
+
+      Future<void>.delayed(const Duration(seconds: 3), () async {
+        if (_room == null || !_cameraEnabled || track.isDisposed) return;
+        try {
+          final stats = await track.getSenderStats();
+          _log('CAMERA sender stats t+3s count=${stats.length} stats=$stats');
+        } catch (error) {
+          _log('CAMERA sender stats t+3s failed error=$error');
+        }
+      });
+    } catch (error) {
             _log('CAMERA unpublish failed sid=$sid error=$error');
           }
         }
