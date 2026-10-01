@@ -1,0 +1,31 @@
+diff --git a/src/win/wmf_h265_encoder.cc b/src/win/wmf_h265_encoder.cc
+--- a/src/win/wmf_h265_encoder.cc
++++ b/src/win/wmf_h265_encoder.cc
+@@ -117,8 +117,28 @@ HRESULT WmfH265Encoder::CreateHEVCEncoder() {
+-  // Activate the first (highest priority) encoder
+-  hr = activate[0]->ActivateObject(IID_PPV_ARGS(&encoder_));
++  // MFTEnumEx sorts hardware encoders by priority, but the first registered
++  // device is not necessarily activatable in the current process. For
++  // example, NVIDIA may be enumerated first while Intel QSV is the usable
++  // encoder. Try every enumerated hardware MFT before giving up.
++  hr = E_FAIL;
++  for (UINT32 i = 0; i < count; ++i) {
++    LPWSTR friendly_name = nullptr;
++    UINT32 name_len = 0;
++    activate[i]->GetAllocatedString(MFT_FRIENDLY_NAME_Attribute,
++                                    &friendly_name, &name_len);
++    const std::string name =
++        friendly_name ? webrtc::ToUtf8(friendly_name, name_len) : "<unknown>";
++    if (friendly_name) CoTaskMemFree(friendly_name);
++
++    encoder_.Reset();
++    hr = activate[i]->ActivateObject(IID_PPV_ARGS(&encoder_));
++    if (SUCCEEDED(hr)) {
++      RTC_LOG(LS_INFO) << "Activated HEVC encoder MFT: " << name;
++      break;
++    }
++    RTC_LOG(LS_WARNING) << "Failed to activate HEVC encoder MFT "
++                        << name << ": " << HrStr(hr);
++  }
+ 
+   for (UINT32 i = 0; i < count; i++) {
