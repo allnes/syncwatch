@@ -22,6 +22,7 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
   bool _cameraEnabled = true;
   bool _microphoneEnabled = true;
   bool _fullscreen = false;
+  Rect? _restoreBounds;
   bool _alwaysOnTop = false;
 
   void _log(String message) {
@@ -175,17 +176,24 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
   }
 
   Future<void> _toggleFullscreen() async {
-    final entering = !await windowManager.isFullScreen();
-    _log('FULLSCREEN begin entering=$entering');
-    await windowManager.setFullScreen(entering);
-    // window_manager changes native styles while entering/leaving fullscreen.
-    // Re-apply the one-surface frameless contract after Windows has completed
-    // that transition so the rectangular native corners never come back.
-    await Future<void>.delayed(const Duration(milliseconds: 80));
-    await _applyFramelessSurface();
-    await WidgetsBinding.instance.endOfFrame;
-    if (mounted) setState(() => _fullscreen = entering);
-    _log('FULLSCREEN done entering=$entering');
+    // Do not use window_manager.setFullScreen() here: on Windows it rewrites
+    // native styles and fights our transparent frameless surface. Instead use
+    // a reversible borderless maximize, keeping the Flutter chrome alive.
+    if (!_fullscreen) {
+      _restoreBounds = await windowManager.getBounds();
+      await windowManager.maximize();
+      if (mounted) setState(() => _fullscreen = true);
+      _log('FULLSCREEN emulated enter restore=$_restoreBounds');
+    } else {
+      await windowManager.unmaximize();
+      final restore = _restoreBounds;
+      if (restore != null) {
+        await windowManager.setBounds(restore);
+      }
+      await _applyFramelessSurface();
+      if (mounted) setState(() => _fullscreen = false);
+      _log('FULLSCREEN emulated leave restore=$restore');
+    }
   }
 
   Future<void> _toggleAlwaysOnTop() async {
@@ -222,9 +230,11 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
       theme: ThemeData.dark(useMaterial3: true),
       home: Scaffold(
         backgroundColor: Colors.transparent,
-        body: ClipRRect(
-          borderRadius: BorderRadius.circular(radius),
-          child: DecoratedBox(
+        body: DragToResizeArea(
+          resizeEdgeSize: 8,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(radius),
+            child: DecoratedBox(
               decoration: BoxDecoration(
                 color: const Color(0xFF0B1C2B),
                 borderRadius: BorderRadius.circular(radius),
@@ -326,6 +336,7 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
                   ),
                 ),
               ],
+              ),
             ),
           ),
         ),
