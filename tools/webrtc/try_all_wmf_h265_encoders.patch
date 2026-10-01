@@ -1,13 +1,12 @@
-diff --git a/src/win/wmf_h265_encoder.cc b/src/win/wmf_h265_encoder.cc
---- a/src/win/wmf_h265_encoder.cc
-+++ b/src/win/wmf_h265_encoder.cc
-@@ -117,8 +117,28 @@ HRESULT WmfH265Encoder::CreateHEVCEncoder() {
+diff --git a/libwebrtc/src/win/wmf_h265_encoder.cc b/libwebrtc/src/win/wmf_h265_encoder.cc
+--- a/libwebrtc/src/win/wmf_h265_encoder.cc
++++ b/libwebrtc/src/win/wmf_h265_encoder.cc
+@@ -156,8 +156,30 @@ HRESULT WmfH265Encoder::CreateHEVCEncoder() {
 -  // Activate the first (highest priority) encoder
 -  hr = activate[0]->ActivateObject(IID_PPV_ARGS(&encoder_));
-+  // MFTEnumEx sorts hardware encoders by priority, but the first registered
-+  // device is not necessarily activatable in the current process. For
-+  // example, NVIDIA may be enumerated first while Intel QSV is the usable
-+  // encoder. Try every enumerated hardware MFT before giving up.
++  // SyncWatch: do not give up when the highest-priority hardware MFT cannot
++  // be activated. Some hybrid Intel/NVIDIA systems enumerate NVIDIA first
++  // even when only the Intel HEVC MFT is usable by this process.
 +  hr = E_FAIL;
 +  for (UINT32 i = 0; i < count; ++i) {
 +    LPWSTR friendly_name = nullptr;
@@ -16,16 +15,19 @@ diff --git a/src/win/wmf_h265_encoder.cc b/src/win/wmf_h265_encoder.cc
 +                                    &friendly_name, &name_len);
 +    const std::string name =
 +        friendly_name ? webrtc::ToUtf8(friendly_name, name_len) : "<unknown>";
-+    if (friendly_name) CoTaskMemFree(friendly_name);
++    if (friendly_name) {
++      CoTaskMemFree(friendly_name);
++    }
 +
 +    encoder_.Reset();
 +    hr = activate[i]->ActivateObject(IID_PPV_ARGS(&encoder_));
 +    if (SUCCEEDED(hr)) {
-+      RTC_LOG(LS_INFO) << "Activated HEVC encoder MFT: " << name;
++      RTC_LOG(LS_INFO) << "SYNCWATCH_WMF_FALLBACK activated HEVC MFT "
++                       << name << " index=" << i;
 +      break;
 +    }
-+    RTC_LOG(LS_WARNING) << "Failed to activate HEVC encoder MFT "
-+                        << name << ": " << HrStr(hr);
++    RTC_LOG(LS_WARNING) << "SYNCWATCH_WMF_FALLBACK failed HEVC MFT "
++                        << name << " index=" << i << " hr=" << HrStr(hr);
 +  }
  
    for (UINT32 i = 0; i < count; i++) {
