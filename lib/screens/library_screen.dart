@@ -421,13 +421,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
     await callEngine.setCameraEnabled(cameraEnabled);
 
     final executable = File(Platform.resolvedExecutable).absolute.path;
-    _roomLog('CALL_PROCESS spawn executable="$executable"');
+    _roomLog(
+      'CALL_PROCESS spawn executable="$executable" '
+      'exists=${File(executable).existsSync()} cwd="${Directory.current.path}"',
+    );
     final process = await Process.start(
       executable,
       const ['--call-process-diagnostic'],
       mode: ProcessStartMode.normal,
       runInShell: false,
     );
+    _roomLog('CALL_PROCESS spawned pid=${process.pid}');
     unawaited(process.exitCode.then(
       (code) => _roomLog('CALL_PROCESS exit pid=${process.pid} code=$code'),
     ));
