@@ -352,7 +352,8 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
               ],
               ),
             ),
-          );
+              ),
+            );
           },
         ),
       ),
