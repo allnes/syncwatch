@@ -547,6 +547,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
     debugPrint(
       '[SyncWatch][RESOURCE_EVENT] CALL_STARTED isolatedProcessPid=${process.pid}',
     );
+    unawaited(Future<void>.delayed(const Duration(milliseconds: 900), () async {
+      if (!mounted || callWindowProcess?.pid != process.pid || !callActive) return;
+      _roomLog('CALL_PROCESS initial focus requested pid=${process.pid}');
+      await _focusCallWindow();
+    }));
   }
 
   Future<void> _endCall({bool closeWindow = true}) async {
