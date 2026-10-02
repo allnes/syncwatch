@@ -20,6 +20,8 @@ Verified before changes:
 - Library scan, metadata, movie playback, pause, seek, return to library, and
   retained playback session work in the Windows UI.
 - Room connection and outgoing playback messages reach the test participant.
+- Incoming `START` commands sent through LiveKit RoomService reach the player
+  and restart playback at the requested position.
 
 Baseline limitations and findings:
 
@@ -69,13 +71,76 @@ claiming an end-to-end pass.
 - Normal call windows use framed stdio events instead of three disk-polling
   timers. The standalone diagnostic launch retains its legacy file interface.
 
-Initial verification of the implementation: 20 automated tests passed,
-`flutter analyze lib test` passed, and the Windows release build passed.
+Verification of the exact repository sources at `ab0cdc6`: 20 automated tests
+passed, `flutter analyze lib test tool` passed, the changed application/test
+files passed `dart format --output=none --set-exit-if-changed`, and the Windows
+release build passed.
 The native helper test `dart run tool/check_call_window_ipc.dart <exe>` passed
 three cycles in an interactive Windows session, including parent-pipe EOF.
-The helper reported ready, accepted a state message, and exited with code 0
-each time; no helper processes remained afterward.
+The helper reported ready, was sent a state message, and exited with code 0
+each time; no helper processes remained afterward. This checks transport and
+lifecycle, not camera rendering or the visual state of its controls.
+
+The failed-start scenario was repeated twice on Windows after the change. In
+both cases, logs show the microphone publication being removed after camera
+creation fails; LiveKit RoomService reports an active participant with **zero
+published tracks**. The baseline retained an unmuted microphone in this case.
 
 Use `scripts/measure_windows_resources.ps1 -ProcessIds <pid> -Seconds 30
--OutputPath <file.csv>` for raw resource samples. CPU is expressed as a
-percentage of one logical core, not Task Manager's whole-machine percentage.
+-OutputPath <file.csv> -IncludeGpu` for CPU, RAM, and GPU samples. Include the
+main and helper PIDs when a call is active. The companion `<file>-gpu.csv`
+preserves individual GPU adapter/engine counters. Without `-IncludeGpu`, GPU
+fields stay empty; this mode was checked separately on Windows.
+
+GPU sampling uses a continuous Windows PDH session at one-second intervals.
+Engine categories and the overall process value use the busiest engine, not
+an addition of simultaneous engines, following [Microsoft's interpretation](https://devblogs.microsoft.com/directx/gpus-in-the-task-manager/).
+Shared GPU memory is reported separately from process private bytes; do not
+add them together as an estimate of physical RAM. CPU is expressed as a
+percentage of one logical core; divide by 20 on this test machine to compare
+with Task Manager's whole-machine percentage. English performance-counter
+names are required by the script; unavailable counters cause an error.
+
+The player retains `hwdec=auto`. This host selects `d3d11va-copy`, confirmed
+by both mpv logs and active Video Decode counters. Forcing `d3d11va` is not a
+validated replacement for this Flutter/libmpv texture integration: the
+[mpv manual](https://mpv.io/manual/stable/#options-hwdec) specifies compatible
+video outputs/contexts for direct D3D11 decoding. No zero-copy claim is made.
+
+## Measured playback comparison
+
+The table compares `eee5854` with `ab0cdc6` in the same RDP session and window
+size, using the H.264 854x480, 24 fps trailer. Both clients were newly launched,
+connected to the local test room, and played for at least 20 seconds before an
+incoming `START` reset the position to zero. Sampling began three seconds
+later: 30 one-second samples, without timeline hover or a call. The optimized
+process spent additional time idle in the library before starting playback.
+Both runs reported `d3d11va-copy` and zero decoder/frame drops in the sampled
+interval. These are short playback measurements, not a 1080p/4K or combined
+camera/call stress test.
+
+| Mean metric | Baseline | Optimized |
+| --- | ---: | ---: |
+| Process private memory | 516.1 MiB | 379.5 MiB |
+| Process working set | 502.0 MiB | 351.1 MiB |
+| GPU 3D / busiest engine | 23.86% | 11.99% |
+| GPU Video Decode | 1.79% | 2.24% |
+| GPU shared memory | 285.6 MiB | 163.9 MiB |
+| CPU, one logical core = 100% | 12.7% | 11.8% |
+
+This pair shows 26% less private memory and 50% less GPU 3D activity. Hardware
+decoding remains active; the smaller 3D value measures less rendering work,
+not disabled GPU acceleration. Earlier CPU-only runs varied, including an
+optimized run at 19.8% of one core, so no stable CPU improvement is claimed.
+
+Raw data: [baseline](measurements/2026-10-02/baseline-gpu-playback.csv),
+[optimized fresh](measurements/2026-10-02/optimized-gpu-fresh.csv), and an
+[additional optimized warm run](measurements/2026-10-02/optimized-gpu-playback.csv).
+Each has a companion `-gpu.csv` with individual engine and memory counters.
+The warm run measured 336.1 MiB private memory and 12.34% GPU 3D; it is retained
+as supporting data, not substituted for the fresh comparison.
+
+After-change UI checks also passed incoming `START`/`PAUSE`, seek, keyboard
+fullscreen and Escape, return to library, playback-session retention, ending
+watching, and application exit. Full camera calling and the custom WebRTC DLL
+remain outside the verified scope described above.
