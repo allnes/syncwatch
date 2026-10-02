@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import '../lib/services/call_window_ipc.dart';
+import 'package:syncwatch/services/call_window_ipc.dart';
 
 /// Run in an interactive Windows session after building the release client:
 /// dart run tool/check_call_window_ipc.dart build/windows/x64/runner/Release/syncwatch.exe

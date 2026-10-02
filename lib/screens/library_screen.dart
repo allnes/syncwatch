@@ -18,10 +18,7 @@ import 'player_screen.dart';
 import 'settings_screen.dart';
 
 class LibraryScreen extends StatefulWidget {
-  const LibraryScreen({
-    super.key,
-    required this.controller,
-  });
+  const LibraryScreen({super.key, required this.controller});
 
   final AppController controller;
 
@@ -33,26 +30,46 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool get _isLight => Theme.of(context).brightness == Brightness.light;
   Color get _pageBackgroundDeep =>
       _isLight ? syncLightBackgroundDeep : syncBackgroundDeep;
-  Color get _panelSurface =>
-      _isLight ? syncLightSurface : syncSurface;
-  Color get _panelBorder =>
-      _isLight ? syncLightBorder : syncBorder;
+  Color get _panelSurface => _isLight ? syncLightSurface : syncSurface;
+  Color get _panelBorder => _isLight ? syncLightBorder : syncBorder;
   Color get _secondaryText =>
       _isLight ? syncLightTextSecondary : Colors.white54;
   Color get _secondaryTextStrong =>
       _isLight ? syncLightTextSecondary : Colors.white70;
   static const _videoExtensions = <String>{
-    '.mkv', '.mp4', '.avi', '.mov', '.m4v', '.webm', '.wmv',
-    '.mpg', '.mpeg', '.ts', '.m2ts',
+    '.mkv',
+    '.mp4',
+    '.avi',
+    '.mov',
+    '.m4v',
+    '.webm',
+    '.wmv',
+    '.mpg',
+    '.mpeg',
+    '.ts',
+    '.m2ts',
   };
 
   static const _subtitleExtensions = <String>{
-    '.srt', '.ass', '.ssa', '.vtt', '.sub',
+    '.srt',
+    '.ass',
+    '.ssa',
+    '.vtt',
+    '.sub',
   };
 
   static const _externalAudioExtensions = <String>{
-    '.aac', '.ac3', '.dts', '.eac3', '.flac', '.m4a', '.mka', '.mp3',
-    '.ogg', '.opus', '.wav',
+    '.aac',
+    '.ac3',
+    '.dts',
+    '.eac3',
+    '.flac',
+    '.m4a',
+    '.mka',
+    '.mp3',
+    '.ogg',
+    '.opus',
+    '.wav',
   };
 
   List<MovieItem> movies = demoMovies;
@@ -74,7 +91,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   late final CallEngine callEngine;
   LiveKitSyncEngine? roomSyncEngine;
   EventsListener<RoomEvent>? roomPresenceListener;
-  final Map<String, EventsListener<ParticipantEvent>> remoteSpeakingListeners = {};
+  final Map<String, EventsListener<ParticipantEvent>> remoteSpeakingListeners =
+      {};
   bool partnerOnline = false;
   bool roomReconnecting = false;
   bool playbackConnectionInterrupted = false;
@@ -180,7 +198,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ? null
           : 'Собеседник вернулся. Восстанавливаем синхронизацию…';
     });
-    await _sendCallConnectionNotice('Собеседник вернулся. Восстанавливаем соединение…');
+    await _sendCallConnectionNotice(
+      'Собеседник вернулся. Восстанавливаем соединение…',
+    );
     final sync = roomSyncEngine;
     if (sync != null) {
       await sync.requestPlaybackState();
@@ -210,8 +230,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
     remoteSpeakingListeners.remove(key)?.dispose();
     final listener = participant.createListener()
       ..on<SpeakingChangedEvent>((event) {
-        final anyRemoteSpeaking = callEngine.room?.remoteParticipants.values
-                .any((remote) => remote.isSpeaking) ??
+        final anyRemoteSpeaking =
+            callEngine.room?.remoteParticipants.values.any(
+              (remote) => remote.isSpeaking,
+            ) ??
             false;
         widget.controller.setRemoteSpeaking(anyRemoteSpeaking);
         _roomLog(
@@ -257,16 +279,22 @@ class _LibraryScreenState extends State<LibraryScreen> {
         partnerResyncTimer = null;
         _roomLog('participant left identity=${event.participant.identity}');
         remoteSpeakingListeners.remove(event.participant.identity)?.dispose();
-        final anyRemoteSpeaking = room.remoteParticipants.values
-            .any((remote) => remote.isSpeaking);
+        final anyRemoteSpeaking = room.remoteParticipants.values.any(
+          (remote) => remote.isSpeaking,
+        );
         widget.controller.setRemoteSpeaking(anyRemoteSpeaking);
-        unawaited(_sendCallConnectionNotice('Собеседник отключился. Ожидаем повторного подключения…'));
+        unawaited(
+          _sendCallConnectionNotice(
+            'Собеседник отключился. Ожидаем повторного подключения…',
+          ),
+        );
         if (!mounted) return;
         setState(() {
           partnerOnline = room.remoteParticipants.isNotEmpty;
           if (!partnerOnline && activePlayerMovie != null) {
             playbackConnectionInterrupted = true;
-            playbackConnectionMessage = 'Собеседник отключился. Воспроизведение приостановлено.';
+            playbackConnectionMessage =
+                'Собеседник отключился. Воспроизведение приостановлено.';
           }
         });
       })
@@ -278,7 +306,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
           roomReconnecting = true;
           if (activePlayerMovie != null) {
             playbackConnectionInterrupted = true;
-            playbackConnectionMessage = 'Переподключение… Воспроизведение приостановлено.';
+            playbackConnectionMessage =
+                'Переподключение… Воспроизведение приостановлено.';
           }
         });
       })
@@ -298,7 +327,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
         partnerResyncTimer?.cancel();
         partnerResyncTimer = null;
         _roomLog('DISCONNECTED reason=${event.reason}');
-        unawaited(_sendCallConnectionNotice('Соединение потеряно. Подключитесь к комнате снова.'));
+        unawaited(
+          _sendCallConnectionNotice(
+            'Соединение потеряно. Подключитесь к комнате снова.',
+          ),
+        );
         if (!mounted) return;
         unawaited(roomSyncEngine?.dispose());
         roomSyncEngine = null;
@@ -312,7 +345,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
           roomConnectionError = event.reason?.toString();
           if (activePlayerMovie != null) {
             playbackConnectionInterrupted = true;
-            playbackConnectionMessage = 'Соединение потеряно. Подключитесь к комнате снова.';
+            playbackConnectionMessage =
+                'Соединение потеряно. Подключитесь к комнате снова.';
           }
         });
       });
@@ -394,19 +428,21 @@ class _LibraryScreenState extends State<LibraryScreen> {
             : (widget.controller.playbackPositionFor(
                         activePlayerMovie!.fullPath,
                       ) *
-                    1000)
-                .round(),
+                      1000)
+                  .round(),
       ),
       isPlaying: () => showingPlayer,
     );
     sync.setRemoteSessionHandler(_handleRemoteSession);
-    sync.setLibraryProvider(() => [
-      for (final movie in movies)
-        SharedMediaDescriptor(
-          movieId: movie.movieId,
-          fingerprint: movie.mediaFingerprint,
-        ),
-    ]);
+    sync.setLibraryProvider(
+      () => [
+        for (final movie in movies)
+          SharedMediaDescriptor(
+            movieId: movie.movieId,
+            fingerprint: movie.mediaFingerprint,
+          ),
+      ],
+    );
     await sync.connect();
     roomSyncEngine = sync;
     await sync.requestPlaybackState();
@@ -485,7 +521,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
         '[SyncWatch][RESOURCE_EVENT] AB_CAMERA_${enabled ? "ON" : "OFF"}_DONE',
       );
     } catch (error) {
-      _roomLog('AB_CAMERA_FAILED target=${enabled ? "ON" : "OFF"} error=$error');
+      _roomLog(
+        'AB_CAMERA_FAILED target=${enabled ? "ON" : "OFF"} error=$error',
+      );
     }
   }
 
@@ -655,11 +693,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
           '${Platform.pathSeparator}syncwatch_focus_window.exe',
         );
         if (nativeFocus.existsSync()) {
-          final result = await Process.run(
-            nativeFocus.path,
-            const ['SyncWatch Call'],
-            runInShell: false,
-          );
+          final result = await Process.run(nativeFocus.path, const [
+            'SyncWatch Call',
+          ], runInShell: false);
           _roomLog(
             'CALL_PROCESS native focus exit=${result.exitCode} '
             'stderr="${result.stderr}"',
@@ -773,9 +809,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
       }
 
       videoFiles.sort(
-        (a, b) => _fileName(a.path)
-            .toLowerCase()
-            .compareTo(_fileName(b.path).toLowerCase()),
+        (a, b) => _fileName(
+          a.path,
+        ).toLowerCase().compareTo(_fileName(b.path).toLowerCase()),
       );
 
       final previousByPath = <String, MovieItem>{
@@ -786,14 +822,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
         final fileName = _fileName(file.path);
         final base = _baseName(fileName).toLowerCase();
 
-        final matchingSubs = subtitleFiles
-            .where((subtitle) {
-              final subName = _fileName(subtitle.path).toLowerCase();
-              return subName.startsWith('$base.');
-            })
-            .map((subtitle) => _fileName(subtitle.path))
-            .toList()
-          ..sort();
+        final matchingSubs =
+            subtitleFiles
+                .where((subtitle) {
+                  final subName = _fileName(subtitle.path).toLowerCase();
+                  return subName.startsWith('$base.');
+                })
+                .map((subtitle) => _fileName(subtitle.path))
+                .toList()
+              ..sort();
 
         final isFolderMovie = _looksLikeMovieBundle(
           videoFile: file,
@@ -864,10 +901,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
     final probe = Player();
     try {
-      await probe.open(
-        Media(Uri.file(movie.fullPath).toString()),
-        play: false,
-      );
+      await probe.open(Media(Uri.file(movie.fullPath).toString()), play: false);
 
       Duration duration = probe.state.duration;
       if (duration == Duration.zero) {
@@ -883,8 +917,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         try {
           tracks = await probe.stream.tracks
               .firstWhere(
-                (value) =>
-                    value.audio.isNotEmpty || value.subtitle.isNotEmpty,
+                (value) => value.audio.isNotEmpty || value.subtitle.isNotEmpty,
               )
               .timeout(const Duration(seconds: 2));
         } catch (_) {}
@@ -918,9 +951,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         resolution: resolution,
         audioTracks: audio.length,
         subtitleTracks: embeddedSubtitles.length + externalSubtitles.length,
-        audioTrackNames: [
-          for (final track in audio) _audioTrackLabel(track),
-        ],
+        audioTrackNames: [for (final track in audio) _audioTrackLabel(track)],
         subtitleTrackNames: [
           widget.controller.t('noSubtitles'),
           for (final track in embeddedSubtitles) _subtitleTrackLabel(track),
@@ -1060,7 +1091,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 onShowCall: callActive ? _focusCallWindow : null,
                 onReturnHome: _showLibraryFromPlayer,
                 onMovieChanged: _handlePlayerMovieChanged,
-                onEndWatching: () => _endActivePlaybackSession(broadcast: false),
+                onEndWatching: () =>
+                    _endActivePlaybackSession(broadcast: false),
                 connectionInterrupted: playbackConnectionInterrupted,
                 connectionMessage: playbackConnectionMessage,
                 active: showingPlayer,
@@ -1068,10 +1100,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
         final content = IndexedStack(
           index: showingPlayer && movie != null ? 1 : 0,
-          children: [
-            libraryView,
-            playerView,
-          ],
+          children: [libraryView, playerView],
         );
 
         return content;
@@ -1116,17 +1145,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
             color: !roomConnected
                 ? Colors.white24
                 : partnerOnline
-                    ? syncSuccess
-                    : Colors.white38,
+                ? syncSuccess
+                : Colors.white38,
           ),
           const SizedBox(width: 7),
           Text(
             partnerOnline
                 ? widget.controller.t('friendOnline')
                 : 'Собеседник не подключён',
-            style: TextStyle(
-              color: !roomConnected ? Colors.white30 : null,
-            ),
+            style: TextStyle(color: !roomConnected ? Colors.white30 : null),
           ),
           const SizedBox(width: 22),
           Icon(
@@ -1134,8 +1161,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
             color: !roomConnected
                 ? Colors.white24
                 : callActive
-                    ? syncSuccess
-                    : Colors.white54,
+                ? syncSuccess
+                : Colors.white54,
             size: 20,
           ),
           const SizedBox(width: 7),
@@ -1143,9 +1170,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             callActive
                 ? widget.controller.t('callActive')
                 : widget.controller.t('callInactive'),
-            style: TextStyle(
-              color: !roomConnected ? Colors.white30 : null,
-            ),
+            style: TextStyle(color: !roomConnected ? Colors.white30 : null),
           ),
           const SizedBox(width: 22),
           const SizedBox(width: 12),
@@ -1206,7 +1231,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   alignment: Alignment.centerLeft,
                   decoration: BoxDecoration(
-                    color: _pageBackgroundDeep.withValues(alpha: _isLight ? 0.72 : 0.55),
+                    color: _pageBackgroundDeep.withValues(
+                      alpha: _isLight ? 0.72 : 0.55,
+                    ),
                     borderRadius: BorderRadius.circular(11),
                     border: Border.all(color: _panelBorder),
                   ),
@@ -1225,7 +1252,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ),
               IconButton(
                 tooltip: widget.controller.t('rescan'),
-                onPressed: scanning ? null : () => _scanLibrary(forceEmpty: true),
+                onPressed: scanning
+                    ? null
+                    : () => _scanLibrary(forceEmpty: true),
                 icon: scanning
                     ? const SizedBox(
                         width: 18,
@@ -1281,8 +1310,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                             color: active
                                 ? (_isLight ? syncAccent : syncAccentSoft)
                                 : (_isLight
-                                    ? syncLightTextSecondary
-                                    : Colors.white60),
+                                      ? syncLightTextSecondary
+                                      : Colors.white60),
                           ),
                           title: Text(
                             movie.fileName,
@@ -1293,8 +1322,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                               ? null
                               : Text(
                                   _formatShort(movie.duration),
-                                  style:
-                                      TextStyle(color: _secondaryText),
+                                  style: TextStyle(color: _secondaryText),
                                 ),
                           onTap: () async {
                             setState(() {
@@ -1323,8 +1351,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
         const lowerPanelMinHeight = 250.0;
         const sectionGap = 14.0;
         final selectedHeight =
-            (constraints.maxHeight - lowerPanelMinHeight - sectionGap)
-                .clamp(260.0, 375.0);
+            (constraints.maxHeight - lowerPanelMinHeight - sectionGap).clamp(
+              260.0,
+              375.0,
+            );
 
         return Column(
           children: [
@@ -1367,8 +1397,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                     setState(() {
                                       expandedTrackMenu =
                                           expandedTrackMenu == 'audio'
-                                              ? null
-                                              : 'audio';
+                                          ? null
+                                          : 'audio';
                                     });
                                     return;
                                   }
@@ -1377,8 +1407,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                     setState(() {
                                       expandedTrackMenu =
                                           expandedTrackMenu == 'subtitles'
-                                              ? null
-                                              : 'subtitles';
+                                          ? null
+                                          : 'subtitles';
                                     });
                                     return;
                                   }
@@ -1415,8 +1445,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _movieDetails(MovieItem movie) {
-    final continuingRemote = remotePlaybackActive &&
-        remotePlaybackMovieId == movie.movieId;
+    final continuingRemote =
+        remotePlaybackActive && remotePlaybackMovieId == movie.movieId;
     if (continuingRemote) {
       widget.controller.updatePlaybackPosition(
         movie.fullPath,
@@ -1432,9 +1462,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ? [widget.controller.t('noSubtitles')]
         : movie.subtitleTrackNames;
 
-    selectedAudioIndex = selectedAudioIndex.clamp(0, audioNames.length - 1).toInt();
-    selectedSubtitleIndex =
-        selectedSubtitleIndex.clamp(0, subtitleNames.length - 1).toInt();
+    selectedAudioIndex = selectedAudioIndex
+        .clamp(0, audioNames.length - 1)
+        .toInt();
+    selectedSubtitleIndex = selectedSubtitleIndex
+        .clamp(0, subtitleNames.length - 1)
+        .toInt();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1507,7 +1540,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
               icon: const Icon(Icons.play_arrow_rounded),
               label: Text(
                 (_isLivePlaybackMovie(movie) ||
-                        (remotePlaybackActive && remotePlaybackMovieId == movie.movieId))
+                        (remotePlaybackActive &&
+                            remotePlaybackMovieId == movie.movieId))
                     ? widget.controller.t('continueWatching')
                     : widget.controller.t('startWatching'),
               ),
@@ -1527,7 +1561,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
           constraints: const BoxConstraints(minHeight: 62),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: _pageBackgroundDeep.withValues(alpha: _isLight ? 0.64 : 0.38),
+            color: _pageBackgroundDeep.withValues(
+              alpha: _isLight ? 0.64 : 0.38,
+            ),
             borderRadius: BorderRadius.circular(13),
             border: Border.all(color: _panelBorder),
           ),
@@ -1595,10 +1631,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             maxLines: 1,
             softWrap: false,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.w800,
-            ),
+            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w800),
           );
         },
       ),
@@ -1615,8 +1648,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
     final isAudio = expandedTrackMenu == 'audio';
     final items = isAudio ? audioNames : subtitleNames;
-    final selectedIndex =
-        isAudio ? selectedAudioIndex : selectedSubtitleIndex;
+    final selectedIndex = isAudio ? selectedAudioIndex : selectedSubtitleIndex;
 
     return Positioned(
       top: 136,
@@ -1705,8 +1737,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
     required int value,
     required ValueChanged<int> onChanged,
   }) {
-    final selectedText =
-        items.isEmpty ? widget.controller.t('unknown') : items[value];
+    final selectedText = items.isEmpty
+        ? widget.controller.t('unknown')
+        : items[value];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -1728,8 +1761,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       ? null
                       : () {
                           setState(() {
-                            expandedTrackMenu =
-                                expandedTrackMenu == menuKey ? null : menuKey;
+                            expandedTrackMenu = expandedTrackMenu == menuKey
+                                ? null
+                                : menuKey;
                           });
                         },
                   child: Padding(
@@ -1769,12 +1803,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final status = roomConnecting
         ? 'Подключение…'
         : roomReconnecting
-            ? 'Переподключение…'
-            : roomConnected
-                ? 'Подключено'
-                : roomConnectionError != null
-                    ? 'Ошибка подключения'
-                    : 'Не подключено';
+        ? 'Переподключение…'
+        : roomConnected
+        ? 'Подключено'
+        : roomConnectionError != null
+        ? 'Ошибка подключения'
+        : 'Не подключено';
     final showDiagnostics =
         roomConnectionError != null || roomDiagnostics.isNotEmpty;
 
@@ -1788,8 +1822,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
             children: [
               Text(
                 widget.controller.t('roomStatus'),
-                style:
-                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const Spacer(),
               Icon(
@@ -1841,16 +1877,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     onPressed: roomConnecting
                         ? null
                         : roomConnected
-                            ? _disconnectRoom
-                            : _connectRoom,
+                        ? _disconnectRoom
+                        : _connectRoom,
                     icon: Icon(
                       roomConnected
                           ? Icons.link_off_rounded
                           : Icons.link_rounded,
                     ),
-                    label: Text(
-                      roomConnected ? 'Отключиться' : 'Подключиться',
-                    ),
+                    label: Text(roomConnected ? 'Отключиться' : 'Подключиться'),
                   ),
                 ),
               ),
@@ -1864,8 +1898,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       onPressed: !roomConnected || roomReconnecting
                           ? null
                           : callActive
-                              ? _endCall
-                              : _startCall,
+                          ? _endCall
+                          : _startCall,
                       style: callActive
                           ? FilledButton.styleFrom(
                               backgroundColor: Colors.red.shade700,
@@ -1915,15 +1949,23 @@ class _LibraryScreenState extends State<LibraryScreen> {
       children: [
         CircleAvatar(
           radius: 12,
-          backgroundColor: _isLight ? syncLightBackgroundDeep : syncSurfaceRaised,
-          child: Icon(Icons.person_rounded,
-              size: 14, color: _isLight ? syncAccent : Colors.white70),
+          backgroundColor: _isLight
+              ? syncLightBackgroundDeep
+              : syncSurfaceRaised,
+          child: Icon(
+            Icons.person_rounded,
+            size: 14,
+            color: _isLight ? syncAccent : Colors.white70,
+          ),
         ),
         const SizedBox(width: 9),
         Text(name),
         const Spacer(),
-        Icon(online ? Icons.circle : Icons.radio_button_unchecked_rounded,
-            color: online ? syncSuccess : Colors.white38, size: 9),
+        Icon(
+          online ? Icons.circle : Icons.radio_button_unchecked_rounded,
+          color: online ? syncSuccess : Colors.white38,
+          size: 9,
+        ),
         const SizedBox(width: 6),
         Text(
           online ? 'В сети' : 'Не подключён',
@@ -2081,7 +2123,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   int _effectiveRemotePositionMs() {
     var position = remotePlaybackPositionMs;
     if (remotePlaybackPlaying && remotePlaybackSentAtMs > 0) {
-      final elapsed = DateTime.now().millisecondsSinceEpoch - remotePlaybackSentAtMs;
+      final elapsed =
+          DateTime.now().millisecondsSinceEpoch - remotePlaybackSentAtMs;
       if (elapsed > 0) position += elapsed;
     }
     return position;
@@ -2104,10 +2147,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ? [widget.controller.t('noSubtitles')]
         : movie.subtitleTrackNames;
 
-    final audioIndex =
-        selectedAudioIndex.clamp(0, audioNames.length - 1).toInt();
-    final subtitleIndex =
-        selectedSubtitleIndex.clamp(0, subtitleNames.length - 1).toInt();
+    final audioIndex = selectedAudioIndex
+        .clamp(0, audioNames.length - 1)
+        .toInt();
+    final subtitleIndex = selectedSubtitleIndex
+        .clamp(0, subtitleNames.length - 1)
+        .toInt();
 
     if (!mounted) return;
     setState(() {

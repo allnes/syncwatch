@@ -47,6 +47,7 @@ class LiveKitCallEngine implements CallEngine {
     }
     return null;
   }
+
   bool get connected => _room != null;
 
   void _log(String message) {
@@ -75,8 +76,11 @@ class LiveKitCallEngine implements CallEngine {
       await connection.disconnect();
       rethrow;
     }
-    final publications = room.localParticipant?.videoTrackPublications ?? const [];
-    _log('JOINED mic=$_microphoneEnabled camera=$_cameraEnabled videoPublications=${publications.length} videoTrack=${localVideoTrack != null}');
+    final publications =
+        room.localParticipant?.videoTrackPublications ?? const [];
+    _log(
+      'JOINED mic=$_microphoneEnabled camera=$_cameraEnabled videoPublications=${publications.length} videoTrack=${localVideoTrack != null}',
+    );
   }
 
   @override
@@ -113,10 +117,7 @@ class LiveKitCallEngine implements CallEngine {
     const publishOptions = VideoPublishOptions(
       videoCodec: 'h264',
       simulcast: false,
-      videoEncoding: VideoEncoding(
-        maxFramerate: 15,
-        maxBitrate: 850000,
-      ),
+      videoEncoding: VideoEncoding(maxFramerate: 15, maxBitrate: 850000),
     );
 
     _log(
@@ -146,7 +147,9 @@ class LiveKitCallEngine implements CallEngine {
           _log('CAMERA unmuted sid=$existingSid persistentTrack=true');
         } else {
           await existingTrack.mute(stopOnMute: true);
-          _log('CAMERA muted sid=$existingSid persistentTrack=true captureStopped=true');
+          _log(
+            'CAMERA muted sid=$existingSid persistentTrack=true captureStopped=true',
+          );
         }
         return;
       }

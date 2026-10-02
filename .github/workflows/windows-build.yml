@@ -41,7 +41,7 @@ jobs:
         run: .\scripts\enable_multiview_windows.ps1
 
       - name: Analyze
-        run: flutter analyze lib test
+        run: flutter analyze lib test tool
 
       - name: Test media resource regressions
         run: flutter test --reporter expanded

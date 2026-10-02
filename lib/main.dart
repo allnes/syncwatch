@@ -66,7 +66,11 @@ Future<void> main(List<String> args) async {
     debugPrint('[SyncWatch][STARTUP] $message');
     try {
       startupLog.parent.createSync(recursive: true);
-      startupLog.writeAsStringSync('$line\n', mode: FileMode.append, flush: true);
+      startupLog.writeAsStringSync(
+        '$line\n',
+        mode: FileMode.append,
+        flush: true,
+      );
     } catch (_) {}
   }
 
@@ -96,9 +100,7 @@ Future<void> main(List<String> args) async {
       ),
       // Keep main-window constraints on window_manager only. Multi-view
       // global options are inherited by every secondary OS window.
-      globalWindowOptions: const mv.WindowOptions(
-        title: 'SyncWatch',
-      ),
+      globalWindowOptions: const mv.WindowOptions(title: 'SyncWatch'),
     ),
   );
   startup('runMultiApp RETURNED');

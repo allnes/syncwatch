@@ -18,7 +18,8 @@ class CallProcessDiagnosticApp extends StatefulWidget {
   final String logFilePath;
 
   @override
-  State<CallProcessDiagnosticApp> createState() => _CallProcessDiagnosticAppState();
+  State<CallProcessDiagnosticApp> createState() =>
+      _CallProcessDiagnosticAppState();
 }
 
 class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
@@ -41,8 +42,9 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
     final line = '[${DateTime.now().toIso8601String()}] [WINDOW] $message';
     debugPrint(line);
     try {
-      File(widget.logFilePath)
-          .writeAsStringSync('$line\n', mode: FileMode.append, flush: true);
+      File(
+        widget.logFilePath,
+      ).writeAsStringSync('$line\n', mode: FileMode.append, flush: true);
     } catch (_) {}
   }
 
@@ -305,7 +307,8 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
         backgroundColor: Colors.transparent,
         body: LayoutBuilder(
           builder: (context, constraints) {
-            final compact = !_fullscreen &&
+            final compact =
+                !_fullscreen &&
                 constraints.maxWidth <= 340 &&
                 constraints.maxHeight <= 260;
             final callButtonSize = _fullscreen ? 40.0 : (compact ? 34.0 : 40.0);
@@ -314,114 +317,121 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
             return DragToResizeArea(
               resizeEdgeSize: 8,
               child: ClipRRect(
-            borderRadius: BorderRadius.circular(radius),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: const Color(0xFF0B1C2B),
                 borderRadius: BorderRadius.circular(radius),
-                border: Border.all(
-                  color: const Color(0xFF29485E),
-                  width: 1,
-                ),
-              ),
-              child: Stack(
-              children: [
-                Positioned(
-                  left: 10,
-                  right: 8,
-                  top: 7,
-                  height: 36,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onPanStart: (_) => windowManager.startDragging(),
-                    child: Row(
-                      children: [
-                        const Spacer(),
-                        IconButton(
-                          tooltip: _alwaysOnTop
-                              ? 'Открепить от переднего плана'
-                              : 'Закрепить поверх окон',
-                          onPressed: () => unawaited(_toggleAlwaysOnTop()),
-                          icon: RotatedBox(
-                            // Vertical when inactive, horizontal when pinned.
-                            quarterTurns: _alwaysOnTop ? 1 : 0,
-                            child: const Icon(Icons.push_pin_rounded, size: 18),
-                          ),
-                          color: _alwaysOnTop
-                              ? Colors.white
-                              : Colors.white70,
-                        ),
-                        IconButton(
-                          tooltip: 'Свернуть',
-                          onPressed: () => windowManager.minimize(),
-                          icon: const Icon(Icons.remove_rounded, size: 18),
-                          color: Colors.white70,
-                        ),
-                        IconButton(
-                          tooltip: _fullscreen
-                              ? 'Выйти из полноэкранного режима'
-                              : 'На весь экран',
-                          onPressed: () => unawaited(_toggleFullscreen()),
-                          icon: Icon(
-                            _fullscreen
-                                ? Icons.fullscreen_exit_rounded
-                                : Icons.fullscreen_rounded,
-                            size: 20,
-                          ),
-                          color: Colors.white70,
-                        ),
-                      ],
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0B1C2B),
+                    borderRadius: BorderRadius.circular(radius),
+                    border: Border.all(
+                      color: const Color(0xFF29485E),
+                      width: 1,
                     ),
                   ),
-                ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: bottomInset,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Stack(
                     children: [
-                      _roundButton(
-                        tooltip: _microphoneEnabled
-                            ? 'Выключить микрофон'
-                            : 'Включить микрофон',
-                        icon: _microphoneEnabled
-                            ? Icons.mic_rounded
-                            : Icons.mic_off_rounded,
-                        size: callButtonSize,
-                        onPressed: () => _sendAction(
-                          _microphoneEnabled
-                              ? 'microphone_off'
-                              : 'microphone_on',
+                      Positioned(
+                        left: 10,
+                        right: 8,
+                        top: 7,
+                        height: 36,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onPanStart: (_) => windowManager.startDragging(),
+                          child: Row(
+                            children: [
+                              const Spacer(),
+                              IconButton(
+                                tooltip: _alwaysOnTop
+                                    ? 'Открепить от переднего плана'
+                                    : 'Закрепить поверх окон',
+                                onPressed: () =>
+                                    unawaited(_toggleAlwaysOnTop()),
+                                icon: RotatedBox(
+                                  // Vertical when inactive, horizontal when pinned.
+                                  quarterTurns: _alwaysOnTop ? 1 : 0,
+                                  child: const Icon(
+                                    Icons.push_pin_rounded,
+                                    size: 18,
+                                  ),
+                                ),
+                                color: _alwaysOnTop
+                                    ? Colors.white
+                                    : Colors.white70,
+                              ),
+                              IconButton(
+                                tooltip: 'Свернуть',
+                                onPressed: () => windowManager.minimize(),
+                                icon: const Icon(
+                                  Icons.remove_rounded,
+                                  size: 18,
+                                ),
+                                color: Colors.white70,
+                              ),
+                              IconButton(
+                                tooltip: _fullscreen
+                                    ? 'Выйти из полноэкранного режима'
+                                    : 'На весь экран',
+                                onPressed: () => unawaited(_toggleFullscreen()),
+                                icon: Icon(
+                                  _fullscreen
+                                      ? Icons.fullscreen_exit_rounded
+                                      : Icons.fullscreen_rounded,
+                                  size: 20,
+                                ),
+                                color: Colors.white70,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      SizedBox(width: callButtonGap),
-                      _roundButton(
-                        tooltip: _cameraEnabled
-                            ? 'Выключить камеру'
-                            : 'Включить камеру',
-                        icon: _cameraEnabled
-                            ? Icons.videocam_rounded
-                            : Icons.videocam_off_rounded,
-                        size: callButtonSize,
-                        onPressed: () => _sendAction(
-                          _cameraEnabled ? 'camera_off' : 'camera_on',
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: bottomInset,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _roundButton(
+                              tooltip: _microphoneEnabled
+                                  ? 'Выключить микрофон'
+                                  : 'Включить микрофон',
+                              icon: _microphoneEnabled
+                                  ? Icons.mic_rounded
+                                  : Icons.mic_off_rounded,
+                              size: callButtonSize,
+                              onPressed: () => _sendAction(
+                                _microphoneEnabled
+                                    ? 'microphone_off'
+                                    : 'microphone_on',
+                              ),
+                            ),
+                            SizedBox(width: callButtonGap),
+                            _roundButton(
+                              tooltip: _cameraEnabled
+                                  ? 'Выключить камеру'
+                                  : 'Включить камеру',
+                              icon: _cameraEnabled
+                                  ? Icons.videocam_rounded
+                                  : Icons.videocam_off_rounded,
+                              size: callButtonSize,
+                              onPressed: () => _sendAction(
+                                _cameraEnabled ? 'camera_off' : 'camera_on',
+                              ),
+                            ),
+                            SizedBox(width: callButtonGap),
+                            _roundButton(
+                              tooltip: 'Завершить звонок',
+                              icon: Icons.call_end_rounded,
+                              background: const Color(0xFFB3261E),
+                              size: callButtonSize,
+                              onPressed: () => _sendAction('hangup'),
+                            ),
+                          ],
                         ),
-                      ),
-                      SizedBox(width: callButtonGap),
-                      _roundButton(
-                        tooltip: 'Завершить звонок',
-                        icon: Icons.call_end_rounded,
-                        background: const Color(0xFFB3261E),
-                        size: callButtonSize,
-                        onPressed: () => _sendAction('hangup'),
                       ),
                     ],
                   ),
                 ),
-              ],
-              ),
-            ),
               ),
             );
           },
