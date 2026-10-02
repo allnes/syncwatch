@@ -26,6 +26,9 @@ Baseline limitations and findings:
 - Windows reports no physical camera. Starting the call does not open the call
   window in this environment. Full bidirectional camera/audio operation is
   therefore **not yet verified**.
+- After that failed call, the LiveKit participant still has a published,
+  unmuted `MICROPHONE` (`audio/opus`) track while the UI says the call has not
+  started. This confirms a capture/publication leak in the baseline.
 - Timeline preview produces a black thumbnail in the observed baseline run.
 - The active helper is the diagnostic call window; it has no video renderer.
 - Code inspection finds that call shutdown clears `callWindowProcess` before
@@ -47,3 +50,32 @@ After every change, rerun affected regression tests and analysis. Before final
 acceptance, repeat the UI scenarios, synchronization, repeated call start/stop,
 and preview disposal. Record unsupported scenarios explicitly rather than
 claiming an end-to-end pass.
+
+## Implemented changes and checks
+
+- Neutral color settings add no color-filter layers; non-neutral operations
+  retain their order and intermediate clamping. Eight raster comparisons
+  against the original implementation are pixel-identical.
+- Preview images are decoded to the physical display size, with preserved
+  aspect ratio; the LRU cache is bounded to 32 entries and 8 MiB. The separate
+  preview player's demuxer budget is 4 MiB, with audio disabled. Main playback
+  buffering and camera quality are unchanged.
+- Position ticks rebuild the timeline only. Preview motion/frame updates
+  rebuild the preview overlay only.
+- Native screenshot work completes before preview decoder disposal; media
+  changes invalidate cached thumbnails immediately.
+- Call device mutations are serialized. Failed startup releases published
+  media, and shutdown waits for actual process exit, with a termination fallback.
+- Normal call windows use framed stdio events instead of three disk-polling
+  timers. The standalone diagnostic launch retains its legacy file interface.
+
+Initial verification of the implementation: 20 automated tests passed,
+`flutter analyze lib test` passed, and the Windows release build passed.
+The native helper test `dart run tool/check_call_window_ipc.dart <exe>` passed
+three cycles in an interactive Windows session, including parent-pipe EOF.
+The helper reported ready, accepted a state message, and exited with code 0
+each time; no helper processes remained afterward.
+
+Use `scripts/measure_windows_resources.ps1 -ProcessIds <pid> -Seconds 30
+-OutputPath <file.csv>` for raw resource samples. CPU is expressed as a
+percentage of one logical core, not Task Manager's whole-machine percentage.
