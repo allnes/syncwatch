@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,8 @@ import '../app.dart';
 import '../core/app_theme.dart';
 import '../models/movie_item.dart';
 import '../services/call_engine.dart';
+import '../services/call_window_ipc.dart';
+import '../services/serial_task_queue.dart';
 import '../services/livekit_connection.dart';
 import '../services/sync_engine.dart';
 import 'player_screen.dart';
@@ -61,9 +64,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool roomConnecting = false;
   String? roomConnectionError;
   Process? callWindowProcess;
-  Timer? callWindowActionTimer;
-  File? callWindowActionFile;
-  File? callWindowStateFile;
+  final _callTransitions = SerialTaskQueue();
+  final _callActions = SerialTaskQueue();
+  bool _disposing = false;
   bool metadataLoading = false;
   String? metadataPath;
   bool microphoneEnabled = true;
@@ -111,6 +114,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   @override
   void dispose() {
+    _disposing = true;
     trackMenuScrollController.dispose();
     partnerResyncTimer?.cancel();
     roomPresenceListener?.dispose();
@@ -120,9 +124,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
     remoteSpeakingListeners.clear();
     roomSyncEngine?.dispose();
-    if (roomConnected || callActive) {
-      callEngine.leave();
-    }
+    unawaited(
+      () async {
+        try {
+          await _endCall();
+        } finally {
+          await callEngine.leave();
+        }
+      }().catchError(
+        (Object error) => debugPrint('Call cleanup failed: $error'),
+      ),
+    );
     super.dispose();
   }
 
@@ -133,7 +145,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (roomDiagnostics.length > 40) roomDiagnostics.removeLast();
     roomActivity.insert(0, (text: message, time: DateTime.now()));
     if (roomActivity.length > 8) roomActivity.removeLast();
-    if (mounted) setState(() {});
+    if (mounted && !_disposing) setState(() {});
   }
 
   Future<void> _showRoomDiagnostics() async {
@@ -344,9 +356,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   Future<void> _disconnectRoom() async {
     _roomLog('DISCONNECT requested');
-    if (callActive) {
-      await _endCall();
-    }
+    // Also wait for a call whose device capture is still starting.
+    await _endCall();
     roomPresenceListener?.dispose();
     roomPresenceListener = null;
     await roomSyncEngine?.dispose();
@@ -414,29 +425,27 @@ class _LibraryScreenState extends State<LibraryScreen> {
     ]);
   }
 
-  void _writeCallWindowState() {
-    final file = callWindowStateFile;
-    if (file == null) return;
+  void _sendCallWindowMessage(Map<String, dynamic> message) {
+    final process = callWindowProcess;
+    if (process == null) return;
     try {
-      file.writeAsStringSync(
-        'camera=${cameraEnabled ? "on" : "off"}\n'
-        'microphone=${microphoneEnabled ? "on" : "off"}\n'
-        'call=${callActive ? "active" : "inactive"}\n',
-        flush: true,
-      );
-    } catch (_) {}
+      process.stdin.writeln(encodeCallWindowMessage(message));
+    } catch (error) {
+      _roomLog('CALL_PROCESS send failed error=$error');
+    }
   }
 
-  Future<void> _pollCallWindowAction() async {
-    final file = callWindowActionFile;
-    if (file == null || !file.existsSync()) return;
-    String action;
-    try {
-      action = file.readAsStringSync().trim();
-      file.deleteSync();
-    } catch (_) {
-      return;
-    }
+  void _writeCallWindowState() {
+    _sendCallWindowMessage({
+      'type': 'state',
+      'camera': cameraEnabled,
+      'microphone': microphoneEnabled,
+      'active': callActive,
+    });
+  }
+
+  Future<void> _handleCallWindowAction(String action) async {
+    if (!callActive || _disposing) return;
     _roomLog('CALL_WINDOW_ACTION action=$action');
     if (action == 'camera_off') {
       await _setCameraDiagnostic(false);
@@ -480,126 +489,165 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
   }
 
-  Future<void> _startCall() async {
-    if (callActive) {
-      return;
-    }
-    if (!roomConnected) return;
+  Future<void> _startCall() => _callTransitions.run(_startCallNow);
 
-    await callEngine.setMicrophoneEnabled(microphoneEnabled);
-    await callEngine.setCameraEnabled(cameraEnabled);
+  Future<void> _startCallNow() async {
+    if (callActive || !roomConnected || _disposing) return;
+    Process? spawned;
+    try {
+      await callEngine.setMicrophoneEnabled(microphoneEnabled);
+      await callEngine.setCameraEnabled(cameraEnabled);
+      if (!mounted || _disposing) {
+        await callEngine.stopCallMedia();
+        return;
+      }
 
-    final currentExecutable = File(Platform.resolvedExecutable).absolute;
-    final root = Directory.current.absolute;
-    final helperExecutable = File(
-      '${root.path}${Platform.pathSeparator}build'
-      '${Platform.pathSeparator}windows'
-      '${Platform.pathSeparator}call_helper'
-      '${Platform.pathSeparator}syncwatch.exe',
-    );
-    final executable = helperExecutable.existsSync()
-        ? helperExecutable.path
-        : currentExecutable.path;
-    _roomLog(
-      'CALL_PROCESS spawn executable="$executable" '
-      'helperExists=${helperExecutable.existsSync()} '
-      'currentExecutable="${currentExecutable.path}" cwd="${root.path}"',
-    );
-    final process = await Process.start(
-      executable,
-      const ['--call-process-diagnostic'],
-      mode: ProcessStartMode.normal,
-      runInShell: false,
-    );
-    _roomLog('CALL_PROCESS spawned pid=${process.pid}');
-    final ipcDir = Directory('${Directory.current.path}${Platform.pathSeparator}logs');
-    ipcDir.createSync(recursive: true);
-    callWindowActionFile = File('${ipcDir.path}${Platform.pathSeparator}call_window.action');
-    callWindowStateFile = File('${ipcDir.path}${Platform.pathSeparator}call_window.state');
-    try { if (callWindowActionFile!.existsSync()) callWindowActionFile!.deleteSync(); } catch (_) {}
-    _writeCallWindowState();
-    callWindowActionTimer?.cancel();
-    callWindowActionTimer = Timer.periodic(
-      const Duration(milliseconds: 120),
-      (_) => unawaited(_pollCallWindowAction()),
-    );
-    unawaited(process.exitCode.then((code) {
-      _roomLog('CALL_PROCESS exit pid=${process.pid} code=$code');
-      if (!mounted || callWindowProcess?.pid != process.pid) return;
+      final currentExecutable = File(Platform.resolvedExecutable).absolute;
+      final root = Directory.current.absolute;
+      final helperExecutable = File(
+        '${root.path}${Platform.pathSeparator}build'
+        '${Platform.pathSeparator}windows'
+        '${Platform.pathSeparator}call_helper'
+        '${Platform.pathSeparator}syncwatch.exe',
+      );
+      final executable = helperExecutable.existsSync()
+          ? helperExecutable.path
+          : currentExecutable.path;
+      _roomLog(
+        'CALL_PROCESS spawn executable="$executable" '
+        'helperExists=${helperExecutable.existsSync()} '
+        'currentExecutable="${currentExecutable.path}" cwd="${root.path}"',
+      );
+      final process = await Process.start(
+        executable,
+        const ['--call-process-diagnostic', '--call-ipc-stdio'],
+        mode: ProcessStartMode.normal,
+        runInShell: false,
+      );
+      spawned = process;
+      _roomLog('CALL_PROCESS spawned pid=${process.pid}');
+      if (!mounted || _disposing) {
+        await closeCallProcess(process);
+        await callEngine.stopCallMedia();
+        return;
+      }
       setState(() {
-        callWindowProcess = null;
-        callActive = false;
+        callActive = true;
+        callWindowProcess = process;
       });
-      unawaited(callEngine.stopCallMedia());
-      _roomLog('CALL ended by window close');
-      debugPrint('[SyncWatch][RESOURCE_EVENT] CALL_ENDED');
-    }));
-    unawaited(process.stdout
-        .transform(SystemEncoding().decoder)
-        .forEach((line) => debugPrint('[SyncWatch][CALL_PROCESS][OUT] $line')));
-    unawaited(process.stderr
-        .transform(SystemEncoding().decoder)
-        .forEach((line) => debugPrint('[SyncWatch][CALL_PROCESS][ERR] $line')));
-
-    if (!mounted) {
-      process.kill();
-      return;
+      final ready = Completer<void>();
+      // Pipe events replace the three periodic disk polls. stdout may also carry
+      // native diagnostics, so only framed messages are interpreted as actions.
+      process.stdout
+          .transform(const Utf8Decoder(allowMalformed: true))
+          .transform(const LineSplitter())
+          .listen(
+            (line) {
+              final message = decodeCallWindowMessage(line);
+              if (message == null) {
+                debugPrint('[SyncWatch][CALL_PROCESS][OUT] $line');
+                return;
+              }
+              if (callWindowProcess?.pid != process.pid || _disposing) return;
+              if (message['type'] == 'ready') {
+                if (!ready.isCompleted) ready.complete();
+                _writeCallWindowState();
+                unawaited(_focusCallWindow());
+              } else if (message['type'] == 'action' &&
+                  message['value'] is String) {
+                unawaited(
+                  _callActions.run(() async {
+                    // Discard actions belonging to an earlier call after a restart.
+                    if (callWindowProcess?.pid != process.pid) return;
+                    try {
+                      await _handleCallWindowAction(message['value'] as String);
+                    } catch (error) {
+                      _roomLog('CALL_WINDOW_ACTION failed error=$error');
+                      _writeCallWindowState();
+                    }
+                  }),
+                );
+              }
+            },
+            onError: (Object error) =>
+                _roomLog('CALL_PROCESS stdout error=$error'),
+          );
+      process.stderr
+          .transform(const Utf8Decoder(allowMalformed: true))
+          .listen(
+            (line) => debugPrint('[SyncWatch][CALL_PROCESS][ERR] $line'),
+            onError: (Object error) =>
+                _roomLog('CALL_PROCESS stderr error=$error'),
+          );
+      unawaited(
+        process.stdin.done.catchError((Object error) {
+          _roomLog('CALL_PROCESS input closed error=$error');
+        }),
+      );
+      unawaited(
+        process.exitCode
+            .then(
+              (code) => _callTransitions.run(() async {
+                _roomLog('CALL_PROCESS exit pid=${process.pid} code=$code');
+                if (callWindowProcess?.pid != process.pid) return;
+                callWindowProcess = null;
+                callActive = false;
+                if (mounted && !_disposing) setState(() {});
+                await callEngine.stopCallMedia();
+                _roomLog('CALL ended by window close');
+                debugPrint('[SyncWatch][RESOURCE_EVENT] CALL_ENDED');
+              }),
+            )
+            .catchError(
+              (Object error) => _roomLog('CALL_PROCESS cleanup error=$error'),
+            ),
+      );
+      _writeCallWindowState();
+      await ready.future.timeout(const Duration(seconds: 10));
+      _roomLog('CALL started isolatedProcessPid=${process.pid}');
+      debugPrint(
+        '[SyncWatch][RESOURCE_EVENT] CALL_STARTED isolatedProcessPid=${process.pid}',
+      );
+    } catch (error) {
+      // Microphone capture can succeed before camera capture or process spawn
+      // fails. Roll back both devices on every unsuccessful start.
+      if (spawned != null) {
+        try {
+          await closeCallProcess(spawned);
+        } catch (_) {}
+      }
+      callWindowProcess = null;
+      callActive = false;
+      await callEngine.stopCallMedia();
+      _roomLog('CALL start failed error=$error');
     }
-    setState(() {
-      callActive = true;
-      callWindowProcess = process;
-    });
-    _roomLog('CALL started isolatedProcessPid=${process.pid}');
-    debugPrint(
-      '[SyncWatch][RESOURCE_EVENT] CALL_STARTED isolatedProcessPid=${process.pid}',
-    );
-    unawaited(Future<void>.delayed(const Duration(milliseconds: 900), () async {
-      if (!mounted || callWindowProcess?.pid != process.pid || !callActive) return;
-      _roomLog('CALL_PROCESS initial focus requested pid=${process.pid}');
-      await _focusCallWindow();
-    }));
   }
 
-  Future<void> _endCall({bool closeWindow = true}) async {
+  Future<void> _endCall({bool closeWindow = true}) =>
+      _callTransitions.run(() => _endCallNow(closeWindow: closeWindow));
+
+  Future<void> _endCallNow({required bool closeWindow}) async {
     final process = callWindowProcess;
     callWindowProcess = null;
-    await callEngine.stopCallMedia();
-    if (closeWindow && process != null) {
-      final commandFile = File(
-        '${Directory.current.path}${Platform.pathSeparator}logs'
-        '${Platform.pathSeparator}call_window.command',
-      );
-      try {
-        commandFile.writeAsStringSync('close', flush: true);
-        await Future<void>.delayed(const Duration(milliseconds: 350));
-      } catch (_) {}
-      if (await _processStillRunning(process)) {
-        process.kill();
+    callActive = false;
+    try {
+      await callEngine.stopCallMedia();
+    } finally {
+      if (closeWindow && process != null) {
+        await closeCallProcess(process);
       }
     }
-    if (!mounted) return;
-    setState(() {
-      callActive = false;
-    });
+    if (!mounted || _disposing) return;
+    setState(() {});
     _roomLog('CALL ended');
     debugPrint('[SyncWatch][RESOURCE_EVENT] CALL_ENDED');
-  }
-
-  Future<bool> _processStillRunning(Process process) async {
-    if (callWindowProcess?.pid != process.pid) return false;
-    return true;
   }
 
   Future<void> _focusCallWindow() async {
     final process = callWindowProcess;
     if (!callActive || process == null) return;
-    final commandFile = File(
-      '${Directory.current.path}${Platform.pathSeparator}logs'
-      '${Platform.pathSeparator}call_window.command',
-    );
     try {
-      commandFile.parent.createSync(recursive: true);
-      commandFile.writeAsStringSync('focus', flush: true);
+      _sendCallWindowMessage({'type': 'focus'});
       if (Platform.isWindows) {
         final nativeFocus = File(
           '${Directory.current.path}${Platform.pathSeparator}windows'

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:livekit_client/livekit_client.dart';
 
 import 'livekit_connection.dart';
+import 'serial_task_queue.dart';
 
 abstract class CallEngine {
   Future<void> join();
@@ -26,6 +27,7 @@ class LiveKitCallEngine implements CallEngine {
   final String identity;
   final String participantName;
 
+  final _mediaTasks = SerialTaskQueue();
   Room? _room;
   bool _microphoneEnabled = false;
   bool _cameraEnabled = false;
@@ -53,7 +55,9 @@ class LiveKitCallEngine implements CallEngine {
   }
 
   @override
-  Future<void> join() async {
+  Future<void> join() => _mediaTasks.run(() => _join());
+
+  Future<void> _join() async {
     if (_room != null) return;
     _log('JOIN room=$roomName identity=$identity');
     final room = await connection.connect(
@@ -63,17 +67,12 @@ class LiveKitCallEngine implements CallEngine {
     );
     _room = room;
     try {
-      await room.localParticipant?.setMicrophoneEnabled(_microphoneEnabled);
-      _log('MIC publish ok enabled=$_microphoneEnabled');
-    } catch (error) {
-      _log('MIC publish failed error=$error');
-      rethrow;
-    }
-    try {
-      await room.localParticipant?.setCameraEnabled(_cameraEnabled);
-      _log('CAMERA publish ok enabled=$_cameraEnabled');
-    } catch (error) {
-      _log('CAMERA publish failed error=$error');
+      await _setMicrophoneEnabled(_microphoneEnabled);
+      await _setCameraEnabled(_cameraEnabled);
+    } catch (_) {
+      await _stopCallMedia();
+      _room = null;
+      await connection.disconnect();
       rethrow;
     }
     final publications = room.localParticipant?.videoTrackPublications ?? const [];
@@ -81,11 +80,14 @@ class LiveKitCallEngine implements CallEngine {
   }
 
   @override
-  Future<void> setMicrophoneEnabled(bool enabled) async {
-    _microphoneEnabled = enabled;
+  Future<void> setMicrophoneEnabled(bool enabled) =>
+      _mediaTasks.run(() => _setMicrophoneEnabled(enabled));
+
+  Future<void> _setMicrophoneEnabled(bool enabled) async {
     _log('MIC enabled=$enabled');
     try {
       await _room?.localParticipant?.setMicrophoneEnabled(enabled);
+      _microphoneEnabled = enabled;
       _log('MIC toggle ok enabled=$enabled');
     } catch (error) {
       _log('MIC toggle failed error=$error');
@@ -94,7 +96,11 @@ class LiveKitCallEngine implements CallEngine {
   }
 
   @override
-  Future<void> setCameraEnabled(bool enabled) async {
+  Future<void> setCameraEnabled(bool enabled) =>
+      _mediaTasks.run(() => _setCameraEnabled(enabled));
+
+  Future<void> _setCameraEnabled(bool enabled) async {
+    final previousEnabled = _cameraEnabled;
     _cameraEnabled = enabled;
     const quality = '480p4x3';
     const captureOptions = CameraCaptureOptions(
@@ -129,7 +135,7 @@ class LiveKitCallEngine implements CallEngine {
     try {
       // Keep one publication/transceiver for the whole call. Re-publishing on
       // every camera toggle causes renegotiation and additional transceivers on
-      // Windows. Mute without stopping capture preserves the existing sender.
+      // Windows. Stop capture on mute while preserving the existing sender.
       final existingTrack = _ownedCameraTrack;
       final existingSid = _ownedCameraPublicationSid;
       if (existingTrack != null &&
@@ -185,16 +191,30 @@ class LiveKitCallEngine implements CallEngine {
         }
       });
     } catch (error) {
+      _cameraEnabled = previousEnabled;
+      // A failed publish still owns a live capture source. Release it before
+      // allowing a retry, even though there is no publication to unpublish.
+      if (_ownedCameraPublicationSid == null) {
+        final failedTrack = _ownedCameraTrack;
+        _ownedCameraTrack = null;
+        if (failedTrack != null && !failedTrack.isDisposed) {
+          try {
+            await failedTrack.dispose();
+          } catch (_) {}
+        }
+      }
       _log('CAMERA toggle failed enabled=$enabled error=$error');
       rethrow;
     }
   }
+
   @override
-  Future<void> stopCallMedia() async {
+  Future<void> stopCallMedia() => _mediaTasks.run(() => _stopCallMedia());
+
+  Future<void> _stopCallMedia() async {
     _microphoneEnabled = false;
     _cameraEnabled = false;
     final participant = _room?.localParticipant;
-    if (participant == null) return;
 
     // Dispose the manually-owned camera track first; removePublishedTrack alone
     // does not guarantee that the capture source is released.
@@ -210,10 +230,13 @@ class LiveKitCallEngine implements CallEngine {
       }
     }
 
+    if (participant == null) return;
     final publications = participant.trackPublications.values
-        .where((publication) =>
-            publication.source == TrackSource.microphone ||
-            publication.source == TrackSource.camera)
+        .where(
+          (publication) =>
+              publication.source == TrackSource.microphone ||
+              publication.source == TrackSource.camera,
+        )
         .toList();
     for (final publication in publications) {
       try {
@@ -231,10 +254,16 @@ class LiveKitCallEngine implements CallEngine {
   }
 
   @override
-  Future<void> leave() async {
+  Future<void> leave() => _mediaTasks.run(() => _leave());
+
+  Future<void> _leave() async {
     _log('LEAVE room=$roomName');
-    _room = null;
-    await connection.disconnect();
+    try {
+      await _stopCallMedia();
+    } finally {
+      _room = null;
+      await connection.disconnect();
+    }
   }
 }
 

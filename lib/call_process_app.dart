@@ -1,11 +1,20 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'services/call_window_ipc.dart';
+import 'services/serial_task_queue.dart';
+
 class CallProcessDiagnosticApp extends StatefulWidget {
-  const CallProcessDiagnosticApp({super.key, required this.logFilePath});
+  const CallProcessDiagnosticApp({
+    super.key,
+    required this.logFilePath,
+    this.useStdio = false,
+  });
+  final bool useStdio;
   final String logFilePath;
 
   @override
@@ -14,6 +23,9 @@ class CallProcessDiagnosticApp extends StatefulWidget {
 
 class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
     with WindowListener {
+  StreamSubscription<String>? _inputSubscription;
+  final _commands = SerialTaskQueue();
+  bool _closing = false;
   Timer? _commandTimer;
   Timer? _stateTimer;
   late final File _commandFile;
@@ -39,25 +51,65 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
     super.initState();
     _log('initState pid=$pid');
     windowManager.addListener(this);
-    final logs = '${Directory.current.path}${Platform.pathSeparator}logs';
-    _commandFile = File('$logs${Platform.pathSeparator}call_window.command');
-    _actionFile = File('$logs${Platform.pathSeparator}call_window.action');
-    _stateFile = File('$logs${Platform.pathSeparator}call_window.state');
-    try {
-      if (_commandFile.existsSync()) _commandFile.deleteSync();
-    } catch (_) {}
-    _readState();
-    _commandTimer = Timer.periodic(
-      const Duration(milliseconds: 120),
-      (_) => _pollCommand(),
-    );
-    _stateTimer = Timer.periodic(
-      const Duration(milliseconds: 250),
-      (_) => _readState(),
-    );
+    if (widget.useStdio) {
+      _inputSubscription = stdin
+          .transform(const Utf8Decoder(allowMalformed: true))
+          .transform(const LineSplitter())
+          .listen(
+            (line) {
+              final message = decodeCallWindowMessage(line);
+              if (message == null) return;
+              unawaited(
+                _commands
+                    .run(() => _handleMessage(message))
+                    .catchError((Object error) => _log('IPC_ERROR $error')),
+              );
+            },
+            onDone: () => unawaited(_closeWindow()),
+            onError: (Object _) => unawaited(_closeWindow()),
+          );
+      unawaited(stdout.done.catchError((Object _) => _closeWindow()));
+    } else {
+      // Retain file commands for the standalone diagnostic launcher.
+      final logs = '${Directory.current.path}${Platform.pathSeparator}logs';
+      _commandFile = File('$logs${Platform.pathSeparator}call_window.command');
+      _actionFile = File('$logs${Platform.pathSeparator}call_window.action');
+      _stateFile = File('$logs${Platform.pathSeparator}call_window.state');
+      try {
+        if (_commandFile.existsSync()) _commandFile.deleteSync();
+      } catch (_) {}
+      _readState();
+      _commandTimer = Timer.periodic(
+        const Duration(milliseconds: 120),
+        (_) => _pollCommand(),
+      );
+      _stateTimer = Timer.periodic(
+        const Duration(milliseconds: 250),
+        (_) => _readState(),
+      );
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_showWindow());
     });
+  }
+
+  Future<void> _handleMessage(Map<String, dynamic> message) async {
+    if (_closing) return;
+    if (message['type'] == 'state') {
+      final camera = message['camera'];
+      final microphone = message['microphone'];
+      if (camera is bool &&
+          microphone is bool &&
+          mounted &&
+          (camera != _cameraEnabled || microphone != _microphoneEnabled)) {
+        setState(() {
+          _cameraEnabled = camera;
+          _microphoneEnabled = microphone;
+        });
+      }
+    } else if (message['type'] == 'focus' || message['type'] == 'close') {
+      await _handleCommand(message['type'] as String);
+    }
   }
 
   void _readState() {
@@ -84,8 +136,14 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
 
   void _sendAction(String action) {
     try {
-      _actionFile.parent.createSync(recursive: true);
-      _actionFile.writeAsStringSync(action, flush: true);
+      if (widget.useStdio) {
+        stdout.writeln(
+          encodeCallWindowMessage({'type': 'action', 'value': action}),
+        );
+      } else {
+        _actionFile.parent.createSync(recursive: true);
+        _actionFile.writeAsStringSync(action, flush: true);
+      }
       _log('ACTION $action');
     } catch (error) {
       _log('ACTION_FAILED $action error=$error');
@@ -101,19 +159,27 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
     } catch (_) {
       return;
     }
+    await _handleCommand(command);
+  }
+
+  Future<void> _handleCommand(String command) async {
+    if (_closing) return;
     if (command == 'focus') {
       await windowManager.show();
       if (await windowManager.isMinimized()) await windowManager.restore();
       await windowManager.setAlwaysOnTop(true);
       await windowManager.focus();
       await Future<void>.delayed(const Duration(milliseconds: 80));
-      await windowManager.setAlwaysOnTop(false);
+      await windowManager.setAlwaysOnTop(_alwaysOnTop);
     } else if (command == 'close') {
       await _closeWindow();
     }
   }
 
   Future<void> _closeWindow() async {
+    if (_closing) return;
+    _closing = true;
+    unawaited(_inputSubscription?.cancel());
     _commandTimer?.cancel();
     _stateTimer?.cancel();
     try {
@@ -128,6 +194,7 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
 
   @override
   void dispose() {
+    unawaited(_inputSubscription?.cancel());
     _commandTimer?.cancel();
     _stateTimer?.cancel();
     windowManager.removeListener(this);
@@ -164,6 +231,9 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
         await windowManager.focus();
       });
       _log('WINDOW_READY size=${await windowManager.getSize()}');
+      if (widget.useStdio) {
+        stdout.writeln(encodeCallWindowMessage({'type': 'ready'}));
+      }
     } catch (error, stack) {
       _log('WINDOW_ERROR error=$error stack=$stack');
     }

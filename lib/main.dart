@@ -33,7 +33,12 @@ Future<void> main(List<String> args) async {
       await windowManager.ensureInitialized();
       log('windowManager.ensureInitialized DONE');
       log('runApp BEGIN');
-      runApp(CallProcessDiagnosticApp(logFilePath: logFile.path));
+      runApp(
+        CallProcessDiagnosticApp(
+          logFilePath: logFile.path,
+          useStdio: args.contains('--call-ipc-stdio'),
+        ),
+      );
       log('runApp RETURNED');
     } catch (error, stack) {
       log('FATAL error=$error stack=$stack');

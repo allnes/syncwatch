@@ -14,6 +14,9 @@ import '../app.dart';
 import '../core/app_theme.dart';
 import '../models/movie_item.dart';
 import '../services/sync_engine.dart';
+import '../services/preview_frame_cache.dart';
+import '../services/preview_thumbnail.dart';
+import '../widgets/video_color_filters.dart';
 import 'player_settings_screen.dart';
 import 'settings_screen.dart';
 
@@ -113,7 +116,12 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   bool _previewLoadInFlight = false;
   double? _pendingPreviewSeconds;
   int? _pendingPreviewBucket;
-  final Map<int, Uint8List> _previewCache = <int, Uint8List>{};
+  final _previewCache = PreviewFrameCache();
+  Future<void> _previewDisposal = Future<void>.value();
+  bool _previewDisposeWhenIdle = false;
+  bool _previewDisposed = false;
+  int? _previewRequestedBucket;
+  String? _previewCacheMediaPath;
 
   bool playing = false;
   bool movieMuted = false;
@@ -145,7 +153,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     return null;
   }
 
-  double positionSeconds = 0;
+  final _position = ValueNotifier<double>(0);
+  double get positionSeconds => _position.value;
+  set positionSeconds(double value) => _position.value = value;
+  final _previewChanges = ValueNotifier<int>(0);
   double durationSeconds = 0;
   double? volumeOsd;
 
@@ -227,7 +238,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           );
           unawaited(_logMpvPlaybackHealth());
         }
-        setState(() => positionSeconds = seconds);
+        positionSeconds = seconds;
       }),
     );
     _subscriptions.add(
@@ -649,6 +660,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       setState(() {
         currentIndex = index;
         currentMovie = nextMovie;
+        _invalidatePreviewMedia();
         positionSeconds = 0;
         durationSeconds = 0;
       });
@@ -692,9 +704,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         await player.pause();
       }
       if (mounted) {
-        setState(() {
-          positionSeconds = target.inMilliseconds / 1000.0;
-        });
+        positionSeconds = target.inMilliseconds / 1000.0;
       }
     } finally {
       _applyingRemoteCommand = false;
@@ -762,11 +772,19 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     widget.syncEngine.removeRemoteLibraryHandler(_onRemoteLibrary);
     widget.syncEngine.removeMediaMissingHandler(_onMediaMissing);
     // SyncEngine lifecycle is owned by LibraryScreen and shared with this player.
-    _previewPlayer?.dispose();
-    _previewVideoController = null;
+    _previewDisposed = true;
+    _previewRequestSerial++;
+    _pendingPreviewSeconds = null;
+    _pendingPreviewBucket = null;
+    _previewFrame = null;
+    _previewCache.clear();
+    _previewDisposeWhenIdle = true;
+    if (!_previewLoadInFlight) _disposePreviewPlayer();
     debugPrint('[SyncWatch][RESOURCE_EVENT] MOVIE_CLOSED');
     player.dispose();
     _playerFocusNode.dispose();
+    _position.dispose();
+    _previewChanges.dispose();
     super.dispose();
   }
 
@@ -1337,68 +1355,27 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     }
   }
 
+  (double, double, double, double)? _lastColorSettings;
+  VideoColorFilters? _colorFilters;
+
   Widget _applyVideoColorAdjustments(Widget child) {
-    Widget result = child;
-
-    final saturation = 1.0 + widget.controller.videoSaturation;
-    final s = saturation;
-    final ir = (1 - s) * 0.2126;
-    final ig = (1 - s) * 0.7152;
-    final ib = (1 - s) * 0.0722;
-
-    result = ColorFiltered(
-      colorFilter: ColorFilter.matrix(<double>[
-        ir + s, ig, ib, 0, 0,
-        ir, ig + s, ib, 0, 0,
-        ir, ig, ib + s, 0, 0,
-        0, 0, 0, 1, 0,
-      ]),
-      child: result,
+    final controller = widget.controller;
+    final settings = (
+      controller.videoSaturation,
+      controller.videoHue,
+      controller.videoContrast,
+      controller.videoBrightness,
     );
-
-    final hue = widget.controller.videoHue * math.pi / 180.0;
-    final cosH = math.cos(hue);
-    final sinH = math.sin(hue);
-    result = ColorFiltered(
-      colorFilter: ColorFilter.matrix(<double>[
-        0.213 + cosH * 0.787 - sinH * 0.213,
-        0.715 - cosH * 0.715 - sinH * 0.715,
-        0.072 - cosH * 0.072 + sinH * 0.928,
-        0,
-        0,
-        0.213 - cosH * 0.213 + sinH * 0.143,
-        0.715 + cosH * 0.285 + sinH * 0.140,
-        0.072 - cosH * 0.072 - sinH * 0.283,
-        0,
-        0,
-        0.213 - cosH * 0.213 - sinH * 0.787,
-        0.715 - cosH * 0.715 + sinH * 0.715,
-        0.072 + cosH * 0.928 + sinH * 0.072,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-      ]),
-      child: result,
-    );
-
-    final contrast = 1.0 + widget.controller.videoContrast;
-    final brightness = widget.controller.videoBrightness * 255.0;
-    final translate = 128.0 * (1.0 - contrast) + brightness;
-    result = ColorFiltered(
-      colorFilter: ColorFilter.matrix(<double>[
-        contrast, 0, 0, 0, translate,
-        0, contrast, 0, 0, translate,
-        0, 0, contrast, 0, translate,
-        0, 0, 0, 1, 0,
-      ]),
-      child: result,
-    );
-
-    return result;
+    if (settings != _lastColorSettings) {
+      _lastColorSettings = settings;
+      _colorFilters = VideoColorFilters(
+        videoSaturation: settings.$1,
+        videoHue: settings.$2,
+        videoContrast: settings.$3,
+        videoBrightness: settings.$4,
+      );
+    }
+    return _colorFilters!.apply(child);
   }
 
   List<Shadow> _subtitleOutlineShadows() {
@@ -1453,23 +1430,33 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     if (!widget.controller.timelinePreview) return;
 
     _previewIdleDisposeTimer?.cancel();
+    _previewDisposeWhenIdle = false;
+    if (_previewCacheMediaPath != currentMovie.fullPath) {
+      _previewCacheMediaPath = currentMovie.fullPath;
+      _previewCache.selectMedia(currentMovie.fullPath);
+      _previewFrame = null;
+      _previewRequestSerial++;
+    }
     const edge = 10.0;
     final usableWidth = (width - edge * 2).clamp(1.0, double.infinity);
     final x = (event.localPosition.dx - edge).clamp(0.0, usableWidth);
     final ratio = x / usableWidth;
     final seconds = durationSeconds * ratio;
 
-    setState(() {
-      _timelineHovering = true;
-      _previewFailed = false;
-      _previewSeconds = seconds;
-      _previewGlobalX = event.position.dx;
-    });
+    _previewFailed = false;
+    _previewSeconds = seconds;
+    _previewGlobalX = event.position.dx;
+    _previewChanges.value++;
 
     final bucket = (seconds / 2).round() * 2;
+    _previewRequestedBucket = bucket;
+    _previewDebounceTimer?.cancel();
     final cached = _previewCache[bucket];
     if (cached != null) {
-      setState(() => _previewFrame = cached);
+      _pendingPreviewSeconds = null;
+      _pendingPreviewBucket = null;
+      _previewFrame = cached;
+      _previewChanges.value++;
       return;
     }
 
@@ -1478,6 +1465,16 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       const Duration(milliseconds: 110),
       () => _queueTimelinePreviewLoad(seconds, bucket),
     );
+  }
+
+  void _invalidatePreviewMedia() {
+    _previewRequestSerial++;
+    _previewDebounceTimer?.cancel();
+    _pendingPreviewSeconds = null;
+    _pendingPreviewBucket = null;
+    _previewFrame = null;
+    _previewCache.selectMedia(currentMovie.fullPath);
+    _previewCacheMediaPath = currentMovie.fullPath;
   }
 
   void _hideTimelinePreview() {
@@ -1490,16 +1487,24 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     }
     _previewIdleDisposeTimer?.cancel();
     _previewIdleDisposeTimer = Timer(const Duration(milliseconds: 700), () {
-      final preview = _previewPlayer;
-      _previewPlayer = null;
-      _previewVideoController = null;
-      _previewMediaPath = null;
-      _previewLoadInFlight = false;
-      if (preview != null) {
-        unawaited(preview.dispose());
-        _playbackLog('PREVIEW_PLAYER_DISPOSED idle');
-      }
+      _previewDisposeWhenIdle = true;
+      if (!_previewLoadInFlight) _disposePreviewPlayer();
     });
+  }
+
+  void _disposePreviewPlayer() {
+    final preview = _previewPlayer;
+    _previewPlayer = null;
+    _previewVideoController = null;
+    _previewMediaPath = null;
+    if (preview == null) return;
+    // Never dispose while screenshot() is using the native mpv handle.
+    // A new request waits for this disposal before creating another decoder.
+    if (mounted && !_previewDisposed) setState(() {});
+    _previewDisposal = preview.dispose().catchError((Object error) {
+      _playbackLog('PREVIEW_DISPOSE_ERROR error=$error');
+    });
+    _playbackLog('PREVIEW_PLAYER_DISPOSED idle');
   }
 
   void _queueTimelinePreviewLoad(double seconds, int bucket) {
@@ -1512,7 +1517,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   }
 
   Future<void> _loadTimelinePreview(double seconds, int bucket) async {
-    if (!mounted || !widget.controller.timelinePreview) return;
+    if (!mounted || _previewDisposed || !widget.controller.timelinePreview)
+      return;
     if (_previewLoadInFlight) {
       _pendingPreviewSeconds = seconds;
       _pendingPreviewBucket = bucket;
@@ -1522,16 +1528,38 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
     final previewClock = Stopwatch()..start();
     final request = ++_previewRequestSerial;
+    final mediaPath = currentMovie.fullPath;
+    final pixelRatio = MediaQuery.devicePixelRatioOf(context);
+    final thumbnailWidth = (192 * pixelRatio).ceil();
+    final thumbnailHeight = (108 * pixelRatio).ceil();
+    bool isCurrent() =>
+        mounted &&
+        !_previewDisposed &&
+        request == _previewRequestSerial &&
+        currentMovie.fullPath == mediaPath;
     _playbackLog(
       'PREVIEW_BEGIN request=$request target=${seconds.toStringAsFixed(2)}s '
       'bucket=$bucket cache=${_previewCache.length}',
     );
 
     try {
+      await _previewDisposal;
+      if (!isCurrent()) return;
       if (_previewPlayer == null) {
-        final preview = Player();
+        final preview = Player(
+          configuration: const PlayerConfiguration(
+            muted: true,
+            bufferSize: 4 * 1024 * 1024,
+          ),
+        );
         _previewPlayer = preview;
-        _previewVideoController = VideoController(preview);
+        _previewVideoController = VideoController(
+          preview,
+          configuration: VideoControllerConfiguration(
+            width: thumbnailWidth,
+            height: thumbnailHeight,
+          ),
+        );
         _playbackLog('PREVIEW_PLAYER_CREATED request=$request');
 
         if (mounted) {
@@ -1542,19 +1570,19 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         }
       }
 
+      if (!isCurrent()) return;
       final preview = _previewPlayer!;
 
-      if (_previewMediaPath != currentMovie.fullPath) {
-        _previewCache.clear();
+      if (_previewMediaPath != mediaPath) {
+        _previewCache.selectMedia(mediaPath);
         _previewFrame = null;
         _previewFailed = false;
 
         await preview.setVolume(0);
-        await preview.open(
-          Media(Uri.file(currentMovie.fullPath).toString()),
-          play: false,
-        );
-        _previewMediaPath = currentMovie.fullPath;
+        // A thumbnail needs no audio decoder or audio output device.
+        await preview.setAudioTrack(AudioTrack.no());
+        await preview.open(Media(Uri.file(mediaPath).toString()), play: false);
+        _previewMediaPath = mediaPath;
         _playbackLog(
           'PREVIEW_MEDIA_OPEN elapsed=${previewClock.elapsedMilliseconds}ms '
           'request=$request',
@@ -1562,14 +1590,17 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
         // Wait until the decoder has actual media metadata before seeking.
         try {
-          await preview.stream.duration
-              .firstWhere((value) => value > Duration.zero)
-              .timeout(const Duration(seconds: 2));
+          if (preview.state.duration == Duration.zero) {
+            await preview.stream.duration
+                .firstWhere((value) => value > Duration.zero)
+                .timeout(const Duration(seconds: 2));
+          }
         } catch (_) {
           // Some files report duration through state before the stream emits.
         }
       }
 
+      if (!isCurrent()) return;
       await preview.seek(Duration(seconds: bucket));
 
       // Give mpv time to decode the target frame after an exact seek.
@@ -1589,16 +1620,20 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         );
       }
 
-      if (!mounted || request != _previewRequestSerial) return;
+      if (!isCurrent()) return;
 
       if (frame == null || frame.isEmpty) {
-        setState(() => _previewFailed = true);
+        _previewFailed = true;
+        _previewChanges.value++;
         return;
       }
 
-      if (_previewCache.length >= 32) {
-        _previewCache.remove(_previewCache.keys.first);
-      }
+      frame = await resizePreviewThumbnail(
+        frame,
+        width: thumbnailWidth,
+        height: thumbnailHeight,
+      );
+      if (!isCurrent()) return;
       _previewCache[bucket] = frame;
       _playbackLog(
         'PREVIEW_READY request=$request bucket=$bucket '
@@ -1606,11 +1641,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         'bytes=${frame.length} cache=${_previewCache.length}',
       );
 
-      if (_timelineHovering) {
-        setState(() {
-          _previewFrame = frame;
-          _previewFailed = false;
-        });
+      if (_timelineHovering && _previewRequestedBucket == bucket) {
+        _previewFrame = frame;
+        _previewFailed = false;
+        _previewChanges.value++;
       }
     } catch (error, stackTrace) {
       _playbackLog(
@@ -1618,16 +1652,19 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         'elapsed=${previewClock.elapsedMilliseconds}ms error=$error',
       );
       debugPrint('[SyncWatch][PLAYBACK] PREVIEW_STACK $stackTrace');
-      if (mounted && request == _previewRequestSerial) {
-        setState(() => _previewFailed = true);
+      if (isCurrent()) {
+        _previewFailed = true;
+        _previewChanges.value++;
       }
     } finally {
       _previewLoadInFlight = false;
+      if (_previewDisposeWhenIdle || _previewDisposed) _disposePreviewPlayer();
       final pendingSeconds = _pendingPreviewSeconds;
       final pendingBucket = _pendingPreviewBucket;
       _pendingPreviewSeconds = null;
       _pendingPreviewBucket = null;
       if (mounted &&
+          !_previewDisposed &&
           _timelineHovering &&
           pendingSeconds != null &&
           pendingBucket != null) {
@@ -1636,7 +1673,12 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     }
   }
 
-  Widget _timelinePreviewOverlay(BuildContext context) {
+  Widget _timelinePreviewOverlay(BuildContext context) => ListenableBuilder(
+    listenable: _previewChanges,
+    builder: (context, _) => _buildTimelinePreviewOverlay(context),
+  );
+
+  Widget _buildTimelinePreviewOverlay(BuildContext context) {
     const previewWidth = 192.0;
     const previewHeight = 108.0;
     final screenWidth = MediaQuery.sizeOf(context).width;
@@ -1713,28 +1755,42 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   }
 
   Widget _controls() {
-    final sliderMax = durationSeconds > 0 ? durationSeconds : 1.0;
-    final sliderValue = positionSeconds.clamp(0.0, sliderMax).toDouble();
-
     return Container(
       height: 70,
       padding: const EdgeInsets.fromLTRB(14, 2, 14, 6),
       color: _playerChrome.withValues(alpha: 0.98),
       child: Column(
         children: [
-          Row(
-            children: [
-              Text(_formatSeconds(positionSeconds)),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      onHover: durationSeconds <= 0
-                          ? null
-                          : (event) => _onTimelineHover(
-                                event,
-                                constraints.maxWidth,
+          ValueListenableBuilder<double>(
+            valueListenable: _position,
+            builder: (context, positionSeconds, _) {
+              final sliderMax = durationSeconds > 0 ? durationSeconds : 1.0;
+              final sliderValue = positionSeconds
+                  .clamp(0.0, sliderMax)
+                  .toDouble();
+              return Row(
+                children: [
+                  Text(_formatSeconds(positionSeconds)),
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          onHover: durationSeconds <= 0
+                              ? null
+                              : (event) => _onTimelineHover(
+                                  event,
+                                  constraints.maxWidth,
+                                ),
+                          onExit: (_) => _hideTimelinePreview(),
+                          child: SliderTheme(
+                            data: SliderTheme.of(context).copyWith(
+                              trackHeight: _timelineHovering ? 3 : 2,
+                              inactiveTrackColor: _timelineHovering
+                                  ? _playerSecondary.withValues(alpha: 0.58)
+                                  : _playerSecondary.withValues(alpha: 0.28),
+                              thumbShape: const RoundSliderThumbShape(
+                                enabledThumbRadius: 5,
                               ),
                       onExit: (_) => _hideTimelinePreview(),
                       child: SliderTheme(
@@ -1746,28 +1802,14 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
                           thumbShape: const RoundSliderThumbShape(
                             enabledThumbRadius: 5,
                           ),
-                          overlayShape: const RoundSliderOverlayShape(
-                            overlayRadius: 10,
-                          ),
-                        ),
-                        child: Slider(
-                          value: sliderValue,
-                          max: sliderMax,
-                          onChanged: durationSeconds <= 0
-                              ? null
-                              : (value) =>
-                                  setState(() => positionSeconds = value),
-                          onChangeEnd: durationSeconds <= 0
-                              ? null
-                              : (value) => _seekAbsolute(value),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              Text(_formatSeconds(durationSeconds)),
-            ],
+                        );
+                      },
+                    ),
+                  ),
+                  Text(_formatSeconds(durationSeconds)),
+                ],
+              );
+            },
           ),
           Expanded(
             child: Row(
@@ -2289,6 +2331,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     setState(() {
       currentIndex = index;
       currentMovie = nextMovie;
+      _invalidatePreviewMedia();
       positionSeconds = 0;
       durationSeconds = 0;
       audioTracks = const [];
@@ -2335,7 +2378,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     );
 
     if (mounted) {
-      setState(() => positionSeconds = target);
+      positionSeconds = target;
     }
 
     _seekDebounceTimer?.cancel();

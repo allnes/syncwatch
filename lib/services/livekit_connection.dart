@@ -34,19 +34,27 @@ class LiveKitConnection {
     final room = Room(
       roomOptions: const RoomOptions(adaptiveStream: true, dynacast: true),
     );
-    await room.connect(
-      payload['server_url'] as String,
-      payload['participant_token'] as String,
-    );
-    _room = room;
-    return room;
+    try {
+      await room.connect(
+        payload['server_url'] as String,
+        payload['participant_token'] as String,
+      );
+      _room = room;
+      return room;
+    } catch (_) {
+      await room.dispose();
+      rethrow;
+    }
   }
 
   Future<void> disconnect() async {
     final room = _room;
     _room = null;
     if (room == null) return;
-    await room.disconnect();
-    await room.dispose();
+    try {
+      await room.disconnect();
+    } finally {
+      await room.dispose();
+    }
   }
 }
