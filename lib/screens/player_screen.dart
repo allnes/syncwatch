@@ -1601,10 +1601,31 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       }
 
       if (!isCurrent()) return;
+      // Opening/metadata can finish before mpv has a decoded frame. Seeking
+      // during that gap can leave screenshot() returning the opening frame.
+      // Also await this after a cancelled request or an earlier timeout.
+      await _previewVideoController!.waitUntilFirstFrameRendered.timeout(
+        const Duration(seconds: 2),
+      );
+      if (!isCurrent()) return;
       await preview.seek(Duration(seconds: bucket));
 
-      // Give mpv time to decode the target frame after an exact seek.
-      await Future<void>.delayed(const Duration(milliseconds: 90));
+      // seek() acknowledges the command before decoding necessarily finishes.
+      // Wait for mpv's seek/restart state instead of caching a stale frame after
+      // an arbitrary delay (a valid black opening frame is not a null result).
+      final nativePreview = preview.platform;
+      if (nativePreview is NativePlayer) {
+        final seekClock = Stopwatch()..start();
+        while (isCurrent()) {
+          if (await nativePreview.getProperty('seeking') == 'no') break;
+          if (seekClock.elapsed >= const Duration(seconds: 2)) {
+            throw TimeoutException('Preview seek did not finish');
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        }
+      } else {
+        await Future<void>.delayed(const Duration(milliseconds: 90));
+      }
       if (!isCurrent()) return;
       // Apply the limit after metadata/seek, rather than in the configuration
       // where the native metadata callback would immediately overwrite it.

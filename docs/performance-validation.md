@@ -144,3 +144,21 @@ After-change UI checks also passed incoming `START`/`PAUSE`, seek, keyboard
 fullscreen and Escape, return to library, playback-session retention, ending
 watching, and application exit. Full camera calling and the custom WebRTC DLL
 remain outside the verified scope described above.
+
+## Preview startup regression
+
+The baseline's black preview was reproduced at the 14-second bucket after the
+resource changes. The first screenshot was captured before the decoder had
+finished initializing/seeking; a nonempty black image was then cached. Preview
+loading now waits for the first native frame and mpv's `seeking=no`, with
+bounded waits and request-cancellation checks. It does not classify legitimate
+black movie frames as errors.
+
+On Windows, the 14- and 34-second previews now show their corresponding scenes.
+The native preview output resizes to 192x108 at this session's device pixel
+ratio, and logs confirm decoder/texture disposal after leaving the timeline.
+Re-entering the timeline creates a new decoder and shows the new target frame;
+see the [lifecycle trace](measurements/2026-10-02/preview-lifecycle.txt).
+The final preview change passed formatting, analysis, all 20 tests, and another
+Windows release build. The playback table above predates this preview-only
+fix and was measured with the preview decoder inactive.
