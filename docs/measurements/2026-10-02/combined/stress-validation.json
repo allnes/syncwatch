@@ -1,0 +1,716 @@
+[
+  {
+    "file": "stress-1-synthetic-1.jsonl",
+    "streams": {
+      "send_video": [
+        {
+          "seconds": 25.0,
+          "counterDelta": 374,
+          "averageFps": 14.96,
+          "implementation": "OpenH264"
+        },
+        {
+          "seconds": 30.01,
+          "counterDelta": 450,
+          "averageFps": 14.99,
+          "implementation": "OpenH264"
+        }
+      ],
+      "receive_video": [
+        {
+          "seconds": 25.0,
+          "counterDelta": 375,
+          "averageFps": 15.0,
+          "implementation": "FFmpeg"
+        },
+        {
+          "seconds": 24.99,
+          "counterDelta": 375,
+          "averageFps": 15.0,
+          "implementation": "FFmpeg"
+        }
+      ],
+      "send_audio": [
+        {
+          "seconds": 25.0,
+          "counterDelta": 0.00043565718531069636
+        },
+        {
+          "seconds": 30.01,
+          "counterDelta": 0.0007649427936666925
+        }
+      ],
+      "receive_audio": [
+        {
+          "seconds": 25.0,
+          "counterDelta": 0.00010827948907047268
+        },
+        {
+          "seconds": 24.99,
+          "counterDelta": 0.0008808752877284198
+        }
+      ]
+    },
+    "restart": {
+      "before": {
+        "send_video": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 374,
+            "averageFps": 14.96,
+            "implementation": "OpenH264"
+          }
+        ],
+        "receive_video": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 375,
+            "averageFps": 15.0,
+            "implementation": "FFmpeg"
+          }
+        ],
+        "send_audio": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 0.00043565718531069636
+          }
+        ],
+        "receive_audio": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 0.00010827948907047268
+          }
+        ]
+      },
+      "after": {
+        "send_video": [
+          {
+            "seconds": 30.01,
+            "counterDelta": 450,
+            "averageFps": 14.99,
+            "implementation": "OpenH264"
+          }
+        ],
+        "receive_video": [
+          {
+            "seconds": 24.99,
+            "counterDelta": 375,
+            "averageFps": 15.0,
+            "implementation": "FFmpeg"
+          }
+        ],
+        "send_audio": [
+          {
+            "seconds": 30.01,
+            "counterDelta": 0.0007649427936666925
+          }
+        ],
+        "receive_audio": [
+          {
+            "seconds": 24.99,
+            "counterDelta": 0.0008808752877284198
+          }
+        ]
+      }
+    },
+    "syncCommands": [
+      "START"
+    ],
+    "failures": []
+  },
+  {
+    "file": "stress-1-synthetic-2.jsonl",
+    "streams": {
+      "send_video": [
+        {
+          "seconds": 25.0,
+          "counterDelta": 375,
+          "averageFps": 15.0,
+          "implementation": "OpenH264"
+        },
+        {
+          "seconds": 30.01,
+          "counterDelta": 450,
+          "averageFps": 14.99,
+          "implementation": "OpenH264"
+        }
+      ],
+      "receive_video": [
+        {
+          "seconds": 25.0,
+          "counterDelta": 374,
+          "averageFps": 14.96,
+          "implementation": "FFmpeg"
+        },
+        {
+          "seconds": 30.01,
+          "counterDelta": 450,
+          "averageFps": 14.99,
+          "implementation": "FFmpeg"
+        }
+      ],
+      "send_audio": [
+        {
+          "seconds": 25.0,
+          "counterDelta": 0.0002323660050576673
+        },
+        {
+          "seconds": 30.01,
+          "counterDelta": 0.0017559980594859933
+        }
+      ],
+      "receive_audio": [
+        {
+          "seconds": 25.0,
+          "counterDelta": 0.00034809795450339853
+        },
+        {
+          "seconds": 30.01,
+          "counterDelta": 0.0008023753330739682
+        }
+      ]
+    },
+    "restart": {
+      "before": {
+        "send_video": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 375,
+            "averageFps": 15.0,
+            "implementation": "OpenH264"
+          }
+        ],
+        "receive_video": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 374,
+            "averageFps": 14.96,
+            "implementation": "FFmpeg"
+          }
+        ],
+        "send_audio": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 0.0002323660050576673
+          }
+        ],
+        "receive_audio": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 0.00034809795450339853
+          }
+        ]
+      },
+      "after": {
+        "send_video": [
+          {
+            "seconds": 30.01,
+            "counterDelta": 450,
+            "averageFps": 14.99,
+            "implementation": "OpenH264"
+          }
+        ],
+        "receive_video": [
+          {
+            "seconds": 30.01,
+            "counterDelta": 450,
+            "averageFps": 14.99,
+            "implementation": "FFmpeg"
+          }
+        ],
+        "send_audio": [
+          {
+            "seconds": 30.01,
+            "counterDelta": 0.0017559980594859933
+          }
+        ],
+        "receive_audio": [
+          {
+            "seconds": 30.01,
+            "counterDelta": 0.0008023753330739682
+          }
+        ]
+      }
+    },
+    "syncCommands": [
+      "START"
+    ],
+    "failures": []
+  },
+  {
+    "file": "stress-2-synthetic-1.jsonl",
+    "streams": {
+      "send_video": [
+        {
+          "seconds": 25.01,
+          "counterDelta": 375,
+          "averageFps": 14.99,
+          "implementation": "OpenH264"
+        },
+        {
+          "seconds": 30.02,
+          "counterDelta": 450,
+          "averageFps": 14.99,
+          "implementation": "OpenH264"
+        }
+      ],
+      "receive_video": [
+        {
+          "seconds": 25.01,
+          "counterDelta": 375,
+          "averageFps": 14.99,
+          "implementation": "FFmpeg"
+        },
+        {
+          "seconds": 30.02,
+          "counterDelta": 450,
+          "averageFps": 14.99,
+          "implementation": "FFmpeg"
+        }
+      ],
+      "send_audio": [
+        {
+          "seconds": 25.01,
+          "counterDelta": 3.3307515834621326e-05
+        },
+        {
+          "seconds": 30.02,
+          "counterDelta": 0.003764241551579837
+        }
+      ],
+      "receive_audio": [
+        {
+          "seconds": 25.01,
+          "counterDelta": 0.00011286209935106285
+        },
+        {
+          "seconds": 30.02,
+          "counterDelta": 0.004978008208580246
+        }
+      ]
+    },
+    "restart": {
+      "before": {
+        "send_video": [
+          {
+            "seconds": 25.01,
+            "counterDelta": 375,
+            "averageFps": 14.99,
+            "implementation": "OpenH264"
+          }
+        ],
+        "receive_video": [
+          {
+            "seconds": 25.01,
+            "counterDelta": 375,
+            "averageFps": 14.99,
+            "implementation": "FFmpeg"
+          }
+        ],
+        "send_audio": [
+          {
+            "seconds": 25.01,
+            "counterDelta": 3.3307515834621326e-05
+          }
+        ],
+        "receive_audio": [
+          {
+            "seconds": 25.01,
+            "counterDelta": 0.00011286209935106285
+          }
+        ]
+      },
+      "after": {
+        "send_video": [
+          {
+            "seconds": 30.02,
+            "counterDelta": 450,
+            "averageFps": 14.99,
+            "implementation": "OpenH264"
+          }
+        ],
+        "receive_video": [
+          {
+            "seconds": 30.02,
+            "counterDelta": 450,
+            "averageFps": 14.99,
+            "implementation": "FFmpeg"
+          }
+        ],
+        "send_audio": [
+          {
+            "seconds": 30.02,
+            "counterDelta": 0.003764241551579837
+          }
+        ],
+        "receive_audio": [
+          {
+            "seconds": 30.02,
+            "counterDelta": 0.004978008208580246
+          }
+        ]
+      }
+    },
+    "syncCommands": [],
+    "failures": []
+  },
+  {
+    "file": "stress-2-synthetic-2.jsonl",
+    "streams": {
+      "send_video": [
+        {
+          "seconds": 25.0,
+          "counterDelta": 375,
+          "averageFps": 15.0,
+          "implementation": "OpenH264"
+        },
+        {
+          "seconds": 30.17,
+          "counterDelta": 453,
+          "averageFps": 15.01,
+          "implementation": "OpenH264"
+        }
+      ],
+      "receive_video": [
+        {
+          "seconds": 25.0,
+          "counterDelta": 376,
+          "averageFps": 15.04,
+          "implementation": "FFmpeg"
+        },
+        {
+          "seconds": 30.28,
+          "counterDelta": 455,
+          "averageFps": 15.03,
+          "implementation": "FFmpeg"
+        }
+      ],
+      "send_audio": [
+        {
+          "seconds": 25.0,
+          "counterDelta": 0.00014057978326091107
+        },
+        {
+          "seconds": 30.08,
+          "counterDelta": 0.004694695833038119
+        }
+      ],
+      "receive_audio": [
+        {
+          "seconds": 25.0,
+          "counterDelta": 5.6382543435350054e-06
+        },
+        {
+          "seconds": 30.2,
+          "counterDelta": 0.003449575386869782
+        }
+      ]
+    },
+    "restart": {
+      "before": {
+        "send_video": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 375,
+            "averageFps": 15.0,
+            "implementation": "OpenH264"
+          }
+        ],
+        "receive_video": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 376,
+            "averageFps": 15.04,
+            "implementation": "FFmpeg"
+          }
+        ],
+        "send_audio": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 0.00014057978326091107
+          }
+        ],
+        "receive_audio": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 5.6382543435350054e-06
+          }
+        ]
+      },
+      "after": {
+        "send_video": [
+          {
+            "seconds": 30.17,
+            "counterDelta": 453,
+            "averageFps": 15.01,
+            "implementation": "OpenH264"
+          }
+        ],
+        "receive_video": [
+          {
+            "seconds": 30.28,
+            "counterDelta": 455,
+            "averageFps": 15.03,
+            "implementation": "FFmpeg"
+          }
+        ],
+        "send_audio": [
+          {
+            "seconds": 30.08,
+            "counterDelta": 0.004694695833038119
+          }
+        ],
+        "receive_audio": [
+          {
+            "seconds": 30.2,
+            "counterDelta": 0.003449575386869782
+          }
+        ]
+      }
+    },
+    "syncCommands": [
+      "START",
+      "STATE"
+    ],
+    "failures": []
+  },
+  {
+    "file": "stress-3-synthetic-1.jsonl",
+    "streams": {
+      "send_video": [
+        {
+          "seconds": 25.0,
+          "counterDelta": 374,
+          "averageFps": 14.96,
+          "implementation": "OpenH264"
+        },
+        {
+          "seconds": 30.17,
+          "counterDelta": 452,
+          "averageFps": 14.98,
+          "implementation": "OpenH264"
+        }
+      ],
+      "receive_video": [
+        {
+          "seconds": 25.0,
+          "counterDelta": 375,
+          "averageFps": 15.0,
+          "implementation": "FFmpeg"
+        },
+        {
+          "seconds": 25.0,
+          "counterDelta": 374,
+          "averageFps": 14.96,
+          "implementation": "FFmpeg"
+        }
+      ],
+      "send_audio": [
+        {
+          "seconds": 25.0,
+          "counterDelta": 0.002326220468486145
+        },
+        {
+          "seconds": 30.11,
+          "counterDelta": 0.0009987940229161428
+        }
+      ],
+      "receive_audio": [
+        {
+          "seconds": 25.0,
+          "counterDelta": 0.0003028632869451417
+        },
+        {
+          "seconds": 25.0,
+          "counterDelta": 0.0005366024246808779
+        }
+      ]
+    },
+    "restart": {
+      "before": {
+        "send_video": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 374,
+            "averageFps": 14.96,
+            "implementation": "OpenH264"
+          }
+        ],
+        "receive_video": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 375,
+            "averageFps": 15.0,
+            "implementation": "FFmpeg"
+          }
+        ],
+        "send_audio": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 0.002326220468486145
+          }
+        ],
+        "receive_audio": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 0.0003028632869451417
+          }
+        ]
+      },
+      "after": {
+        "send_video": [
+          {
+            "seconds": 30.17,
+            "counterDelta": 452,
+            "averageFps": 14.98,
+            "implementation": "OpenH264"
+          }
+        ],
+        "receive_video": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 374,
+            "averageFps": 14.96,
+            "implementation": "FFmpeg"
+          }
+        ],
+        "send_audio": [
+          {
+            "seconds": 30.11,
+            "counterDelta": 0.0009987940229161428
+          }
+        ],
+        "receive_audio": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 0.0005366024246808779
+          }
+        ]
+      }
+    },
+    "syncCommands": [
+      "START",
+      "STATE"
+    ],
+    "failures": []
+  },
+  {
+    "file": "stress-3-synthetic-2.jsonl",
+    "streams": {
+      "send_video": [
+        {
+          "seconds": 25.0,
+          "counterDelta": 375,
+          "averageFps": 15.0,
+          "implementation": "OpenH264"
+        },
+        {
+          "seconds": 30.03,
+          "counterDelta": 449,
+          "averageFps": 14.95,
+          "implementation": "OpenH264"
+        }
+      ],
+      "receive_video": [
+        {
+          "seconds": 25.0,
+          "counterDelta": 375,
+          "averageFps": 15.0,
+          "implementation": "FFmpeg"
+        },
+        {
+          "seconds": 30.03,
+          "counterDelta": 450,
+          "averageFps": 14.98,
+          "implementation": "FFmpeg"
+        }
+      ],
+      "send_audio": [
+        {
+          "seconds": 25.0,
+          "counterDelta": 0.0003118286986787122
+        },
+        {
+          "seconds": 30.03,
+          "counterDelta": 0.0005221695083923866
+        }
+      ],
+      "receive_audio": [
+        {
+          "seconds": 25.0,
+          "counterDelta": 0.002121196698980129
+        },
+        {
+          "seconds": 30.03,
+          "counterDelta": 0.0009948170607314139
+        }
+      ]
+    },
+    "restart": {
+      "before": {
+        "send_video": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 375,
+            "averageFps": 15.0,
+            "implementation": "OpenH264"
+          }
+        ],
+        "receive_video": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 375,
+            "averageFps": 15.0,
+            "implementation": "FFmpeg"
+          }
+        ],
+        "send_audio": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 0.0003118286986787122
+          }
+        ],
+        "receive_audio": [
+          {
+            "seconds": 25.0,
+            "counterDelta": 0.002121196698980129
+          }
+        ]
+      },
+      "after": {
+        "send_video": [
+          {
+            "seconds": 30.03,
+            "counterDelta": 449,
+            "averageFps": 14.95,
+            "implementation": "OpenH264"
+          }
+        ],
+        "receive_video": [
+          {
+            "seconds": 30.03,
+            "counterDelta": 450,
+            "averageFps": 14.98,
+            "implementation": "FFmpeg"
+          }
+        ],
+        "send_audio": [
+          {
+            "seconds": 30.03,
+            "counterDelta": 0.0005221695083923866
+          }
+        ],
+        "receive_audio": [
+          {
+            "seconds": 30.03,
+            "counterDelta": 0.0009948170607314139
+          }
+        ]
+      }
+    },
+    "syncCommands": [
+      "START"
+    ],
+    "failures": []
+  }
+]

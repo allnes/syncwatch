@@ -1,0 +1,135 @@
+package:media_kit_libs_windows_video registered.
+[SyncWatch][CALL][2026-10-02T23:30:09.404499] JOIN room=syncwatch-synthetic identity=synthetic-2
+[SyncWatch][CALL][2026-10-02T23:30:14.979533] MIC publish ok enabled=false
+[SyncWatch][CALL][2026-10-02T23:30:14.991546] CAMERA publish ok enabled=false
+[SyncWatch][CALL][2026-10-02T23:30:15.005477] JOINED mic=false camera=false videoPublications=0 videoTrack=false
+[SyncWatch][CALL][2026-10-02T23:30:15.308828] MIC enabled=true
+[SyncWatch][CALL][2026-10-02T23:30:15.601821] MIC toggle ok enabled=true
+[SyncWatch][CALL][2026-10-02T23:30:15.604505] CAMERA request enabled=true uiQuality=480p4x3 capture=VideoDimensions(640x480) maxFps=15.0 codec=h264 simulcast=false sendEncoding=VideoEncoding(maxFramerate: 15, maxBitrate: 850000, bitratePriority: null, networkPriority: null)
+[SyncWatch][CALL][2026-10-02T23:30:15.914914] CAMERA track created options=Instance of 'CameraCaptureOptions' mediaTrackId=330d4a71-cadd-4d6f-b62d-f335960f026e
+[SyncWatch][CALL][2026-10-02T23:30:15.915664] CAMERA capture actual settings={deviceId: OBS Virtual Camera, frameRate: 30, height: 480, kind: videoinput, width: 640}
+[SyncWatch][CALL][2026-10-02T23:30:16.170639] CAMERA published sid=TR_VCjCvvkPbimrSi source=TrackSource.camera muted=false simulcast=false capture=Instance of 'CameraCaptureOptions' publish=VideoPublishOptions(videoEncoding: VideoEncoding(maxFramerate: 15, maxBitrate: 850000, bitratePriority: null, networkPriority: null), simulcast: false)
+[SyncWatch][SYNC][2026-10-02T23:30:16.170639] LISTENER attach
+[SyncWatch][PLAYBACK] t=0ms INIT media="synthetic-1080p.mp4" path="<validation-root>\media\synthetic-1080p.mp4"
+[SyncWatch][PLAYBACK] t=0ms OPEN_BEGIN media="synthetic-1080p.mp4"
+[SyncWatch][RESOURCE_EVENT] MOVIE_OPEN_BEGIN media="synthetic-1080p.mp4"
+[SyncWatch][SYNC][2026-10-02T23:30:16.340584] TX STATE_REQUEST
+media_kit: ANGLESurfaceManager: Direct3D Feature Level: 11_0
+1 1
+media_kit: VideoOutput: Create Texture: 1953247841936
+[SyncWatch][SYNC][2026-10-02T23:30:16.703680] RX kind=state_request from=synthetic-1 payload={"kind":"state_request","sentAtMs":1790976616381}
+[SyncWatch][SYNC][2026-10-02T23:30:16.716114] RX STATE_REQUEST; no active session
+media_kit: VideoOutput: Using H/W rendering.
+VideoOutput.Resize
+{handle: 1953094774304, id: 1953247841936, rect: {height: 0, left: 0, top: 0, width: 0}}
+NativeVideoController: Texture ID: 1953247841936
+[SyncWatch][PLAYBACK] t=631ms HEALTH pos=0ms duration=0ms playing=false buffering=false previewActive=false previewHover=false previewCache=0
+[SyncWatch][PLAYBACK] t=643ms BUFFERING_END duration=-1ms pos=0ms playing=false
+[SyncWatch][PLAYBACK] t=656ms VIDEO_PARAMS dw=null dh=null aspect=null
+[SyncWatch][PLAYBACK] t=657ms MPV_HEALTH codec= format= hwdec= containerFps= estimatedFps= displayFps= frameDrops= decoderDrops= videoSync=display-resample autosync=0 avsync= totalAvsyncChange=
+[SyncWatch][PLAYBACK] t=709ms OPEN_DONE elapsed=709ms duration=0ms
+[SyncWatch][PLAYBACK] t=736ms BUFFERING_START pos=0ms playing=false
+[SyncWatch][PLAYBACK] t=760ms BUFFERING_END duration=23ms pos=0ms playing=false
+[SyncWatch][PLAYBACK] t=760ms VIDEO_PARAMS dw=null dh=null aspect=null
+1920 1080
+media_kit: VideoOutput: Free Texture: 1953247841936
+media_kit: ANGLESurfaceManager: Direct3D Feature Level: 11_0
+media_kit: VideoOutput: Create Texture: 1953811639152
+[SyncWatch][PLAYBACK] t=1093ms TRACKS_READY elapsed=1092ms audio=3 subtitle=2
+[SyncWatch][PLAYBACK] t=1105ms PLAY_REQUESTED elapsed=1104ms pos=0ms
+[SyncWatch][RESOURCE_EVENT] MOVIE_PLAYING
+[SyncWatch][SYNC][2026-10-02T23:30:17.444592] TX START rev=1 media=synthetic 1080p posMs=0 playing=true
+[SyncWatch][PLAYBACK] t=1130ms VIDEO_PARAMS dw=1920 dh=1080 aspect=1.7777777910232544
+VideoOutput.Resize
+{handle: 1953094774304, id: 1953811639152, rect: {height: 1080, left: 0, top: 0, width: 1920}}
+[SyncWatch][SYNC][2026-10-02T23:30:17.805780] RX kind=playback from=synthetic-1 payload={"kind":"playback","sessionId":"synthetic-1-1790976617457351","type":"START","revision":1,"mediaId":"synthetic 1080p","positionMs":0,"playing":true,"sentAtMs":1790976617457}
+[SyncWatch][SYNC][2026-10-02T23:30:17.806896] SESSION accepted id=synthetic-1-1790976617457351
+[SyncWatch][PLAYBACK] t=2499ms FLUTTER_FRAMES samples=29 jank16=1 severe33=1 maxMs=344.5 buildMaxMs=14.9 rasterMaxMs=7.1
+[SyncWatch][CALL][2026-10-02T23:30:19.178470] CAMERA sender stats t+3s count=1 stats=[Instance of 'VideoSenderStats']
+[SyncWatch][PLAYBACK] t=7626ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=12.1 buildMaxMs=2.0 rasterMaxMs=9.8
+[SyncWatch][PLAYBACK] t=10664ms HEALTH pos=9100ms duration=180021ms playing=true buffering=false previewActive=false previewHover=false previewCache=0
+[SyncWatch][PLAYBACK] t=10669ms MPV_HEALTH codec=h264 ((null)) format=h264 hwdec=d3d11va-copy containerFps=30.000000 estimatedFps=30.000000 displayFps= frameDrops=0 decoderDrops=0 videoSync=display-resample autosync=0 avsync=0.000024 totalAvsyncChange=0.000000
+[SyncWatch][PLAYBACK] t=12784ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=13.2 buildMaxMs=2.2 rasterMaxMs=12.3
+[SyncWatch][PLAYBACK] t=17939ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=14.0 buildMaxMs=2.0 rasterMaxMs=12.0
+[SyncWatch][PLAYBACK] t=20664ms HEALTH pos=19100ms duration=180021ms playing=true buffering=false previewActive=false previewHover=false previewCache=0
+[SyncWatch][PLAYBACK] t=20673ms MPV_HEALTH codec=h264 ((null)) format=h264 hwdec=d3d11va-copy containerFps=30.000000 estimatedFps=30.000000 displayFps= frameDrops=0 decoderDrops=0 videoSync=display-resample autosync=0 avsync=0.000358 totalAvsyncChange=0.000000
+[SyncWatch][PLAYBACK] t=23096ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=13.7 buildMaxMs=2.1 rasterMaxMs=11.5
+[SyncWatch][PLAYBACK] t=28252ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=13.5 buildMaxMs=2.1 rasterMaxMs=11.2
+[SyncWatch][PLAYBACK] t=30664ms HEALTH pos=29099ms duration=180021ms playing=true buffering=false previewActive=false previewHover=false previewCache=0
+[SyncWatch][PLAYBACK] t=30671ms MPV_HEALTH codec=h264 ((null)) format=h264 hwdec=d3d11va-copy containerFps=30.000000 estimatedFps=30.000000 displayFps= frameDrops=0 decoderDrops=0 videoSync=display-resample autosync=0 avsync=0.000058 totalAvsyncChange=0.000000
+[SyncWatch][PLAYBACK] t=33408ms FLUTTER_FRAMES samples=165 jank16=1 severe33=0 maxMs=25.2 buildMaxMs=2.1 rasterMaxMs=12.2
+[SyncWatch][PLAYBACK] t=38564ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=13.3 buildMaxMs=2.1 rasterMaxMs=10.9
+[SyncWatch][PLAYBACK] t=40698ms HEALTH pos=39133ms duration=180021ms playing=true buffering=false previewActive=false previewHover=false previewCache=0
+[SyncWatch][PLAYBACK] t=40707ms MPV_HEALTH codec=h264 ((null)) format=h264 hwdec=d3d11va-copy containerFps=30.000000 estimatedFps=30.000000 displayFps= frameDrops=0 decoderDrops=0 videoSync=display-resample autosync=0 avsync=0.001179 totalAvsyncChange=-0.000000
+[SyncWatch][PLAYBACK] t=43721ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=13.2 buildMaxMs=2.2 rasterMaxMs=11.3
+[SyncWatch][PLAYBACK] t=48877ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=15.3 buildMaxMs=2.2 rasterMaxMs=11.1
+[SyncWatch][PLAYBACK] t=50699ms HEALTH pos=49133ms duration=180021ms playing=true buffering=false previewActive=false previewHover=false previewCache=0
+[SyncWatch][PLAYBACK] t=50709ms MPV_HEALTH codec=h264 ((null)) format=h264 hwdec=d3d11va-copy containerFps=30.000000 estimatedFps=30.000000 displayFps= frameDrops=0 decoderDrops=0 videoSync=display-resample autosync=0 avsync=0.001805 totalAvsyncChange=-0.000000
+[SyncWatch][PLAYBACK] t=54041ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=14.1 buildMaxMs=1.8 rasterMaxMs=11.9
+[SyncWatch][PLAYBACK] t=59190ms FLUTTER_FRAMES samples=165 jank16=1 severe33=0 maxMs=18.1 buildMaxMs=2.2 rasterMaxMs=12.1
+[SyncWatch][PLAYBACK] t=60732ms HEALTH pos=59166ms duration=180021ms playing=true buffering=false previewActive=false previewHover=false previewCache=0
+[SyncWatch][PLAYBACK] t=60737ms MPV_HEALTH codec=h264 ((null)) format=h264 hwdec=d3d11va-copy containerFps=30.000000 estimatedFps=30.000000 displayFps= frameDrops=0 decoderDrops=0 videoSync=display-resample autosync=0 avsync=0.001535 totalAvsyncChange=-0.000000
+[SyncWatch][PLAYBACK] t=64345ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=13.1 buildMaxMs=2.0 rasterMaxMs=11.1
+[SyncWatch][PLAYBACK] t=69509ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=13.8 buildMaxMs=2.0 rasterMaxMs=11.7
+[SyncWatch][PLAYBACK] t=70764ms HEALTH pos=69200ms duration=180021ms playing=true buffering=false previewActive=false previewHover=false previewCache=0
+[SyncWatch][PLAYBACK] t=70772ms MPV_HEALTH codec=h264 ((null)) format=h264 hwdec=d3d11va-copy containerFps=30.000000 estimatedFps=30.000000 displayFps= frameDrops=0 decoderDrops=0 videoSync=display-resample autosync=0 avsync=0.000141 totalAvsyncChange=-0.000000
+[SyncWatch][PLAYBACK] t=74659ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=13.5 buildMaxMs=2.4 rasterMaxMs=11.6
+[SyncWatch][PLAYBACK] t=79814ms FLUTTER_FRAMES samples=165 jank16=1 severe33=0 maxMs=28.0 buildMaxMs=1.9 rasterMaxMs=9.2
+[SyncWatch][PLAYBACK] t=80764ms HEALTH pos=79200ms duration=180021ms playing=true buffering=false previewActive=false previewHover=false previewCache=0
+[SyncWatch][PLAYBACK] t=80773ms MPV_HEALTH codec=h264 ((null)) format=h264 hwdec=d3d11va-copy containerFps=30.000000 estimatedFps=30.000000 displayFps= frameDrops=0 decoderDrops=0 videoSync=display-resample autosync=0 avsync=0.000609 totalAvsyncChange=-0.000000
+[SyncWatch][PLAYBACK] t=84975ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=12.7 buildMaxMs=1.8 rasterMaxMs=11.7
+[SyncWatch][PLAYBACK] t=90127ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=13.3 buildMaxMs=2.0 rasterMaxMs=11.4
+[SyncWatch][PLAYBACK] t=90798ms HEALTH pos=89233ms duration=180021ms playing=true buffering=false previewActive=false previewHover=false previewCache=0
+[SyncWatch][PLAYBACK] t=90807ms MPV_HEALTH codec=h264 ((null)) format=h264 hwdec=d3d11va-copy containerFps=30.000000 estimatedFps=30.000000 displayFps= frameDrops=0 decoderDrops=0 videoSync=display-resample autosync=0 avsync=0.000816 totalAvsyncChange=-0.000000
+[SyncWatch][PLAYBACK] t=95283ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=13.5 buildMaxMs=2.1 rasterMaxMs=11.4
+[SyncWatch][PLAYBACK] t=100438ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=15.0 buildMaxMs=1.8 rasterMaxMs=10.4
+[SyncWatch][PLAYBACK] t=100830ms HEALTH pos=99266ms duration=180021ms playing=true buffering=false previewActive=false previewHover=false previewCache=0
+[SyncWatch][PLAYBACK] t=100839ms MPV_HEALTH codec=h264 ((null)) format=h264 hwdec=d3d11va-copy containerFps=30.000000 estimatedFps=30.000000 displayFps= frameDrops=0 decoderDrops=0 videoSync=display-resample autosync=0 avsync=0.000047 totalAvsyncChange=-0.000000
+[SyncWatch][PLAYBACK] t=105597ms FLUTTER_FRAMES samples=165 jank16=1 severe33=0 maxMs=29.2 buildMaxMs=2.0 rasterMaxMs=11.7
+[SyncWatch][PLAYBACK] t=110752ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=13.9 buildMaxMs=2.1 rasterMaxMs=12.1
+[SyncWatch][PLAYBACK] t=110864ms HEALTH pos=109300ms duration=180021ms playing=true buffering=false previewActive=false previewHover=false previewCache=0
+[SyncWatch][PLAYBACK] t=110870ms MPV_HEALTH codec=h264 ((null)) format=h264 hwdec=d3d11va-copy containerFps=30.000000 estimatedFps=30.000000 displayFps= frameDrops=0 decoderDrops=0 videoSync=display-resample autosync=0 avsync=0.000171 totalAvsyncChange=-0.000000
+[SyncWatch][PLAYBACK] t=115908ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=13.6 buildMaxMs=1.9 rasterMaxMs=11.4
+[SyncWatch][PLAYBACK] t=120898ms HEALTH pos=119333ms duration=180021ms playing=true buffering=false previewActive=false previewHover=false previewCache=0
+[SyncWatch][PLAYBACK] t=120905ms MPV_HEALTH codec=h264 ((null)) format=h264 hwdec=d3d11va-copy containerFps=30.000000 estimatedFps=30.000000 displayFps= frameDrops=0 decoderDrops=0 videoSync=display-resample autosync=0 avsync=0.000899 totalAvsyncChange=-0.000000
+[SyncWatch][PLAYBACK] t=121064ms FLUTTER_FRAMES samples=165 jank16=1 severe33=0 maxMs=27.6 buildMaxMs=1.8 rasterMaxMs=12.5
+[SyncWatch][PLAYBACK] t=126221ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=14.0 buildMaxMs=1.9 rasterMaxMs=12.0
+[SyncWatch][SYNC][2026-10-02T23:32:22.632647] RX kind=playback from=server payload={"sessionId":"000-synthetic-control","mediaId":"synthetic 1080p","revision":50000,"type":"START","kind":"playback","playing":true,"positionMs":60000,"sentAtMs":1790976742583}
+[SyncWatch][SYNC][2026-10-02T23:32:22.632647] SESSION accepted id=000-synthetic-control
+[SyncWatch][PLAYBACK] t=126319ms BUFFERING_START pos=60000ms playing=true
+[SyncWatch][PLAYBACK] t=126590ms BUFFERING_END duration=270ms pos=60000ms playing=true
+[SyncWatch][SYNC][2026-10-02T23:32:25.663059] RX kind=playback from=server payload={"sessionId":"000-synthetic-control","mediaId":"synthetic 1080p","revision":50001,"type":"PAUSE","kind":"playback","playing":false,"positionMs":63000,"sentAtMs":1790976745661}
+[SyncWatch][SYNC][2026-10-02T23:32:28.681333] RX kind=playback from=server payload={"sessionId":"000-synthetic-control","mediaId":"synthetic 1080p","revision":50002,"type":"SEEK","kind":"playback","playing":true,"positionMs":120000,"sentAtMs":1790976748678}
+[SyncWatch][PLAYBACK] t=132362ms HEALTH pos=120000ms duration=180021ms playing=false buffering=false previewActive=false previewHover=false previewCache=0
+[SyncWatch][PLAYBACK] t=132400ms MPV_HEALTH codec=h264 ((null)) format=h264 hwdec=d3d11va-copy containerFps=30.000000 estimatedFps= displayFps= frameDrops=0 decoderDrops=0 videoSync=display-resample autosync=0 avsync=0.000000 totalAvsyncChange=0.000000
+[SyncWatch][SYNC][2026-10-02T23:32:30.698288] RX kind=playback from=server payload={"sessionId":"000-synthetic-control","mediaId":"synthetic 1080p","revision":50003,"type":"PLAY","kind":"playback","playing":true,"positionMs":120000,"sentAtMs":1790976750693}
+[SyncWatch][PLAYBACK] t=135408ms FLUTTER_FRAMES samples=108 jank16=0 severe33=0 maxMs=13.1 buildMaxMs=2.0 rasterMaxMs=9.4
+[SyncWatch][PLAYBACK] t=140571ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=12.5 buildMaxMs=1.8 rasterMaxMs=10.8
+[SyncWatch][PLAYBACK] t=142394ms HEALTH pos=127500ms duration=180021ms playing=true buffering=false previewActive=false previewHover=false previewCache=0
+[SyncWatch][PLAYBACK] t=142402ms MPV_HEALTH codec=h264 ((null)) format=h264 hwdec=d3d11va-copy containerFps=30.000000 estimatedFps=30.000000 displayFps= frameDrops=0 decoderDrops=0 videoSync=display-resample autosync=0 avsync=0.000595 totalAvsyncChange=-0.000000
+[SyncWatch][PLAYBACK] t=145721ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=13.8 buildMaxMs=1.8 rasterMaxMs=11.7
+[SyncWatch][PLAYBACK] t=150877ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=15.2 buildMaxMs=1.9 rasterMaxMs=13.1
+[SyncWatch][PLAYBACK] t=152394ms HEALTH pos=137500ms duration=180021ms playing=true buffering=false previewActive=false previewHover=false previewCache=0
+[SyncWatch][PLAYBACK] t=152402ms MPV_HEALTH codec=h264 ((null)) format=h264 hwdec=d3d11va-copy containerFps=30.000000 estimatedFps=30.000000 displayFps= frameDrops=0 decoderDrops=0 videoSync=display-resample autosync=0 avsync=0.000858 totalAvsyncChange=-0.000000
+[SyncWatch][PLAYBACK] t=156041ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=15.9 buildMaxMs=1.9 rasterMaxMs=13.2
+[SyncWatch][PLAYBACK] t=161189ms FLUTTER_FRAMES samples=165 jank16=1 severe33=0 maxMs=27.2 buildMaxMs=2.2 rasterMaxMs=10.3
+[SyncWatch][PLAYBACK] t=162427ms HEALTH pos=147533ms duration=180021ms playing=true buffering=false previewActive=false previewHover=false previewCache=0
+[SyncWatch][PLAYBACK] t=162435ms MPV_HEALTH codec=h264 ((null)) format=h264 hwdec=d3d11va-copy containerFps=30.000000 estimatedFps=30.000000 displayFps= frameDrops=0 decoderDrops=0 videoSync=display-resample autosync=0 avsync=0.000019 totalAvsyncChange=-0.000000
+[SyncWatch][PLAYBACK] t=166345ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=12.9 buildMaxMs=1.9 rasterMaxMs=11.6
+[SyncWatch][PLAYBACK] t=171502ms FLUTTER_FRAMES samples=165 jank16=0 severe33=0 maxMs=15.8 buildMaxMs=2.2 rasterMaxMs=12.4
+[SyncWatch][PLAYBACK] t=172461ms HEALTH pos=157566ms duration=180021ms playing=true buffering=false previewActive=false previewHover=false previewCache=0
+[SyncWatch][PLAYBACK] t=172469ms MPV_HEALTH codec=h264 ((null)) format=h264 hwdec=d3d11va-copy containerFps=30.000000 estimatedFps=30.000000 displayFps= frameDrops=0 decoderDrops=0 videoSync=display-resample autosync=0 avsync=0.001037 totalAvsyncChange=-0.000000
+[SyncWatch][PLAYBACK] t=176659ms FLUTTER_FRAMES samples=165 jank16=1 severe33=0 maxMs=28.4 buildMaxMs=2.2 rasterMaxMs=14.4
+[SyncWatch][CALL][2026-10-02T23:33:16.238941] MEDIA camera track disposed
+[SyncWatch][CALL][2026-10-02T23:33:16.239949] MEDIA unpublished sid=TR_AMAsxQAXFXnNN6 source=TrackSource.microphone
+[SyncWatch][CALL][2026-10-02T23:33:16.240941] MEDIA unpublished sid=TR_VCjCvvkPbimrSi source=TrackSource.camera
+[SyncWatch][SYNC][2026-10-02T23:33:16.254180] LISTENER dispose
+[SyncWatch][CALL][2026-10-02T23:33:16.254180] LEAVE room=syncwatch-synthetic
+Got exception closing data channel on RTCPeerConnection::dispose: PlatformException(dataChannelCloseFailed, dataChannelClose() peerConnection is null, null, null)
+Got exception closing data channel on RTCPeerConnection::dispose: PlatformException(dataChannelCloseFailed, dataChannelClose() peerConnection is null, null, null)
+Got exception closing data channel on RTCPeerConnection::dispose: PlatformException(dataChannelCloseFailed, dataChannelClose() peerConnection is null, null, null)
+Got exception closing data channel on RTCPeerConnection::dispose: PlatformException(dataChannelCloseFailed, dataChannelClose() peerConnection is null, null, null)
+Got exception closing data channel on RTCPeerConnection::dispose: PlatformException(dataChannelCloseFailed, dataChannelClose() peerConnection is null, null, null)
+[SyncWatch][RESOURCE_EVENT] MOVIE_CLOSED
+media_kit: VideoOutput: Free Texture: 1953811639152
+VideoOutput::~VideoOutput: 1953094774304

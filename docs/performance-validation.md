@@ -1,5 +1,11 @@
 # Media resource validation
 
+Follow-up: [camera + call + 1080p movie comparison](measurements/2026-10-02/combined/README.md)
+now covers two clients exchanging real audio/video, playback synchronization,
+and repeated media restarts. It records a 14.1% private-memory reduction and an
+unresolved native WebRTC crash from an earlier prototype. The earlier playback
+measurements and their narrower scope are retained below.
+
 ## Baseline (2026-10-02)
 
 Source: `eee5854`. Test machine: Windows 11, Intel i7-12700,

@@ -51,7 +51,10 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad> {
   EventsListener<RoomEvent>? events;
   Timer? timer;
   Timer? stopTimer;
+  Timer? cycleTimer;
+  Future<void> mediaCycle = Future<void>.value();
   bool sampling = false;
+  bool cycling = false;
   String status = 'Connecting synthetic media';
   final clock = Stopwatch()..start();
   late final IOSink output;
@@ -150,6 +153,12 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad> {
         sync = engine;
         status = 'Running';
       });
+      final cycleAfter = config['restartCallAfterSeconds'] as int?;
+      if (cycleAfter != null) {
+        cycleTimer = Timer(Duration(seconds: cycleAfter), () {
+          mediaCycle = restartMedia();
+        });
+      }
       record('ready', {
         'localTracks': room.localParticipant!.trackPublications.length,
       });
@@ -173,7 +182,7 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad> {
   }
 
   Future<void> sample() async {
-    if (sampling) return;
+    if (sampling || cycling) return;
     sampling = true;
     try {
       final room = call.room!;
@@ -219,7 +228,32 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad> {
     }
   }
 
+  Future<void> restartMedia() async {
+    cycling = true;
+    while (sampling) {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+    try {
+      await call.stopCallMedia();
+      record('cycleStopped', {
+        'localTracks': call.room?.localParticipant?.trackPublications.length,
+      });
+      await Future<void>.delayed(const Duration(seconds: 2));
+      await call.setMicrophoneEnabled(true);
+      await call.setCameraEnabled(true);
+      record('cycleRestarted', {
+        'localTracks': call.room?.localParticipant?.trackPublications.length,
+      });
+    } catch (error) {
+      record('fatal', {'error': 'Media restart: $error'});
+    } finally {
+      cycling = false;
+    }
+  }
+
   Future<void> stop() async {
+    cycleTimer?.cancel();
+    await mediaCycle;
     timer?.cancel();
     while (sampling) {
       await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -248,6 +282,7 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad> {
   void dispose() {
     timer?.cancel();
     stopTimer?.cancel();
+    cycleTimer?.cancel();
     super.dispose();
   }
 

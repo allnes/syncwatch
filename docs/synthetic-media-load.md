@@ -31,6 +31,11 @@ flutter build windows --release -t tool/synthetic_media_load.dart
 .\scripts\run_windows_media_load.ps1 -Executable build\windows\x64\runner\Release\syncwatch.exe -MediaPath synthetic-1080p.mp4 -OutputDirectory C:\Temp\syncwatch-load-01
 ```
 
+For a restart stress test, pass `-Seconds 70 -RestartCallAfterSeconds 35`.
+This unpublishes both local tracks, waits two seconds, then restarts camera and
+microphone while the film continues. Inspect `cycleStopped` (zero tracks) and
+`cycleRestarted` (two tracks), plus resumed receiver counters.
+
 ## Verify before comparing resources
 
 Both windows must show a moving film and received camera video. JSONL reports
@@ -38,6 +43,13 @@ must show increasing sent/decoded video frames, nonzero received audio energy,
 advancing playback, and `mediaStopped` with zero local tracks followed by
 `finished` for both clients. Inspect stderr and Windows Application Error events
 for native crashes. A connected room or a silent microphone is not a pass.
+In PowerShell, run
+`python tool/check_media_load.py (Get-ChildItem C:\Temp\syncwatch-load-01\*.jsonl).FullName`
+to enforce sustained sent/received video, nonzero audio energy, advancing movie
+position, and cleanup. For restart runs add `--require-restart` before the paths.
+It requires at least 20 seconds of video and nonzero audio energy in both directions
+before and after the restart, and continuing movie playback. Native report IDs
+are evaluated separately because the tracks change.
 
 After startup settles, run `measure_windows_resources.ps1` with both client PIDs
 and the OBS PID for 60 seconds using `-IncludeGpu`. Report each process separately;

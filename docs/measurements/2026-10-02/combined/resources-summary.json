@@ -1,0 +1,62 @@
+[
+  {
+    "variant": "baseline",
+    "pid": 11404,
+    "privateMiB": 637.15,
+    "workingSetMiB": 618.93,
+    "cpuOneCorePercent": 44.43,
+    "gpu3DPercent": 28.54,
+    "gpuDecodePercent": 4.944,
+    "gpuSharedMiB": 378.92
+  },
+  {
+    "variant": "baseline",
+    "pid": 11436,
+    "privateMiB": 225.14,
+    "workingSetMiB": 120.62,
+    "cpuOneCorePercent": 6.48,
+    "gpu3DPercent": 3.512,
+    "gpuDecodePercent": 1.185,
+    "gpuSharedMiB": 77.62
+  },
+  {
+    "variant": "baseline",
+    "pid": 8656,
+    "privateMiB": 638.35,
+    "workingSetMiB": 621.69,
+    "cpuOneCorePercent": 32.37,
+    "gpu3DPercent": 27.873,
+    "gpuDecodePercent": 4.394,
+    "gpuSharedMiB": 379.63
+  },
+  {
+    "variant": "optimized",
+    "pid": 11436,
+    "privateMiB": 225.07,
+    "workingSetMiB": 116.91,
+    "cpuOneCorePercent": 5.94,
+    "gpu3DPercent": 4.251,
+    "gpuDecodePercent": 1.574,
+    "gpuSharedMiB": 77.62
+  },
+  {
+    "variant": "optimized",
+    "pid": 13672,
+    "privateMiB": 548.85,
+    "workingSetMiB": 518.94,
+    "cpuOneCorePercent": 59.13,
+    "gpu3DPercent": 27.098,
+    "gpuDecodePercent": 6.182,
+    "gpuSharedMiB": 290.99
+  },
+  {
+    "variant": "optimized",
+    "pid": 9996,
+    "privateMiB": 547.15,
+    "workingSetMiB": 518.19,
+    "cpuOneCorePercent": 36.51,
+    "gpu3DPercent": 25.897,
+    "gpuDecodePercent": 4.809,
+    "gpuSharedMiB": 293.64
+  }
+]
