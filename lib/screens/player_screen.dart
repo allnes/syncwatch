@@ -16,7 +16,9 @@ import '../models/movie_item.dart';
 import '../services/sync_engine.dart';
 import '../services/preview_frame_cache.dart';
 import '../services/preview_thumbnail.dart';
+import '../services/video_output_size.dart';
 import '../widgets/video_color_filters.dart';
+import '../widgets/player_keyboard_shortcuts.dart';
 import 'player_settings_screen.dart';
 import 'settings_screen.dart';
 
@@ -71,6 +73,13 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       _isLight ? syncLightTextSecondary : Colors.white70;
   late final Player player;
   late final VideoController videoController;
+  Size? _movieViewport;
+  double _moviePixelRatio = 1;
+  Size? _requestedOutputSize;
+  Size? _appliedOutputSize;
+  Timer? _outputResizeTimer;
+  bool _outputResizeInFlight = false;
+  bool _outputDisposed = false;
 
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   Timer? _volumeOsdTimer;
@@ -273,6 +282,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     );
     _subscriptions.add(
       player.stream.videoParams.listen((params) {
+        _scheduleOutputResize();
         _playbackLog(
           'VIDEO_PARAMS dw=${params.dw} dh=${params.dh} '
           'aspect=${params.aspect}',
@@ -747,6 +757,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
   @override
   void dispose() {
+    _outputDisposed = true;
+    _outputResizeTimer?.cancel();
     WidgetsBinding.instance.removeTimingsCallback(_onFrameTimings);
     windowManager.removeListener(this);
     unawaited(
@@ -806,10 +818,11 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           },
           child: Scaffold(
             backgroundColor: _playerBackground,
-            body: KeyboardListener(
+            body: PlayerKeyboardShortcuts(
               focusNode: _playerFocusNode,
-              autofocus: true,
-              onKeyEvent: _handleKeyEvent,
+              enabled: widget.active,
+              fullscreen: isFullscreen,
+              onKeyEvent: (event) => unawaited(_handleKeyEvent(event)),
               child: Listener(
                 onPointerDown: (_) => _playerFocusNode.requestFocus(),
                 onPointerHover: (event) {},
@@ -1045,6 +1058,46 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     }
   }
 
+  void _scheduleOutputResize() {
+    if (_outputDisposed || _movieViewport == null) return;
+    final params = player.state.videoParams;
+    final size = videoOutputSize(
+      Size((params.dw ?? 0).toDouble(), (params.dh ?? 0).toDouble()),
+      _movieViewport!,
+      _moviePixelRatio,
+    );
+    if (size == null || size == _requestedOutputSize) return;
+    _requestedOutputSize = size;
+    _outputResizeTimer?.cancel();
+    // Coalesce window-drag layouts, while restoring full resolution on growth.
+    _outputResizeTimer = Timer(const Duration(milliseconds: 150), () {
+      unawaited(_resizeVideoOutput());
+    });
+  }
+
+  Future<void> _resizeVideoOutput() async {
+    if (_outputResizeInFlight || _outputDisposed) return;
+    _outputResizeInFlight = true;
+    try {
+      while (!_outputDisposed && _requestedOutputSize != _appliedOutputSize) {
+        final size = _requestedOutputSize!;
+        await videoController.setSize(
+          width: size.width.toInt(),
+          height: size.height.toInt(),
+        );
+        _appliedOutputSize = size;
+        _playbackLog(
+          'OUTPUT_SIZE ${size.width.toInt()}x${size.height.toInt()}',
+        );
+      }
+    } catch (error) {
+      _requestedOutputSize = null;
+      _playbackLog('OUTPUT_RESIZE_ERROR $error');
+    } finally {
+      _outputResizeInFlight = false;
+    }
+  }
+
   Widget _movieSurface(BuildContext context) {
     return Container(
       margin: EdgeInsets.only(
@@ -1073,6 +1126,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
             children: [
               LayoutBuilder(
                 builder: (context, constraints) {
+                  _movieViewport = constraints.biggest;
+                  _moviePixelRatio = MediaQuery.devicePixelRatioOf(context);
+                  _scheduleOutputResize();
                   final video = Video(
                     controller: videoController,
                     controls: NoVideoControls,
