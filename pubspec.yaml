@@ -19,6 +19,8 @@ dependencies:
   media_kit_libs_video: ^1.0.7
   media_kit_video: ^2.0.1
   media_kit: ^1.2.6
+  syncwatch_mpv:
+    path: packages/syncwatch_mpv
   multiview_desktop:
     git:
       url: https://github.com/vvlad-islavs/multi-view-desktop.git

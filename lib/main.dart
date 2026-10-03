@@ -42,7 +42,9 @@ Future<void> main(List<String> args) async {
     return;
   }
 
-  MediaKit.ensureInitialized();
+  MediaKit.ensureInitialized(
+    libmpv: Platform.isWindows ? 'syncwatch_mpv.dll' : null,
+  );
 
   // Test Peer does not need the main application's persisted UI settings.
   // Branch before SharedPreferences/window-manager initialization so the

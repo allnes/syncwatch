@@ -124,6 +124,8 @@ app.*.symbols
 *.iml
 .metadata
 windows/
+!packages/syncwatch_mpv/windows/
+!packages/syncwatch_mpv/windows/**
 macos/
 test/widget_test.dart
 

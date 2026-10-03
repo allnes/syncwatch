@@ -1,0 +1,12 @@
+name: syncwatch_mpv
+description: Windows mpv teardown integration for SyncWatch.
+version: 0.1.0
+publish_to: none
+environment:
+  sdk: ">=3.10.0 <4.0.0"
+  flutter: ">=3.7.0"
+flutter:
+  plugin:
+    platforms:
+      windows:
+        ffiPlugin: true
