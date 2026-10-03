@@ -1297,16 +1297,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _movieDetails(MovieItem movie) {
-    final continuingRemote = remotePlaybackActive &&
-        remotePlaybackMovieId == movie.movieId;
-    if (continuingRemote) {
-      widget.controller.updatePlaybackPosition(
-        movie.fullPath,
-        (_effectiveRemotePositionMs()) / 1000.0,
-        persist: true,
-      );
-    }
-
     final audioNames = movie.audioTrackNames.isEmpty
         ? ['…']
         : movie.audioTrackNames;
@@ -1977,6 +1967,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
         setState(() => showingPlayer = true);
       }
       return;
+    }
+
+    // Seed a newly opened player once. The hidden library also rebuilds while
+    // playback is active, so rendering details must never overwrite its clock.
+    if (remotePlaybackActive && remotePlaybackMovieId == movie.movieId) {
+      widget.controller.updatePlaybackPosition(
+        movie.fullPath,
+        _effectiveRemotePositionMs() / 1000.0,
+        persist: true,
+      );
     }
 
     final audioNames = movie.audioTrackNames.isEmpty

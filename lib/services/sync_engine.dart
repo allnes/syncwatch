@@ -163,6 +163,16 @@ class LiveKitSyncEngine implements SyncEngine {
               _lastRemoteRevision = revision;
               if (revision > _revision) _revision = revision;
             }
+            // Accepted remote controls also define the state advertised by
+            // subsequent local seeks and state replies. A seek alone keeps
+            // the current play/pause state, just as the player does.
+            if (type == 'START' || type == 'PLAY') {
+              _playingOverride = true;
+            } else if (type == 'PAUSE') {
+              _playingOverride = false;
+            } else if (type == 'STATE' && payload['playing'] is bool) {
+              _playingOverride = payload['playing'] as bool;
+            }
             _playbackHandler?.call(payload);
             for (final handler in _playbackHandlers.toList()) {
               handler(payload);
