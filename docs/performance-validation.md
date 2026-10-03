@@ -1,5 +1,28 @@
 # Media resource validation
 
+## Mandatory prerequisite: upstream behavior and design
+
+Do not implement, enable, or accept further performance optimizations until
+the behavior and visual comparison with `main` of the original upstream
+[`nestolen/syncwatch`](https://github.com/nestolen/syncwatch) is complete.
+The optimization branch and the fork's `main` are not the reference.
+Fetch `upstream/main` and record its exact commit in the external run manifest.
+
+Preserve upstream layout, colors, typography, icons, dimensions, control
+visibility, window modes, shortcuts, user workflows, and media quality.
+Do not add or remove previews, controls, features, or modes as an optimization.
+Check library/settings, playback and tracks, timeline previews, synchronization,
+camera/microphone controls, call windows, reconnect, and shutdown on Mac and
+Windows using matching media, settings, window sizes, and DPI.
+
+Keep a scenario matrix with expected upstream behavior, observed candidate
+behavior, evidence, and pass/fail/unverified status outside the checkout.
+Unverified scenarios, unresolved regressions, or an upstream build failure
+keep this prohibition in force. Analysis, unit tests, a source diff, and a
+diagnostic overlay alone do not satisfy the prerequisite. Critical bug fixes
+already authorized by the user must be isolated and verified; that permission
+does not permit a redesign or a change to the intended functionality.
+
 ## Artifact storage
 
 Keep plans, reports, runtime logs, generated media, CSV/JSONL samples, traces,
