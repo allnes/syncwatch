@@ -36,10 +36,10 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Apply native WebRTC lifetime fix in an isolated dependency copy
+      - name: Apply native media fixes in isolated dependency copies
         shell: pwsh
         run: |
-          .\scripts\prepare_webrtc_plugin.ps1
+          .\scripts\prepare_native_plugins.ps1
           flutter pub get
 
       - name: Configure SyncWatch Windows multi-view runner

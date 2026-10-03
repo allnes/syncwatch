@@ -39,7 +39,7 @@ if ($LASTEXITCODE -ne 0) {
   exit $LASTEXITCODE
 }
 
-& (Join-Path $PSScriptRoot "prepare_webrtc_plugin.ps1")
+& (Join-Path $PSScriptRoot "prepare_native_plugins.ps1")
 flutter pub get
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & (Join-Path $PSScriptRoot "enable_multiview_windows.ps1")
