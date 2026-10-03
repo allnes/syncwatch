@@ -2,10 +2,14 @@ param(
   [Parameter(Mandatory = $true)][int[]]$ProcessIds,
   [ValidateRange(5, 3600)][int]$Seconds = 30,
   [Parameter(Mandatory = $true)][string]$OutputPath,
+  [ValidateRange(50, 10000)][int]$SampleIntervalMilliseconds = 1000,
   [switch]$IncludeGpu
 )
 
 $ErrorActionPreference = 'Stop'
+if ($IncludeGpu -and $SampleIntervalMilliseconds -ne 1000) {
+  throw 'GPU rate counters use one-second intervals. Run a separate CPU/RAM sampler for shorter peaks.'
+}
 $samples = [System.Collections.Generic.List[object]]::new()
 $gpuSamples = [System.Collections.Generic.List[object]]::new()
 $clock = [System.Diagnostics.Stopwatch]::StartNew()
@@ -40,6 +44,7 @@ function Add-ResourceSample($Counters = @()) {
       })
     }
     $samples.Add([pscustomobject]@{
+      utcTime = [DateTime]::UtcNow.ToString('o')
       elapsedSeconds = $elapsed
       processId = $process.Id
       workingSetBytes = $process.WorkingSet64
@@ -73,7 +78,7 @@ if ($IncludeGpu) {
 } else {
   while ($clock.Elapsed.TotalSeconds -lt $Seconds) {
     Add-ResourceSample
-    Start-Sleep -Milliseconds 1000
+    Start-Sleep -Milliseconds $SampleIntervalMilliseconds
   }
 }
 $samples | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $OutputPath

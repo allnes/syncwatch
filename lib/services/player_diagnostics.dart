@@ -5,11 +5,13 @@ import 'dart:typed_data';
 class PlayerDiagnostics {
   PlayerDiagnostics({
     this.legacyPreviewCapture = false,
+    this.legacyPreviewSurface = false,
     this.synchronousStats = false,
     this.onPreviewReady,
   });
 
   final bool legacyPreviewCapture;
+  final bool legacyPreviewSurface;
   final bool synchronousStats;
   final Future<void> Function(int bucket, Uint8List frame)? onPreviewReady;
   Future<void> Function(double seconds)? requestPreview;

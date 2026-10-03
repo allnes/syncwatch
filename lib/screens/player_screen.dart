@@ -82,6 +82,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   late final Player player;
   late final VideoController videoController;
   late final MpvStatsReader _mpvStats;
+  late final MpvStatsReader _previewReleaseStats;
   Size? _movieViewport;
   double _moviePixelRatio = 1;
   Size? _requestedOutputSize;
@@ -120,6 +121,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   DateTime? _lastFrameTimingReport;
 
   Player? _previewPlayer;
+  MpvStatsReader? _previewStats;
   VideoController? _previewVideoController;
   String? _previewMediaPath;
   Uint8List? _previewFrame;
@@ -135,6 +137,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   Future<void> _previewDisposal = Future<void>.value();
   bool _previewDisposeWhenIdle = false;
   bool _previewDisposed = false;
+  bool _previewReleaseCheckInFlight = false;
   int? _previewRequestedBucket;
   String? _previewCacheMediaPath;
 
@@ -227,6 +230,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       player,
       useWorker: !(widget.diagnostics?.synchronousStats ?? false),
     );
+    _previewReleaseStats = MpvStatsReader(player);
     final nativePlayer = player.platform;
     if (nativePlayer is NativePlayer) {
       // Keep this experiment entirely inside libmpv's public runtime API.
@@ -1578,8 +1582,46 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   }
 
   void _disposePreviewPlayer() {
+    // Releasing a hardware decoder can contend with the movie's seek on the
+    // same GPU. Give an already-started movie seek priority over idle cleanup.
+    if (!_previewDisposed && _previewStats != null) {
+      if (!_previewReleaseCheckInFlight) {
+        unawaited(_disposePreviewAfterSeek());
+      }
+      return;
+    }
+    _disposePreviewPlayerNow();
+  }
+
+  Future<void> _disposePreviewAfterSeek() async {
+    final preview = _previewPlayer;
+    if (preview == null) return;
+    bool canRelease() =>
+        identical(preview, _previewPlayer) &&
+        _previewDisposeWhenIdle &&
+        !_previewLoadInFlight &&
+        !_previewDisposed;
+    _previewReleaseCheckInFlight = true;
+    try {
+      final clock = Stopwatch()..start();
+      while (canRelease() && clock.elapsed < const Duration(seconds: 2)) {
+        final state = await _previewReleaseStats.read(['seeking']);
+        if (state['seeking'] != 'yes') break;
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+      if (canRelease()) _disposePreviewPlayerNow();
+    } catch (error) {
+      _playbackLog('PREVIEW_RELEASE_CHECK_ERROR error=$error');
+      if (canRelease()) _disposePreviewPlayerNow();
+    } finally {
+      _previewReleaseCheckInFlight = false;
+    }
+  }
+
+  void _disposePreviewPlayerNow() {
     final preview = _previewPlayer;
     _previewPlayer = null;
+    _previewStats = null;
     _previewVideoController = null;
     _previewMediaPath = null;
     if (preview == null) return;
@@ -1632,17 +1674,28 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       await _previewDisposal;
       if (!isCurrent()) return;
       if (_previewPlayer == null) {
+        final legacySurface = widget.diagnostics?.legacyPreviewSurface ?? false;
         final preview = Player(
-          configuration: const PlayerConfiguration(
+          configuration: PlayerConfiguration(
             muted: true,
             bufferSize: 4 * 1024 * 1024,
+            vo: legacySurface ? null : 'null',
           ),
         );
         _previewPlayer = preview;
-        _previewVideoController = VideoController(preview);
+        final native = preview.platform;
+        if (!legacySurface && native is NativePlayer) {
+          // screenshot-raw can read the decoded frame without a render surface.
+          // Copy-capable hardware decoding keeps the frame CPU-accessible; mpv
+          // falls back to software for unsupported codecs/devices.
+          _previewStats = MpvStatsReader(preview);
+          await configureNativePreviewDecoder(native);
+        } else {
+          _previewVideoController = VideoController(preview);
+        }
         _playbackLog('PREVIEW_PLAYER_CREATED request=$request');
 
-        if (mounted) {
+        if (mounted && _previewVideoController != null) {
           setState(() {});
           // Let the hidden Video widget attach its native video surface before
           // opening media & requesting screenshots.
@@ -1652,6 +1705,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
       if (!isCurrent()) return;
       final preview = _previewPlayer!;
+      var openedAtTarget = false;
 
       if (_previewMediaPath != mediaPath) {
         _previewCache.selectMedia(mediaPath);
@@ -1663,8 +1717,17 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         await preview.setAudioTrack(AudioTrack.no());
         // Clear the controller's size cache when changing media. media_kit_video
         // 2.0.1 resets the native output to source size on metadata arrival.
-        await _previewVideoController!.setSize();
-        await preview.open(Media(Uri.file(mediaPath).toString()), play: false);
+        await _previewVideoController?.setSize();
+        // A surface-free preview can decode the requested frame directly.
+        // Avoid decoding an opening frame that the next seek would discard.
+        openedAtTarget = _previewStats != null;
+        await preview.open(
+          Media(
+            Uri.file(mediaPath).toString(),
+            start: openedAtTarget ? Duration(seconds: bucket) : null,
+          ),
+          play: false,
+        );
         _previewMediaPath = mediaPath;
         _playbackLog(
           'PREVIEW_MEDIA_OPEN elapsed=${previewClock.elapsedMilliseconds}ms '
@@ -1690,11 +1753,11 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       // Opening/metadata can finish before mpv has a decoded frame. Seeking
       // during that gap can leave screenshot() returning the opening frame.
       // Also await this after a cancelled request or an earlier timeout.
-      await _previewVideoController!.waitUntilFirstFrameRendered.timeout(
+      await _previewVideoController?.waitUntilFirstFrameRendered.timeout(
         const Duration(seconds: 2),
       );
       if (!isCurrent()) return;
-      await preview.seek(Duration(seconds: bucket));
+      if (!openedAtTarget) await preview.seek(Duration(seconds: bucket));
 
       // seek() acknowledges the command before decoding necessarily finishes.
       // Wait for mpv's seek/restart state instead of caching a stale frame after
@@ -1703,7 +1766,23 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       if (nativePreview is NativePlayer) {
         final seekClock = Stopwatch()..start();
         while (isCurrent()) {
-          if (await nativePreview.getProperty('seeking') == 'no') break;
+          final stats = _previewStats;
+          final values = stats == null
+              ? {'seeking': await nativePreview.getProperty('seeking')}
+              : await stats.read([
+                  'seeking',
+                  'video-out-params',
+                  'hwdec-current',
+                ]);
+          if (values['seeking'] == 'no' &&
+              (stats == null ||
+                  (values['video-out-params']?.isNotEmpty ?? false))) {
+            _playbackLog(
+              'PREVIEW_DECODE_READY elapsed=${previewClock.elapsedMilliseconds}ms '
+              'hwdec=${values['hwdec-current'] ?? 'surface'}',
+            );
+            break;
+          }
           if (seekClock.elapsed >= const Duration(seconds: 2)) {
             throw TimeoutException('Preview seek did not finish');
           }
@@ -1715,7 +1794,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       if (!isCurrent()) return;
       // Apply the limit after metadata/seek, rather than in the configuration
       // where the native metadata callback would immediately overwrite it.
-      await _previewVideoController!.setSize(
+      await _previewVideoController?.setSize(
         width: thumbnailWidth,
         height: thumbnailHeight,
       );

@@ -1,4 +1,5 @@
 import 'dart:ffi';
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -11,6 +12,19 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit/src/player/native/core/native_library.dart';
 
 import 'preview_thumbnail.dart';
+
+/// Enable decoding for a preview player configured with `vo: 'null'`.
+/// Copy mode exposes decoded pixels without allocating a Flutter video surface.
+Future<void> configureNativePreviewDecoder(NativePlayer player) async {
+  await player.setProperty('vid', 'auto');
+  // The bundled Windows QSV decoder can accept unsupported H.264 profiles and
+  // return corrupt pixels. D3D11 uses the normal desktop GPU with mpv's software
+  // fallback for unsupported formats, including the High 4:4:4 test fixture.
+  await player.setProperty(
+    'hwdec',
+    Platform.isWindows ? 'd3d11va-copy' : 'auto-copy',
+  );
+}
 
 /// The caller keeps [player] alive until capture completes, including fallback.
 /// Carry native dimensions/stride with the pixels; source metadata may differ

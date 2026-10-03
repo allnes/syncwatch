@@ -70,6 +70,7 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad>
   Future<void> mediaCycle = Future<void>.value();
   Player? moviePlayer;
   MpvStatsReader? mpvStats;
+  MpvStatsReader? seekStats;
   late final PlayerDiagnostics diagnostics;
   final actionTimers = <Timer>[];
   final concurrentActions = <Future<void>>{};
@@ -113,6 +114,7 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad>
               ).writeAsBytes(frame);
             },
       legacyPreviewCapture: widget.config['legacyPreviewCapture'] == true,
+      legacyPreviewSurface: widget.config['legacyPreviewSurface'] == true,
     );
     output = File(widget.config['statsPath'] as String).openWrite();
     WidgetsBinding.instance.addObserver(this);
@@ -261,6 +263,9 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad>
   Future<void> preparePlayer(Player player) async {
     moviePlayer = player;
     mpvStats = MpvStatsReader(player, useWorker: !diagnostics.synchronousStats);
+    // Keep seek observation separate from the periodic snapshot's coalescing.
+    // The measurement itself must not block Flutter while native decoding waits.
+    seekStats = MpvStatsReader(player);
     final native = player.platform;
     if (native is! NativePlayer) return;
     final properties = widget.config['mpvProperties'] as Map? ?? const {};
@@ -306,9 +311,9 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad>
         record('actionPhase', {'phase': 'publishSeek'});
         await sync!.seekTo(target).timeout(const Duration(seconds: 5));
         record('actionPhase', {'phase': 'settleSeek'});
-        final native = player.platform;
-        if (native is NativePlayer) {
-          while (await native.getProperty('seeking') == 'yes') {
+        final stats = seekStats;
+        if (stats != null) {
+          while ((await stats.read(['seeking']))['seeking'] == 'yes') {
             if (elapsed.elapsed > const Duration(seconds: 10)) {
               throw TimeoutException('Seek exceeded ten seconds');
             }
