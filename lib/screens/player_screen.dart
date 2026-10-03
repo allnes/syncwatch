@@ -17,6 +17,8 @@ import '../services/sync_engine.dart';
 import '../services/preview_frame_cache.dart';
 import '../services/preview_thumbnail.dart';
 import '../services/video_output_size.dart';
+import '../services/player_diagnostics.dart';
+import '../services/mpv_stats_reader.dart';
 import '../widgets/video_color_filters.dart';
 import '../widgets/player_keyboard_shortcuts.dart';
 import 'player_settings_screen.dart';
@@ -39,6 +41,8 @@ class PlayerScreen extends StatefulWidget {
     this.connectionInterrupted = false,
     this.connectionMessage,
     this.active = true,
+    this.preparePlayer,
+    this.diagnostics,
   });
 
   final AppController controller;
@@ -55,6 +59,10 @@ class PlayerScreen extends StatefulWidget {
   final bool connectionInterrupted;
   final String? connectionMessage;
   final bool active;
+
+  /// Optional setup/observation hook for the desktop validation entry point.
+  final Future<void> Function(Player player)? preparePlayer;
+  final PlayerDiagnostics? diagnostics;
 
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
@@ -73,6 +81,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       _isLight ? syncLightTextSecondary : Colors.white70;
   late final Player player;
   late final VideoController videoController;
+  late final MpvStatsReader _mpvStats;
   Size? _movieViewport;
   double _moviePixelRatio = 1;
   Size? _requestedOutputSize;
@@ -185,6 +194,18 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     widget.controller.addListener(_handleControllerAudioState);
     _lastDuckingEnabled = widget.controller.ducking;
     _lastRemoteSpeaking = widget.controller.remoteSpeaking;
+    widget.diagnostics?.requestPreview = (seconds) async {
+      _previewIdleDisposeTimer?.cancel();
+      _previewDisposeWhenIdle = false;
+      final bucket = (seconds / 2).round() * 2;
+      setState(() {
+        _timelineHovering = true;
+        _previewSeconds = seconds;
+        _previewRequestedBucket = bucket;
+      });
+      await _loadTimelinePreview(seconds, bucket);
+      _hideTimelinePreview();
+    };
     if (widget.active) {
       unawaited(
         windowManager.setTitleBarStyle(
@@ -202,6 +223,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
               .toInt()];
 
     player = Player();
+    _mpvStats = MpvStatsReader(
+      player,
+      useWorker: !(widget.diagnostics?.synchronousStats ?? false),
+    );
     final nativePlayer = player.platform;
     if (nativePlayer is NativePlayer) {
       // Keep this experiment entirely inside libmpv's public runtime API.
@@ -529,28 +554,23 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
     _mpvHealthLogInFlight = true;
     try {
-      Future<String> property(String name) async {
-        try {
-          return await native.getProperty(name);
-        } catch (_) {
-          return 'n/a';
-        }
-      }
-
-      final values = await Future.wait(<Future<String>>[
-        property('video-codec'),
-        property('video-format'),
-        property('hwdec-current'),
-        property('container-fps'),
-        property('estimated-vf-fps'),
-        property('display-fps'),
-        property('frame-drop-count'),
-        property('decoder-frame-drop-count'),
-        property('video-sync'),
-        property('autosync'),
-        property('avsync'),
-        property('total-avsync-change'),
-      ]);
+      const names = [
+        'video-codec',
+        'video-format',
+        'hwdec-current',
+        'container-fps',
+        'estimated-vf-fps',
+        'display-fps',
+        'frame-drop-count',
+        'decoder-frame-drop-count',
+        'video-sync',
+        'autosync',
+        'avsync',
+        'total-avsync-change',
+      ];
+      final snapshot = await _mpvStats.read(names);
+      if (!mounted) return;
+      final values = names.map((name) => snapshot[name] ?? 'n/a').toList();
       _playbackLog(
         'MPV_HEALTH codec=${values[0]} format=${values[1]} '
         'hwdec=${values[2]} containerFps=${values[3]} '
@@ -565,6 +585,10 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
   }
 
   Future<void> _openMedia() async {
+    if (widget.preparePlayer != null) {
+      await videoController.platform.future;
+      await widget.preparePlayer!(player);
+    }
     final openClock = Stopwatch()..start();
     _playbackLog('OPEN_BEGIN media="${currentMovie.fileName}"');
     debugPrint(
@@ -757,6 +781,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
 
   @override
   void dispose() {
+    widget.diagnostics?.requestPreview = null;
     _outputDisposed = true;
     _outputResizeTimer?.cancel();
     WidgetsBinding.instance.removeTimingsCallback(_onFrameTimings);
@@ -1634,6 +1659,19 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         await preview.setVolume(0);
         // A thumbnail needs no audio decoder or audio output device.
         await preview.setAudioTrack(AudioTrack.no());
+        final nativePreview = preview.platform;
+        if (nativePreview is NativePlayer) {
+          for (final entry
+              in widget.diagnostics?.previewProperties.entries ??
+                  const <MapEntry<String, String>>[]) {
+            await nativePreview.setProperty(
+              entry.key,
+              entry.value
+                  .replaceAll('{width}', '$thumbnailWidth')
+                  .replaceAll('{height}', '$thumbnailHeight'),
+            );
+          }
+        }
         // Clear the controller's size cache when changing media. media_kit_video
         // 2.0.1 resets the native output to source size on metadata arrival.
         await _previewVideoController!.setSize();
@@ -1715,6 +1753,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       );
       if (!isCurrent()) return;
       _previewCache[bucket] = frame;
+      await widget.diagnostics?.onPreviewReady?.call(bucket, frame);
+      if (!isCurrent()) return;
       _playbackLog(
         'PREVIEW_READY request=$request bucket=$bucket '
         'elapsed=${previewClock.elapsedMilliseconds}ms '

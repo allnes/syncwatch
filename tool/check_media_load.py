@@ -39,7 +39,7 @@ def check_streams(rows, minimum_seconds):
     return streams, failures
 
 
-def check(path, require_restart=False):
+def check(path, require_restart=False, expected_actions=None):
     rows = [json.loads(line) for line in path.read_text(encoding='utf-8-sig').splitlines()]
     failures = []
     if any(row['type'] in ('fatal', 'statsError') for row in rows):
@@ -51,6 +51,15 @@ def check(path, require_restart=False):
     streams, stream_failures = check_streams(rows, 20 if require_restart else 30)
     failures.extend(stream_failures)
     result = {'file': path.name, 'streams': streams}
+    started = [r['action'] for r in rows if r['type'] == 'actionBegin']
+    completed = [r for r in rows if r['type'] == 'actionDone']
+    if started != [r['action'] for r in completed]:
+        failures.append('scripted actions did not complete in order')
+    if expected_actions is not None and len(completed) != expected_actions:
+        failures.append(f'expected {expected_actions} actions, completed {len(completed)}')
+    result['actions'] = {}
+    for row in completed:
+        result['actions'].setdefault(row['action']['type'], []).append(row['durationMs'])
     if require_restart:
         stopped = [r for r in rows if r['type'] == 'cycleStopped']
         restarted = [r for r in rows if r['type'] == 'cycleRestarted']
@@ -86,8 +95,10 @@ def main():
     parser.add_argument('logs', nargs='+', type=Path)
     parser.add_argument('--require-restart', action='store_true',
                         help='Require 20 seconds of real media both before and after one call restart')
+    parser.add_argument('--expected-actions', type=int,
+                        help='Require this many completed scripted actions in each log')
     args = parser.parse_args()
-    results = [check(path, args.require_restart) for path in args.logs]
+    results = [check(path, args.require_restart, args.expected_actions) for path in args.logs]
     print(json.dumps(results, indent=2))
     return int(any(result['failures'] for result in results))
 

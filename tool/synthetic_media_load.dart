@@ -6,7 +6,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
-import 'package:media_kit/media_kit.dart' show MediaKit;
+import 'package:media_kit/media_kit.dart' show MediaKit, Player, NativePlayer;
 import 'package:multiview_desktop/multiview_desktop.dart' as mv;
 import 'package:window_manager/window_manager.dart';
 
@@ -16,6 +16,8 @@ import 'package:syncwatch/screens/player_screen.dart';
 import 'package:syncwatch/services/call_engine.dart';
 import 'package:syncwatch/services/livekit_connection.dart';
 import 'package:syncwatch/services/sync_engine.dart';
+import 'package:syncwatch/services/player_diagnostics.dart';
+import 'package:syncwatch/services/mpv_stats_reader.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,13 +68,21 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad>
   Timer? stopTimer;
   Timer? cycleTimer;
   Future<void> mediaCycle = Future<void>.value();
+  Player? moviePlayer;
+  MpvStatsReader? mpvStats;
+  late final PlayerDiagnostics diagnostics;
+  final actionTimers = <Timer>[];
+  Future<void> actionQueue = Future<void>.value();
+  int lastMpvSampleMs = -5000;
   bool sampling = false;
   bool cycling = false;
+  bool failed = false;
   String status = 'Connecting synthetic media';
   final clock = Stopwatch()..start();
   late final IOSink output;
 
   void record(String type, Map<String, Object?> values) {
+    if (type == 'fatal' || type == 'statsError') failed = true;
     output.writeln(
       jsonEncode({
         'type': type,
@@ -88,6 +98,23 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad>
   @override
   void initState() {
     super.initState();
+    diagnostics = PlayerDiagnostics(
+      synchronousStats: widget.config['synchronousStats'] == true,
+      onPreviewReady: widget.config['previewOutputDirectory'] == null
+          ? null
+          : (bucket, frame) async {
+              final directory = Directory(
+                widget.config['previewOutputDirectory'] as String,
+              );
+              await directory.create(recursive: true);
+              await File(
+                '${directory.path}/preview-$bucket.png',
+              ).writeAsBytes(frame);
+            },
+      previewProperties: Map<String, String>.from(
+        widget.config['previewProperties'] as Map? ?? const {},
+      ),
+    );
     output = File(widget.config['statsPath'] as String).openWrite();
     WidgetsBinding.instance.addObserver(this);
     unawaited(start());
@@ -157,7 +184,7 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad>
         position: () => Duration(
           milliseconds: (controller.activeMoviePositionSeconds * 1000).round(),
         ),
-        isPlaying: () => true,
+        isPlaying: () => moviePlayer?.state.playing ?? false,
       );
       engine.setLibraryProvider(
         () => [
@@ -192,6 +219,14 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad>
       record('ready', {
         'localTracks': room.localParticipant!.trackPublications.length,
       });
+      for (final action in config['actions'] as List? ?? const []) {
+        final item = Map<String, dynamic>.from(action as Map);
+        actionTimers.add(
+          Timer(Duration(seconds: item['atSeconds'] as int), () {
+            actionQueue = actionQueue.then((_) => runAction(item));
+          }),
+        );
+      }
       timer = Timer.periodic(
         Duration(
           milliseconds: (config['sampleIntervalMs'] as int? ?? 5000).clamp(
@@ -213,6 +248,89 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad>
       } catch (_) {}
       await output.close();
       exit(1);
+    }
+  }
+
+  Future<void> preparePlayer(Player player) async {
+    moviePlayer = player;
+    mpvStats = MpvStatsReader(player, useWorker: !diagnostics.synchronousStats);
+    final native = player.platform;
+    if (native is! NativePlayer) return;
+    final properties = widget.config['mpvProperties'] as Map? ?? const {};
+    for (final entry in properties.entries) {
+      await native.setProperty(entry.key as String, '${entry.value}');
+    }
+    record('mpvConfiguration', {
+      for (final name in [
+        'mpv-version',
+        'hwdec',
+        'hwdec-extra-frames',
+        'vd-lavc-threads',
+        'video-sync',
+        'interpolation',
+        'cache',
+        'cache-on-disk',
+        'demuxer-max-bytes',
+        'demuxer-max-back-bytes',
+        'demuxer-readahead-secs',
+      ])
+        name: await property(native, name),
+    });
+  }
+
+  Future<String> property(NativePlayer player, String name) async {
+    try {
+      return await player.getProperty(name);
+    } catch (_) {
+      return 'n/a';
+    }
+  }
+
+  Future<void> runAction(Map<String, dynamic> action) async {
+    final player = moviePlayer;
+    if (player == null) return;
+    final elapsed = Stopwatch()..start();
+    record('actionBegin', {'action': action});
+    try {
+      if (action['type'] == 'seek') {
+        final target = Duration(seconds: action['positionSeconds'] as int);
+        record('actionPhase', {'phase': 'localSeek'});
+        await player.seek(target).timeout(const Duration(seconds: 5));
+        record('actionPhase', {'phase': 'publishSeek'});
+        await sync!.seekTo(target).timeout(const Duration(seconds: 5));
+        record('actionPhase', {'phase': 'settleSeek'});
+        final native = player.platform;
+        if (native is NativePlayer) {
+          while (await native.getProperty('seeking') == 'yes') {
+            if (elapsed.elapsed > const Duration(seconds: 10)) {
+              throw TimeoutException('Seek exceeded ten seconds');
+            }
+            await Future<void>.delayed(const Duration(milliseconds: 10));
+          }
+        }
+      } else if (action['type'] == 'restartMedia') {
+        mediaCycle = restartMedia();
+        await mediaCycle;
+      } else if (action['type'] == 'resize') {
+        await windowManager.setSize(
+          Size(
+            (action['width'] as num).toDouble(),
+            (action['height'] as num).toDouble(),
+          ),
+        );
+      } else if (action['type'] == 'preview') {
+        await diagnostics.requestPreview!(
+          (action['positionSeconds'] as num).toDouble(),
+        );
+      } else {
+        throw ArgumentError('Unknown test action: ${action['type']}');
+      }
+      record('actionDone', {
+        'action': action,
+        'durationMs': elapsed.elapsedMilliseconds,
+      });
+    } catch (error) {
+      record('fatal', {'error': 'Test action: $error'});
     }
   }
 
@@ -258,8 +376,31 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad>
         'positionMs': (controller.activeMoviePositionSeconds * 1000).round(),
         'lifecycle': WidgetsBinding.instance.lifecycleState?.name,
         'framesEnabled': WidgetsBinding.instance.framesEnabled,
+        'playing': moviePlayer?.state.playing,
+        'buffering': moviePlayer?.state.buffering,
       });
-      await output.flush();
+      final native = moviePlayer?.platform;
+      if (native is NativePlayer &&
+          clock.elapsedMilliseconds - lastMpvSampleMs >= 5000) {
+        lastMpvSampleMs = clock.elapsedMilliseconds;
+        record(
+          'mpv',
+          await mpvStats!.read([
+            'hwdec-current',
+            'frame-drop-count',
+            'decoder-frame-drop-count',
+            'avsync',
+            'demuxer-cache-state',
+            'cache-buffering-state',
+            'estimated-vf-fps',
+            'mistimed-frame-count',
+            'vo-delayed-frame-count',
+          ]),
+        );
+      }
+      // IOSink drains asynchronously. Explicit flush binds the sink until it
+      // completes, so concurrent action/track callbacks must not write during it.
+      // Flush only after timers and listeners are stopped in stop().
     } catch (error) {
       record('statsError', {'error': '$error'});
     } finally {
@@ -291,6 +432,10 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad>
   }
 
   Future<void> stop() async {
+    for (final timer in actionTimers) {
+      timer.cancel();
+    }
+    await actionQueue;
     cycleTimer?.cancel();
     await mediaCycle;
     timer?.cancel();
@@ -315,7 +460,7 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad>
       status = 'Finished';
     });
     await Future<void>.delayed(const Duration(seconds: 2));
-    exit(0);
+    exit(failed ? 1 : 0);
   }
 
   @override
@@ -324,6 +469,9 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad>
     timer?.cancel();
     stopTimer?.cancel();
     cycleTimer?.cancel();
+    for (final timer in actionTimers) {
+      timer.cancel();
+    }
     super.dispose();
   }
 
@@ -346,6 +494,8 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad>
                   initialSubtitleTrack: '',
                   playlist: [movie],
                   initialIndex: 0,
+                  preparePlayer: preparePlayer,
+                  diagnostics: diagnostics,
                 ),
                 if (remote != null)
                   Positioned(
