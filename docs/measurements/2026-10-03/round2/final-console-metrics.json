@@ -1,0 +1,216 @@
+{
+  "samplerOffsetSeconds": 3.264,
+  "phases": {
+    "steady": {
+      "samples": 18,
+      "privateMiB": 1548.929,
+      "peakPrivateMiB": 2349.723,
+      "workingSetMiB": 1525.14,
+      "gpuSharedMiB": 1074.474,
+      "gpu3DPercent": 70.428,
+      "gpuVideoDecodePercent": 18.362,
+      "gpuCopyPercent": 0.0,
+      "cpuOneCorePercent": 116.897
+    },
+    "resize": {
+      "samples": 11,
+      "privateMiB": 1471.397,
+      "peakPrivateMiB": 1479.012,
+      "workingSetMiB": 1449.868,
+      "gpuSharedMiB": 1036.911,
+      "gpu3DPercent": 71.178,
+      "gpuVideoDecodePercent": 17.945,
+      "gpuCopyPercent": 0.0,
+      "cpuOneCorePercent": 116.765
+    }
+  },
+  "frameWindows": [
+    {
+      "elapsedMs": 1045.0,
+      "samples": 43.0,
+      "jank16": 7.0,
+      "severe33": 1.0,
+      "maxMs": 49.6,
+      "buildMaxMs": 47.0,
+      "rasterMaxMs": 27.5
+    },
+    {
+      "elapsedMs": 6136.0,
+      "samples": 279.0,
+      "jank16": 15.0,
+      "severe33": 0.0,
+      "maxMs": 24.8,
+      "buildMaxMs": 1.1,
+      "rasterMaxMs": 16.6
+    },
+    {
+      "elapsedMs": 11192.0,
+      "samples": 281.0,
+      "jank16": 8.0,
+      "severe33": 0.0,
+      "maxMs": 17.4,
+      "buildMaxMs": 1.1,
+      "rasterMaxMs": 16.0
+    },
+    {
+      "elapsedMs": 16241.0,
+      "samples": 286.0,
+      "jank16": 5.0,
+      "severe33": 0.0,
+      "maxMs": 18.4,
+      "buildMaxMs": 0.9,
+      "rasterMaxMs": 15.7
+    },
+    {
+      "elapsedMs": 21285.0,
+      "samples": 282.0,
+      "jank16": 5.0,
+      "severe33": 0.0,
+      "maxMs": 25.5,
+      "buildMaxMs": 2.2,
+      "rasterMaxMs": 24.2
+    },
+    {
+      "elapsedMs": 26362.0,
+      "samples": 284.0,
+      "jank16": 4.0,
+      "severe33": 0.0,
+      "maxMs": 17.5,
+      "buildMaxMs": 1.0,
+      "rasterMaxMs": 15.7
+    },
+    {
+      "elapsedMs": 31411.0,
+      "samples": 281.0,
+      "jank16": 11.0,
+      "severe33": 0.0,
+      "maxMs": 19.8,
+      "buildMaxMs": 0.9,
+      "rasterMaxMs": 17.8
+    },
+    {
+      "elapsedMs": 36482.0,
+      "samples": 285.0,
+      "jank16": 8.0,
+      "severe33": 0.0,
+      "maxMs": 19.1,
+      "buildMaxMs": 1.2,
+      "rasterMaxMs": 16.3
+    },
+    {
+      "elapsedMs": 41572.0,
+      "samples": 288.0,
+      "jank16": 5.0,
+      "severe33": 0.0,
+      "maxMs": 17.9,
+      "buildMaxMs": 1.4,
+      "rasterMaxMs": 16.3
+    },
+    {
+      "elapsedMs": 46623.0,
+      "samples": 282.0,
+      "jank16": 8.0,
+      "severe33": 0.0,
+      "maxMs": 18.4,
+      "buildMaxMs": 2.2,
+      "rasterMaxMs": 17.1
+    },
+    {
+      "elapsedMs": 51704.0,
+      "samples": 280.0,
+      "jank16": 9.0,
+      "severe33": 0.0,
+      "maxMs": 18.8,
+      "buildMaxMs": 0.9,
+      "rasterMaxMs": 16.6
+    },
+    {
+      "elapsedMs": 56758.0,
+      "samples": 286.0,
+      "jank16": 7.0,
+      "severe33": 0.0,
+      "maxMs": 18.4,
+      "buildMaxMs": 1.0,
+      "rasterMaxMs": 16.3
+    }
+  ],
+  "previews": [
+    {
+      "bucket": 100,
+      "milliseconds": 416,
+      "bytes": 38872
+    }
+  ],
+  "previewErrors": [],
+  "actions": [
+    {
+      "type": "actionDone",
+      "action": {
+        "positionSeconds": 0,
+        "atSeconds": 5,
+        "type": "seek"
+      },
+      "durationMs": 96
+    },
+    {
+      "type": "actionDone",
+      "action": {
+        "positionSeconds": 100,
+        "atSeconds": 20,
+        "type": "preview"
+      },
+      "durationMs": 416
+    },
+    {
+      "type": "actionDone",
+      "action": {
+        "positionSeconds": 30,
+        "concurrent": true,
+        "atSeconds": 21,
+        "type": "seek"
+      },
+      "durationMs": 89
+    }
+  ],
+  "lifecycle": [
+    {
+      "type": "ready",
+      "localTracks": 2,
+      "elapsedMs": 1107
+    },
+    {
+      "type": "mediaStopped",
+      "localTracks": 0,
+      "elapsedMs": 61417
+    },
+    {
+      "type": "finished",
+      "elapsedMs": 61452
+    }
+  ],
+  "hwdec": [
+    "d3d11va-copy"
+  ],
+  "maxDecoderDrops": 0,
+  "unexpectedBuffering": [],
+  "rtc": {
+    "send": {
+      "framesPerSecond": 15.0,
+      "jitter": null,
+      "dimensions": [
+        "640x480"
+      ],
+      "maxDrops": 0,
+      "maxFreezes": 0
+    },
+    "receive": {
+      "framesPerSecond": 14.634,
+      "jitter": 0.005,
+      "dimensions": [
+        "640x480"
+      ],
+      "maxDrops": 0,
+      "maxFreezes": 0
+    }
+  }
+}

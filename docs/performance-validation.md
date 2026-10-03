@@ -1,5 +1,9 @@
 # Media resource validation
 
+Latest: [4K60 camera/call resize and preview comparison](measurements/2026-10-03/round2/README.md)
+records the native GPU-surface leak fix, asynchronous mpv health reads, and raw
+preview capture, including a five-minute run with 75 actions and explicit limits.
+
 Follow-up: [camera + call + 1080p movie comparison](measurements/2026-10-02/combined/README.md)
 now covers two clients exchanging real audio/video, playback synchronization,
 and repeated media restarts. It records a 14.1% private-memory reduction and an

@@ -1,0 +1,97 @@
+{
+  "peakPrivateMiB": 2390.0390625,
+  "phases": {
+    "previews": {
+      "privateBytes": 1868.312,
+      "gpuSharedBytes": 1275.717,
+      "gpu3DPercent": 64.676,
+      "gpuVideoDecodePercent": 18.991,
+      "privateRangeMiB": [
+        1431.492,
+        2390.039
+      ]
+    },
+    "settled": {
+      "privateBytes": 1555.866,
+      "gpuSharedBytes": 1037.418,
+      "gpu3DPercent": 67.554,
+      "gpuVideoDecodePercent": 19.004,
+      "privateRangeMiB": [
+        1470.586,
+        1692.297
+      ]
+    },
+    "restart1Tail": {
+      "privateBytes": 1509.739,
+      "gpuSharedBytes": 1037.418,
+      "gpu3DPercent": 67.561,
+      "gpuVideoDecodePercent": 18.917,
+      "privateRangeMiB": [
+        1502.602,
+        1516.551
+      ]
+    }
+  },
+  "concurrentSeekMs": [
+    1342,
+    1494,
+    1693,
+    1573
+  ],
+  "lifecycle": [
+    {
+      "type": "cycleStopped",
+      "elapsedMs": 61256,
+      "localTracks": 0
+    },
+    {
+      "type": "cycleRestarted",
+      "elapsedMs": 63715,
+      "localTracks": 2
+    },
+    {
+      "type": "mediaStopped",
+      "elapsedMs": 101354,
+      "localTracks": 0
+    },
+    {
+      "type": "finished",
+      "elapsedMs": 101425
+    }
+  ],
+  "decoderDrops": 0,
+  "unexpectedBuffering": [],
+  "previews": [
+    {
+      "elapsedMs": 2334,
+      "bytes": 28785,
+      "captureMs": 1804
+    },
+    {
+      "elapsedMs": 2470,
+      "bytes": 28379,
+      "captureMs": 1938
+    },
+    {
+      "elapsedMs": 2683,
+      "bytes": 28816,
+      "captureMs": 1958
+    },
+    {
+      "elapsedMs": 2549,
+      "bytes": 28785,
+      "captureMs": 1841
+    }
+  ],
+  "errors": [],
+  "firstPreviewFrames": {
+    "frames": 1292.0,
+    "severe33": 3.0,
+    "maxMs": 214.5
+  },
+  "restFrames": {
+    "frames": 824.0,
+    "severe33": 0.0,
+    "maxMs": 27.4
+  }
+}

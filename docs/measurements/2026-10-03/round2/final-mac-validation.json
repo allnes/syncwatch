@@ -1,0 +1,105 @@
+[
+  {
+    "file": "mac.jsonl",
+    "streams": {
+      "send_video": [
+        {
+          "seconds": 489.0,
+          "counterDelta": 6882,
+          "averageFps": 14.07,
+          "implementation": "VideoToolbox"
+        }
+      ],
+      "receive_video": [
+        {
+          "seconds": 59.0,
+          "counterDelta": 885,
+          "averageFps": 15.0,
+          "implementation": "VideoToolbox"
+        },
+        {
+          "seconds": 36.0,
+          "counterDelta": 540,
+          "averageFps": 15.0,
+          "implementation": "VideoToolbox"
+        },
+        {
+          "seconds": 60.01,
+          "counterDelta": 894,
+          "averageFps": 14.9,
+          "implementation": "VideoToolbox"
+        },
+        {
+          "seconds": 147.0,
+          "counterDelta": 2199,
+          "averageFps": 14.96,
+          "implementation": "VideoToolbox"
+        },
+        {
+          "seconds": 87.0,
+          "counterDelta": 1302,
+          "averageFps": 14.97,
+          "implementation": "VideoToolbox"
+        },
+        {
+          "seconds": 57.02,
+          "counterDelta": 856,
+          "averageFps": 15.01,
+          "implementation": "VideoToolbox"
+        }
+      ],
+      "send_audio": [
+        {
+          "seconds": 489.0,
+          "counterDelta": 3.4838717650668536
+        }
+      ],
+      "receive_audio": [
+        {
+          "seconds": 59.0,
+          "counterDelta": 0.0033103345267224368
+        },
+        {
+          "seconds": 37.0,
+          "counterDelta": 0.00011355773732654347
+        },
+        {
+          "seconds": 60.01,
+          "counterDelta": 0.0008300910704008529
+        },
+        {
+          "seconds": 147.0,
+          "counterDelta": 7.441833336412851e-06
+        },
+        {
+          "seconds": 87.0,
+          "counterDelta": 7.945635092626002e-06
+        },
+        {
+          "seconds": 57.02,
+          "counterDelta": 6.835733521539708e-05
+        }
+      ]
+    },
+    "actions": {
+      "preview": [
+        424,
+        429,
+        444,
+        645,
+        452,
+        420,
+        638,
+        431
+      ],
+      "restartMedia": [
+        3726
+      ]
+    },
+    "syncCommands": [
+      "SEEK",
+      "START"
+    ],
+    "failures": []
+  }
+]

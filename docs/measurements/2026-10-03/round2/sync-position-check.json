@@ -1,0 +1,12 @@
+{
+  "method": "Postflight lowest-RTT clock offset; linear interpolation of Mac position at Windows sample time; final-after samples after 55 seconds",
+  "samples": 243,
+  "windowsMinusMacPositionMedianMs": -58.93952827400062,
+  "absoluteP95Ms": 64.43678264101618,
+  "rangeMs": [
+    -340.178390733432,
+    -42.451433789596194
+  ],
+  "clockWindowsMinusMacMs": 543.935546875,
+  "clockHalfRttUncertaintyMs": 65.7926025390625
+}
