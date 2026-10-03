@@ -103,7 +103,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
     callEngine = LiveKitCallEngine(
       connection: LiveKitConnection(backendUrl: 'http://127.0.0.1:8787'),
       roomName: 'syncwatch-dev',
-      identity: 'syncwatch-user',
       participantName: 'SyncWatch User',
     );
     WidgetsBinding.instance.addPostFrameCallback((_) => _scanLibrary());

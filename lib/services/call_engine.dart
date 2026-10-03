@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 import 'package:livekit_client/livekit_client.dart';
 
@@ -17,9 +19,19 @@ class LiveKitCallEngine implements CallEngine {
   LiveKitCallEngine({
     required this.connection,
     required this.roomName,
-    required this.identity,
+    String? identity,
     required this.participantName,
-  });
+  }) : identity = identity ?? _createParticipantIdentity();
+
+  static String _createParticipantIdentity() {
+    final random = Random.secure();
+    final suffix = List.generate(
+      16,
+      (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
+    ).join();
+    // Keep one identity across reconnects, without displacing another client.
+    return 'syncwatch-user-$suffix';
+  }
 
   final LiveKitConnection connection;
   final String roomName;
