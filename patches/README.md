@@ -48,5 +48,7 @@ generated override and isolated copy, resolve dependencies again, and review
 patch compatibility. Do not commit a lockfile with this temporary path override.
 
 This patch does not include or replace the libwebrtc audio-isolation patch
-described above. Crash evidence and validation limits are recorded in
+described above. `build_syncwatch_libwebrtc.ps1` installs its custom DLL into the
+dependency selected by `package_config.json`, including the isolated copy.
+Crash evidence and validation limits are recorded in
 [`docs/measurements/2026-10-03`](../docs/measurements/2026-10-03/README.md).

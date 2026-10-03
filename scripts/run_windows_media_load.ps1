@@ -10,6 +10,7 @@ param(
 )
 
 # Run in an interactive Windows desktop. Build the separate target first:
+# Follow patches/README.md to prepare the native plugin and Windows runner.
 # flutter build windows --release -t tool/synthetic_media_load.dart
 $ErrorActionPreference = 'Stop'
 $Executable = (Resolve-Path $Executable).Path

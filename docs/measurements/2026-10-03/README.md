@@ -159,6 +159,9 @@ events. See `native-regression-summary.json` for each cycle.
 
 Final ordinary release builds also pass on Windows and macOS. Generated Mac
 test-only absolute-path entitlements were removed before its final build.
+The custom libwebrtc installer now follows the resolved isolated dependency;
+PowerShell parsing and target resolution pass on Windows. Its separate full
+upstream WebRTC build was not rerun for this path-selection change.
 
 Implemented changes: `6cec897` (output sizing and keyboard handling), `aac5b01`
 (native WebRTC lifetime lock and macOS helper view selection).
