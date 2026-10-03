@@ -4,6 +4,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart' hide VideoTrack;
 import 'package:livekit_client/livekit_client.dart' hide AudioTrack;
+import 'package:multiview_desktop/multiview_desktop.dart' as mv;
 
 import '../app.dart';
 import '../core/app_theme.dart';
@@ -11,6 +12,7 @@ import '../models/movie_item.dart';
 import '../services/call_engine.dart';
 import '../services/livekit_connection.dart';
 import '../services/sync_engine.dart';
+import '../widgets/call_window_view.dart';
 import 'player_screen.dart';
 import 'settings_screen.dart';
 
@@ -60,10 +62,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool roomConnected = false;
   bool roomConnecting = false;
   String? roomConnectionError;
-  Process? callWindowProcess;
-  Timer? callWindowActionTimer;
-  File? callWindowActionFile;
-  File? callWindowStateFile;
+  int? callWindowId;
+  Future<void>? startingCall;
+  Future<void>? endingCall;
+  Future<void> changingCallMedia = Future<void>.value();
   bool metadataLoading = false;
   String? metadataPath;
   bool microphoneEnabled = true;
@@ -105,6 +107,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       roomName: 'syncwatch-dev',
       participantName: 'SyncWatch User',
     );
+    mv.MultiViewDesktop.allWindowIdsNotifier.addListener(_callWindowsChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _scanLibrary());
   }
 
@@ -119,9 +122,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
     remoteSpeakingListeners.clear();
     roomSyncEngine?.dispose();
-    if (roomConnected || callActive) {
-      callEngine.leave();
-    }
+    mv.MultiViewDesktop.allWindowIdsNotifier.removeListener(_callWindowsChanged);
+    unawaited(_endCall().whenComplete(callEngine.leave));
     super.dispose();
   }
 
@@ -343,7 +345,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   Future<void> _disconnectRoom() async {
     _roomLog('DISCONNECT requested');
-    if (callActive) {
+    if (callActive || startingCall != null || endingCall != null) {
       await _endCall();
     }
     roomPresenceListener?.dispose();
@@ -413,49 +415,23 @@ class _LibraryScreenState extends State<LibraryScreen> {
     ]);
   }
 
-  void _writeCallWindowState() {
-    final file = callWindowStateFile;
-    if (file == null) return;
-    try {
-      file.writeAsStringSync(
-        'camera=${cameraEnabled ? "on" : "off"}\n'
-        'microphone=${microphoneEnabled ? "on" : "off"}\n'
-        'call=${callActive ? "active" : "inactive"}\n',
-        flush: true,
-      );
-    } catch (_) {}
+  void _callWindowsChanged() {
+    final id = callWindowId;
+    if (id != null && !mv.MultiViewDesktop.allWindowViewIds.contains(id)) {
+      unawaited(_endCall(closeWindow: false));
+    }
   }
 
-  Future<void> _pollCallWindowAction() async {
-    final file = callWindowActionFile;
-    if (file == null || !file.existsSync()) return;
-    String action;
-    try {
-      action = file.readAsStringSync().trim();
-      file.deleteSync();
-    } catch (_) {
-      return;
+  Future<void> _changeCallMedia(Future<void> Function() change) {
+    if (!callActive || endingCall != null) {
+      return Future<void>.error(StateError('Call is ending'));
     }
-    _roomLog('CALL_WINDOW_ACTION action=$action');
-    if (action == 'camera_off') {
-      await _setCameraDiagnostic(false);
-    } else if (action == 'camera_on') {
-      await _setCameraDiagnostic(true);
-    } else if (action == 'microphone_off') {
-      await callEngine.setMicrophoneEnabled(false);
-      if (mounted) setState(() => microphoneEnabled = false);
-    } else if (action == 'microphone_on') {
-      await callEngine.setMicrophoneEnabled(true);
-      if (mounted) setState(() => microphoneEnabled = true);
-    } else if (action == 'hangup') {
-      await _endCall();
-      return;
-    }
-    _writeCallWindowState();
+    // The view serializes button presses; retain the in-flight native action
+    // here so a main-window disconnect/native close cannot race media teardown.
+    return changingCallMedia = change();
   }
 
   Future<void> _setCameraDiagnostic(bool enabled) async {
-    if (!callActive) return;
     _roomLog('AB_CAMERA_BEGIN target=${enabled ? "ON" : "OFF"}');
     debugPrint(
       '[SyncWatch][RESOURCE_EVENT] AB_CAMERA_${enabled ? "ON" : "OFF"}_BEGIN',
@@ -466,7 +442,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
       setState(() {
         cameraEnabled = enabled;
       });
-      _writeCallWindowState();
       _roomLog(
         'AB_CAMERA_DONE state=${enabled ? "ON" : "OFF"} '
         'videoTrack=${callEngine.localVideoTrack != null}',
@@ -476,153 +451,109 @@ class _LibraryScreenState extends State<LibraryScreen> {
       );
     } catch (error) {
       _roomLog('AB_CAMERA_FAILED target=${enabled ? "ON" : "OFF"} error=$error');
+      rethrow;
     }
   }
 
-  Future<void> _startCall() async {
-    if (callActive) {
-      return;
+  Future<void> _startCall() {
+    if (callActive || !roomConnected || endingCall != null) {
+      return Future<void>.value();
     }
-    if (!roomConnected) return;
-
-    await callEngine.setMicrophoneEnabled(microphoneEnabled);
-    await callEngine.setCameraEnabled(cameraEnabled);
-
-    final currentExecutable = File(Platform.resolvedExecutable).absolute;
-    final root = Directory.current.absolute;
-    final helperExecutable = File(
-      '${root.path}${Platform.pathSeparator}build'
-      '${Platform.pathSeparator}windows'
-      '${Platform.pathSeparator}call_helper'
-      '${Platform.pathSeparator}syncwatch.exe',
-    );
-    final executable = helperExecutable.existsSync()
-        ? helperExecutable.path
-        : currentExecutable.path;
-    _roomLog(
-      'CALL_PROCESS spawn executable="$executable" '
-      'helperExists=${helperExecutable.existsSync()} '
-      'currentExecutable="${currentExecutable.path}" cwd="${root.path}"',
-    );
-    final process = await Process.start(
-      executable,
-      const ['--call-process-diagnostic'],
-      mode: ProcessStartMode.normal,
-      runInShell: false,
-    );
-    _roomLog('CALL_PROCESS spawned pid=${process.pid}');
-    final ipcDir = Directory('${Directory.current.path}${Platform.pathSeparator}logs');
-    ipcDir.createSync(recursive: true);
-    callWindowActionFile = File('${ipcDir.path}${Platform.pathSeparator}call_window.action');
-    callWindowStateFile = File('${ipcDir.path}${Platform.pathSeparator}call_window.state');
-    try { if (callWindowActionFile!.existsSync()) callWindowActionFile!.deleteSync(); } catch (_) {}
-    _writeCallWindowState();
-    callWindowActionTimer?.cancel();
-    callWindowActionTimer = Timer.periodic(
-      const Duration(milliseconds: 120),
-      (_) => unawaited(_pollCallWindowAction()),
-    );
-    unawaited(process.exitCode.then((code) {
-      _roomLog('CALL_PROCESS exit pid=${process.pid} code=$code');
-      if (!mounted || callWindowProcess?.pid != process.pid) return;
-      setState(() {
-        callWindowProcess = null;
-        callActive = false;
-      });
-      unawaited(callEngine.stopCallMedia());
-      _roomLog('CALL ended by window close');
-      debugPrint('[SyncWatch][RESOURCE_EVENT] CALL_ENDED');
-    }));
-    unawaited(process.stdout
-        .transform(SystemEncoding().decoder)
-        .forEach((line) => debugPrint('[SyncWatch][CALL_PROCESS][OUT] $line')));
-    unawaited(process.stderr
-        .transform(SystemEncoding().decoder)
-        .forEach((line) => debugPrint('[SyncWatch][CALL_PROCESS][ERR] $line')));
-
-    if (!mounted) {
-      process.kill();
-      return;
-    }
-    setState(() {
-      callActive = true;
-      callWindowProcess = process;
+    return startingCall ??= _openCallWindow().whenComplete(() {
+      startingCall = null;
     });
-    _roomLog('CALL started isolatedProcessPid=${process.pid}');
-    debugPrint(
-      '[SyncWatch][RESOURCE_EVENT] CALL_STARTED isolatedProcessPid=${process.pid}',
-    );
-    unawaited(Future<void>.delayed(const Duration(milliseconds: 900), () async {
-      if (!mounted || callWindowProcess?.pid != process.pid || !callActive) return;
-      _roomLog('CALL_PROCESS initial focus requested pid=${process.pid}');
-      await _focusCallWindow();
-    }));
   }
 
-  Future<void> _endCall({bool closeWindow = true}) async {
-    final process = callWindowProcess;
-    callWindowProcess = null;
-    await callEngine.stopCallMedia();
-    if (closeWindow && process != null) {
-      final commandFile = File(
-        '${Directory.current.path}${Platform.pathSeparator}logs'
-        '${Platform.pathSeparator}call_window.command',
+  Future<void> _openCallWindow() async {
+    try {
+      await callEngine.setMicrophoneEnabled(microphoneEnabled);
+      await callEngine.setCameraEnabled(cameraEnabled);
+      if (!mounted || !roomConnected) {
+        await callEngine.stopCallMedia();
+        return;
+      }
+      final id = await mv.openWindow(
+        (_, __) => CallWindowView(
+          callEngine: callEngine,
+          microphoneEnabled: microphoneEnabled,
+          cameraEnabled: cameraEnabled,
+          onMicrophoneChanged: (enabled) => _changeCallMedia(() async {
+            await callEngine.setMicrophoneEnabled(enabled);
+            if (mounted) setState(() => microphoneEnabled = enabled);
+          }),
+          onCameraChanged: (enabled) =>
+              _changeCallMedia(() => _setCameraDiagnostic(enabled)),
+          onHangUp: _endCall,
+        ),
+        parentContext: context,
+        options: const mv.WindowOptions(
+          title: 'SyncWatch Call',
+          size: Size(300, 210),
+          minimumSize: Size(160, 120),
+          titleBarStyle: mv.TitleBarStyle.hidden,
+          windowButtonVisibility: false,
+          backgroundColor: Color(0xFF0B1C2B),
+        ),
       );
+      callWindowId = id;
+      if (!mounted) {
+        await mv.MultiViewDesktop.fromId(id).closeWindow();
+        callWindowId = null;
+        await callEngine.stopCallMedia();
+        return;
+      }
+      setState(() => callActive = true);
+      _roomLog('CALL started view=$id');
+      debugPrint('[SyncWatch][RESOURCE_EVENT] CALL_STARTED view=$id');
+    } catch (error, stack) {
+      final id = callWindowId;
+      callWindowId = null;
+      await callEngine.stopCallMedia();
+      if (id != null && mv.MultiViewDesktop.allWindowViewIds.contains(id)) {
+        await mv.MultiViewDesktop.fromId(id).closeWindow();
+      }
+      _roomLog('CALL start failed: $error');
+      debugPrintStack(stackTrace: stack);
+    }
+  }
+
+  Future<void> _endCall({bool closeWindow = true}) {
+    return endingCall ??= _finishCall(closeWindow: closeWindow).whenComplete(() {
+      endingCall = null;
+    });
+  }
+
+  Future<void> _finishCall({required bool closeWindow}) async {
+    // A disconnect or app close can arrive while capture/window setup awaits
+    // native code. Let that setup finish before disposing its media.
+    await startingCall;
+    final id = callWindowId;
+    callWindowId = null;
+    if (mounted) setState(() => callActive = false);
+    try {
       try {
-        commandFile.writeAsStringSync('close', flush: true);
-        await Future<void>.delayed(const Duration(milliseconds: 350));
-      } catch (_) {}
-      if (await _processStillRunning(process)) {
-        process.kill();
+        await changingCallMedia;
+      } catch (_) {
+        // The media button reports failures. Teardown must still release tracks.
+      }
+      await callEngine.stopCallMedia();
+    } finally {
+      if (closeWindow && id != null &&
+          mv.MultiViewDesktop.allWindowViewIds.contains(id)) {
+        await mv.MultiViewDesktop.fromId(id).closeWindow();
       }
     }
-    if (!mounted) return;
-    setState(() {
-      callActive = false;
-    });
     _roomLog('CALL ended');
     debugPrint('[SyncWatch][RESOURCE_EVENT] CALL_ENDED');
   }
 
-  Future<bool> _processStillRunning(Process process) async {
-    if (callWindowProcess?.pid != process.pid) return false;
-    return true;
-  }
-
   Future<void> _focusCallWindow() async {
-    final process = callWindowProcess;
-    if (!callActive || process == null) return;
-    final commandFile = File(
-      '${Directory.current.path}${Platform.pathSeparator}logs'
-      '${Platform.pathSeparator}call_window.command',
-    );
-    try {
-      commandFile.parent.createSync(recursive: true);
-      commandFile.writeAsStringSync('focus', flush: true);
-      if (Platform.isWindows) {
-        final nativeFocus = File(
-          '${Directory.current.path}${Platform.pathSeparator}windows'
-          '${Platform.pathSeparator}runner'
-          '${Platform.pathSeparator}syncwatch_focus_window.exe',
-        );
-        if (nativeFocus.existsSync()) {
-          final result = await Process.run(
-            nativeFocus.path,
-            const ['SyncWatch Call'],
-            runInShell: false,
-          );
-          _roomLog(
-            'CALL_PROCESS native focus exit=${result.exitCode} '
-            'stderr="${result.stderr}"',
-          );
-        } else {
-          _roomLog('CALL_PROCESS native focus helper missing');
-        }
-      }
-      _roomLog('CALL_PROCESS focus requested pid=${process.pid}');
-    } catch (error) {
-      _roomLog('CALL_PROCESS focus failed pid=${process.pid} error=$error');
-    }
+    final id = callWindowId;
+    if (!callActive || id == null) return;
+    final window = mv.MultiViewDesktop.fromId(id);
+    await window.show();
+    if (await window.isMinimized()) await window.restore();
+    await window.focus();
   }
 
   Future<void> _browseFolder() async {

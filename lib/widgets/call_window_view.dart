@@ -1,17 +1,16 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
-import 'package:multiview_desktop/multiview_desktop.dart';
+import 'package:multiview_desktop/multiview_desktop.dart' as mv;
 
-import '../app.dart';
-import '../core/app_theme.dart';
 import '../services/call_engine.dart';
+import 'call_window_surface.dart';
 
 class CallWindowView extends StatefulWidget {
   const CallWindowView({
     super.key,
-    required this.controller,
     required this.callEngine,
     required this.microphoneEnabled,
     required this.cameraEnabled,
@@ -20,7 +19,6 @@ class CallWindowView extends StatefulWidget {
     required this.onHangUp,
   });
 
-  final AppController controller;
   final CallEngine callEngine;
   final bool microphoneEnabled;
   final bool cameraEnabled;
@@ -32,186 +30,245 @@ class CallWindowView extends StatefulWidget {
   State<CallWindowView> createState() => _CallWindowViewState();
 }
 
-// The regular call UI members are intentionally retained while the static
-// secondary-view A/B diagnostic replaces build(). They become referenced again
-// when the diagnostic is reverted.
-// ignore_for_file: unused_field, unused_element
-
 class _CallWindowViewState extends State<CallWindowView> {
-  // Temporary A/B diagnostic: keep the real secondary call window and all
-  // media tracks active, but do not attach WebRTC video renderers/textures.
-  static const bool _disableVideoRenderingDiagnostic = true;
   EventsListener<RoomEvent>? _events;
   VideoTrack? _remoteTrack;
-  bool _microphoneEnabled = true;
-  bool _cameraEnabled = true;
+  late bool _microphoneEnabled = widget.microphoneEnabled;
+  late bool _cameraEnabled = widget.cameraEnabled;
   bool _fullscreen = false;
   bool _alwaysOnTop = false;
-  bool _ending = false;
+  Rect? _restoreBounds;
+  Future<void> _mediaActions = Future<void>.value();
+
+  mv.MultiViewDesktop get _window => mv.MultiViewDesktop.of(context);
 
   @override
   void initState() {
     super.initState();
-    _microphoneEnabled = widget.microphoneEnabled;
-    _cameraEnabled = widget.cameraEnabled;
-    _remoteTrack = _findRemoteVideoTrack();
-    final room = widget.callEngine.room;
-    if (room != null) {
-      _events = room.createListener()
-        ..on<TrackSubscribedEvent>((event) {
-          if (event.track is! VideoTrack || !mounted) return;
-          setState(() => _remoteTrack = event.track as VideoTrack);
-        })
-        ..on<TrackUnsubscribedEvent>((event) {
-          if (event.track is! VideoTrack || !mounted) return;
-          if (identical(_remoteTrack, event.track)) {
-            setState(() => _remoteTrack = _findRemoteVideoTrack());
-          }
-        })
-        ..on<ParticipantDisconnectedEvent>((_) {
-          if (mounted) setState(() => _remoteTrack = _findRemoteVideoTrack());
-        });
+    _updateTrack();
+    _events = widget.callEngine.room?.createListener()
+      ?..on<TrackSubscribedEvent>((_) => _updateTrack())
+      ..on<TrackUnsubscribedEvent>((_) => _updateTrack())
+      ..on<TrackMutedEvent>((_) => _updateTrack())
+      ..on<TrackUnmutedEvent>((_) => _updateTrack())
+      ..on<ParticipantDisconnectedEvent>((_) => _updateTrack());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(
+          _showWindow().catchError((Object error, StackTrace stack) async {
+            debugPrint('[SyncWatch][CALL_WINDOW] setup failed: $error');
+            if (mounted) await widget.onHangUp();
+          }),
+        );
+      }
+    });
+  }
+
+  void _updateTrack() {
+    VideoTrack? next;
+    for (final participant
+        in widget.callEngine.room?.remoteParticipants.values ??
+            <RemoteParticipant>[]) {
+      for (final publication in participant.videoTrackPublications) {
+        if (publication.source == TrackSource.camera && !publication.muted) {
+          next = publication.track;
+          if (next != null) break;
+        }
+      }
+      if (next != null) break;
+    }
+    if (mounted && !identical(next, _remoteTrack)) {
+      setState(() => _remoteTrack = next);
     }
   }
 
   @override
   void dispose() {
     _events?.dispose();
-    _events = null;
     super.dispose();
   }
 
-  VideoTrack? _findRemoteVideoTrack() {
-    final room = widget.callEngine.room;
-    if (room == null) return null;
-    for (final participant in room.remoteParticipants.values) {
-      for (final publication in participant.videoTrackPublications) {
-        final track = publication.track;
-        if (track is VideoTrack && publication.source == TrackSource.camera) {
-          return track;
-        }
-      }
-    }
-    return null;
-  }
-
-  Future<void> _toggleMicrophone() async {
-    final next = !_microphoneEnabled;
-    await widget.onMicrophoneChanged(next);
-    if (mounted) setState(() => _microphoneEnabled = next);
-  }
-
-  Future<void> _toggleCamera() async {
-    final next = !_cameraEnabled;
-    await widget.onCameraChanged(next);
-    if (mounted) setState(() => _cameraEnabled = next);
-  }
-
-  Future<void> _toggleAlwaysOnTop() async {
-    final next = !_alwaysOnTop;
-    await MultiViewDesktop.of(context).setAlwaysOnTop(next);
-    if (mounted) setState(() => _alwaysOnTop = next);
+  Future<void> _showWindow() async {
+    final window = _window;
+    await window.setAsFrameless();
+    await window.setBackgroundColor(Colors.transparent);
+    await window.setResizable(true);
+    // Preserve the upstream first-frame resize: after removing the Windows
+    // frame, Flutter otherwise keeps the old client bounds until a resize.
+    await window.hide();
+    await WidgetsBinding.instance.endOfFrame;
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    if (!mounted) return;
+    await window.setSize(const Size(301, 211));
+    await Future<void>.delayed(const Duration(milliseconds: 16));
+    if (!mounted) return;
+    await window.setSize(const Size(300, 210));
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    await window.show();
+    await window.focus();
   }
 
   Future<void> _toggleFullscreen() async {
-    final window = MultiViewDesktop.of(context);
-    final next = !await window.isFullScreen();
-    await window.setFullScreen(next);
-    if (mounted) setState(() => _fullscreen = next);
-  }
-
-  Future<void> _hangUp() async {
-    if (_ending) return;
-    _ending = true;
-    await widget.onHangUp();
-    if (mounted) {
-      await MultiViewDesktop.of(context).closeWindow();
+    final window = _window;
+    if (!_fullscreen) {
+      _restoreBounds = await window.getBounds();
+      await window.maximize();
+      if (mounted) setState(() => _fullscreen = true);
+    } else {
+      await window.unmaximize();
+      final bounds = _restoreBounds;
+      if (bounds != null) {
+        await window.setSize(bounds.size);
+        await window.setPosition(bounds.topLeft);
+      }
+      await window.setAsFrameless();
+      await window.setBackgroundColor(Colors.transparent);
+      await window.setResizable(true);
+      if (mounted) setState(() => _fullscreen = false);
     }
   }
 
-  Future<void> _runUiAction(
-    String action,
-    FutureOr<void> Function() callback,
-  ) async {
-    final clock = Stopwatch()..start();
-    debugPrint('[SyncWatch][UI] TAP surface=call action=$action');
-    debugPrint('[SyncWatch][UI] ACTION_BEGIN surface=call action=$action');
-    try {
-      await Future<void>.sync(callback);
-      debugPrint(
-        '[SyncWatch][UI] ACTION_DONE surface=call action=$action '
-        'elapsedMs=${clock.elapsedMilliseconds}',
-      );
-    } catch (error, stackTrace) {
-      debugPrint(
-        '[SyncWatch][UI] ACTION_ERROR surface=call action=$action '
-        'elapsedMs=${clock.elapsedMilliseconds} error=$error',
-      );
-      debugPrintStack(stackTrace: stackTrace);
-      rethrow;
-    }
+  Future<void> _togglePin() async {
+    final next = !_alwaysOnTop;
+    await _window.setAlwaysOnTop(next);
+    if (mounted) setState(() => _alwaysOnTop = next);
+  }
+
+  void _queueMediaAction(Future<void> Function() action) {
+    _mediaActions = _mediaActions
+        .then((_) async {
+          if (mounted) await action();
+        })
+        .catchError((Object error, StackTrace stack) {
+          debugPrint('[SyncWatch][CALL_WINDOW] action failed: $error');
+        });
   }
 
   @override
   Widget build(BuildContext context) {
-    // Temporary A/B diagnostic: keep the secondary Flutter view/window alive,
-    // but make its scene completely static. No WebRTC renderers, controls,
-    // timers, gradients, participant lookups, or media-driven rebuild content.
-    return const ColoredBox(
-      color: Color(0xFF0B1C2B),
-      child: SizedBox.expand(),
+    final track = _remoteTrack;
+    return CallWindowSurface(
+      microphoneEnabled: _microphoneEnabled,
+      cameraEnabled: _cameraEnabled,
+      fullscreen: _fullscreen,
+      alwaysOnTop: _alwaysOnTop,
+      onDrag: () => unawaited(_window.startDragging()),
+      onPin: () => unawaited(_togglePin()),
+      onMinimize: () => unawaited(_window.minimize()),
+      onFullscreen: () => unawaited(_toggleFullscreen()),
+      onMicrophone: () => _queueMediaAction(() async {
+        final next = !_microphoneEnabled;
+        await widget.onMicrophoneChanged(next);
+        if (mounted) setState(() => _microphoneEnabled = next);
+      }),
+      onCamera: () => _queueMediaAction(() async {
+        final next = !_cameraEnabled;
+        await widget.onCameraChanged(next);
+        if (mounted) setState(() => _cameraEnabled = next);
+      }),
+      onHangUp: () => _queueMediaAction(widget.onHangUp),
+      video: track == null
+          ? null
+          : VideoTrackRenderer(
+              track,
+              key: ObjectKey(track),
+              fit: VideoViewFit.cover,
+              mirrorMode: VideoViewMirrorMode.off,
+            ),
+      wrapResizeArea: (child) => _CallResizeArea(child: child),
     );
   }
+}
 
-  Widget _chromeButton({
-    required String tooltip,
-    required IconData icon,
-    required FutureOr<void> Function() onPressed,
-    bool active = false,
-    int quarterTurns = 0,
-    double scale = 1.0,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: active ? Colors.white24 : Colors.black38,
-        shape: const CircleBorder(),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: () => unawaited(_runUiAction(tooltip, onPressed)),
-          child: SizedBox(
-            width: 34 * scale,
-            height: 34 * scale,
-            child: RotatedBox(
-              quarterTurns: quarterTurns,
-              child: Icon(icon, size: 19 * scale, color: Colors.white),
-            ),
+/// The same eight-pixel resize edges as window_manager, directed at this view.
+class _CallResizeArea extends StatelessWidget {
+  const _CallResizeArea({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget edge(mv.ResizeEdge edge, MouseCursor cursor) => MouseRegion(
+      cursor: cursor,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onPanStart: (_) => mv.MultiViewDesktop.of(context).startResizing(edge),
+        onDoubleTap: () {
+          if (Platform.isWindows &&
+              (edge == mv.ResizeEdge.top || edge == mv.ResizeEdge.bottom)) {
+            unawaited(
+              mv.MultiViewDesktop.of(context).maximize(vertically: true),
+            );
+          }
+        },
+      ),
+    );
+    return Stack(
+      children: [
+        child,
+        Positioned(
+          top: 0,
+          left: 8,
+          right: 8,
+          height: 8,
+          child: edge(mv.ResizeEdge.top, SystemMouseCursors.resizeUp),
+        ),
+        Positioned(
+          bottom: 0,
+          left: 8,
+          right: 8,
+          height: 8,
+          child: edge(mv.ResizeEdge.bottom, SystemMouseCursors.resizeDown),
+        ),
+        Positioned(
+          left: 0,
+          top: 8,
+          bottom: 8,
+          width: 8,
+          child: edge(mv.ResizeEdge.left, SystemMouseCursors.resizeLeft),
+        ),
+        Positioned(
+          right: 0,
+          top: 8,
+          bottom: 8,
+          width: 8,
+          child: edge(mv.ResizeEdge.right, SystemMouseCursors.resizeRight),
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          width: 8,
+          height: 8,
+          child: edge(mv.ResizeEdge.topLeft, SystemMouseCursors.resizeUpLeft),
+        ),
+        Positioned(
+          top: 0,
+          right: 0,
+          width: 8,
+          height: 8,
+          child: edge(mv.ResizeEdge.topRight, SystemMouseCursors.resizeUpRight),
+        ),
+        Positioned(
+          bottom: 0,
+          left: 0,
+          width: 8,
+          height: 8,
+          child: edge(
+            mv.ResizeEdge.bottomLeft,
+            SystemMouseCursors.resizeDownLeft,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _callButton({
-    required IconData icon,
-    required FutureOr<void> Function() onPressed,
-    bool destructive = false,
-    double scale = 1.0,
-  }) {
-    final action = destructive
-        ? 'hang_up'
-        : icon == Icons.mic_rounded || icon == Icons.mic_off_rounded
-            ? 'microphone'
-            : 'camera';
-    return FilledButton(
-      onPressed: () => unawaited(_runUiAction(action, onPressed)),
-      style: FilledButton.styleFrom(
-        shape: const CircleBorder(),
-        padding: EdgeInsets.all(12 * scale),
-        backgroundColor:
-            destructive ? const Color(0xFFB3261E) : syncSurfaceRaised,
-      ),
-      child: Icon(icon, size: 20 * scale),
+        Positioned(
+          bottom: 0,
+          right: 0,
+          width: 8,
+          height: 8,
+          child: edge(
+            mv.ResizeEdge.bottomRight,
+            SystemMouseCursors.resizeDownRight,
+          ),
+        ),
+      ],
     );
   }
 }
