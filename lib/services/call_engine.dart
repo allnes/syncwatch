@@ -20,12 +20,14 @@ class LiveKitCallEngine implements CallEngine {
     required this.roomName,
     required this.identity,
     required this.participantName,
+    this.cameraDeviceId,
   });
 
   final LiveKitConnection connection;
   final String roomName;
   final String identity;
   final String participantName;
+  final String? cameraDeviceId;
 
   final _mediaTasks = SerialTaskQueue();
   Room? _room;
@@ -107,8 +109,9 @@ class LiveKitCallEngine implements CallEngine {
     final previousEnabled = _cameraEnabled;
     _cameraEnabled = enabled;
     const quality = '480p4x3';
-    const captureOptions = CameraCaptureOptions(
-      params: VideoParameters(
+    final captureOptions = CameraCaptureOptions(
+      deviceId: cameraDeviceId,
+      params: const VideoParameters(
         dimensions: VideoDimensionsPresets.h480_43,
         description: quality,
       ),

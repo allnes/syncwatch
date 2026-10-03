@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:media_kit/media_kit.dart' show MediaKit;
+import 'package:multiview_desktop/multiview_desktop.dart' as mv;
 import 'package:window_manager/window_manager.dart';
 
 import 'package:syncwatch/app.dart';
@@ -31,8 +32,19 @@ Future<void> main(List<String> args) async {
       (config['windowY'] as num? ?? 20).toDouble(),
     ),
   );
-  runApp(SyntheticMediaLoad(config: config));
-  await windowManager.show();
+  mv.runMultiApp(
+    home: (_, _) => SyntheticMediaLoad(config: config),
+    config: mv.MultiAppConfig(
+      generalParams: const mv.MultiPlatformParams(
+        closeMode: mv.CloseMode.softCascade,
+      ),
+      globalWindowOptions: const mv.WindowOptions(title: 'SyncWatch'),
+    ),
+  );
+  await windowManager.waitUntilReadyToShow(null, () async {
+    await windowManager.show();
+    await windowManager.focus();
+  });
 }
 
 class SyntheticMediaLoad extends StatefulWidget {
@@ -43,7 +55,8 @@ class SyntheticMediaLoad extends StatefulWidget {
   State<SyntheticMediaLoad> createState() => _SyntheticMediaLoadState();
 }
 
-class _SyntheticMediaLoadState extends State<SyntheticMediaLoad> {
+class _SyntheticMediaLoadState extends State<SyntheticMediaLoad>
+    with WidgetsBindingObserver {
   final controller = AppController()..timelinePreview = true;
   late final LiveKitCallEngine call;
   late final MovieItem movie;
@@ -76,20 +89,37 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad> {
   void initState() {
     super.initState();
     output = File(widget.config['statsPath'] as String).openWrite();
+    WidgetsBinding.instance.addObserver(this);
     unawaited(start());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    record('lifecycle', {'state': state.name});
   }
 
   Future<void> start() async {
     try {
       final config = widget.config;
       final mediaPath = config['mediaPath'] as String;
+      final devices = await Hardware.instance.enumerateDevices();
+      final cameraLabel = config['cameraLabel'] as String?;
+      final camera = cameraLabel == null
+          ? null
+          : devices.firstWhere(
+              (d) =>
+                  d.kind == 'videoinput' &&
+                  d.label.toLowerCase().contains(cameraLabel.toLowerCase()),
+            );
       movie = MovieItem(
-        fileName: 'synthetic-1080p.mp4',
+        fileName: config['mediaName'] as String? ?? 'synthetic-1080p.mp4',
         fullPath: mediaPath,
-        duration: const Duration(seconds: 180),
-        resolution: '1920×1080',
-        audioTracks: 1,
-        subtitleTracks: 0,
+        duration: Duration(
+          milliseconds: config['durationMs'] as int? ?? 180000,
+        ),
+        resolution: config['resolution'] as String? ?? '1920×1080',
+        audioTracks: config['audioTracks'] as int? ?? 1,
+        subtitleTracks: config['subtitleTracks'] as int? ?? 0,
       );
       call = LiveKitCallEngine(
         connection: LiveKitConnection(
@@ -98,10 +128,10 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad> {
         roomName: config['room'] as String,
         identity: config['identity'] as String,
         participantName: config['identity'] as String,
+        cameraDeviceId: camera?.deviceId,
       );
       await call.join();
       final room = call.room!;
-      final devices = await Hardware.instance.enumerateDevices();
       record('devices', {
         'devices': devices
             .map(
@@ -163,7 +193,12 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad> {
         'localTracks': room.localParticipant!.trackPublications.length,
       });
       timer = Timer.periodic(
-        const Duration(seconds: 5),
+        Duration(
+          milliseconds: (config['sampleIntervalMs'] as int? ?? 5000).clamp(
+            500,
+            5000,
+          ),
+        ),
         (_) => unawaited(sample()),
       );
       stopTimer = Timer(
@@ -206,6 +241,8 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad> {
             'media-source',
             'codec',
             'remote-inbound-rtp',
+            'candidate-pair',
+            'transport',
           ].contains(stat.type)) {
             record('rtc', {
               'trackKind': track.kind.name,
@@ -219,6 +256,8 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad> {
       }
       record('playback', {
         'positionMs': (controller.activeMoviePositionSeconds * 1000).round(),
+        'lifecycle': WidgetsBinding.instance.lifecycleState?.name,
+        'framesEnabled': WidgetsBinding.instance.framesEnabled,
       });
       await output.flush();
     } catch (error) {
@@ -267,6 +306,7 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad> {
     await sync?.dispose();
     await call.leave();
     record('finished', {});
+    WidgetsBinding.instance.removeObserver(this);
     await output.flush();
     await output.close();
     // Removing the production screen disposes its mpv players before exit.
@@ -280,6 +320,7 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     timer?.cancel();
     stopTimer?.cancel();
     cycleTimer?.cancel();

@@ -67,7 +67,8 @@ if ($IncludeGpu) {
   # These names require English performance counters; fail if unavailable.
   Get-Counter -Counter '\GPU Engine(*)\Utilization Percentage',
     '\GPU Process Memory(*)\Dedicated Usage',
-    '\GPU Process Memory(*)\Shared Usage' -SampleInterval 1 -MaxSamples $Seconds |
+    '\GPU Process Memory(*)\Shared Usage' -SampleInterval 1 -MaxSamples $Seconds `
+    -ErrorAction SilentlyContinue -ErrorVariable counterErrors |
     ForEach-Object { Add-ResourceSample $_.CounterSamples }
 } else {
   while ($clock.Elapsed.TotalSeconds -lt $Seconds) {
@@ -79,6 +80,12 @@ $samples | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $OutputPath
 if ($IncludeGpu) {
   $gpuPath = Join-Path ([IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($OutputPath))) ([IO.Path]::GetFileNameWithoutExtension($OutputPath) + '-gpu.csv')
   $gpuSamples | Export-Csv -NoTypeInformation -Encoding UTF8 -Path $gpuPath
+  # Processes/engines may disappear during capture. Keep valid samples instead
+  # of losing the entire recording when PDH reports one invalid instance.
+  if ($counterErrors) { Write-Warning "PDH reported $($counterErrors.Count) counter errors; invalid instances were excluded." }
+  if (-not ($samples | Where-Object { $null -ne $_.gpuBusyPercent })) {
+    throw 'No valid GPU samples were collected; CPU/RAM samples were saved.'
+  }
 }
 foreach ($group in ($samples | Group-Object processId)) {
   $first = $group.Group[0]
