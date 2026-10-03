@@ -630,7 +630,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       confirmButtonText: widget.controller.t('open'),
     );
     if (path != null && path.isNotEmpty) {
-      widget.controller.setLibraryPath(path);
+      await widget.controller.setSelectedLibraryPath(path);
       await _scanLibrary(forceEmpty: true);
     }
   }

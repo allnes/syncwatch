@@ -58,7 +58,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       confirmButtonText: controller.t('open'),
     );
     if (path != null && path.isNotEmpty) {
-      controller.setLibraryPath(path);
+      await controller.setSelectedLibraryPath(path);
     }
   }
 

@@ -127,6 +127,8 @@ windows/
 !packages/syncwatch_mpv/windows/
 !packages/syncwatch_mpv/windows/**
 macos/
+!packages/syncwatch_library_access/macos/
+!packages/syncwatch_library_access/macos/**
 test/widget_test.dart
 
 # Local backend credentials

@@ -5,8 +5,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/app_strings.dart';
 import 'core/app_theme.dart';
 import 'screens/library_screen.dart';
+import 'services/library_access_service.dart';
 
 class AppController extends ChangeNotifier {
+  AppController({LibraryAccessService? libraryAccess})
+    : _libraryAccess = libraryAccess ?? LibraryAccessService();
+
+  final LibraryAccessService _libraryAccess;
   Locale locale = const Locale('en');
   String libraryPath = r'D:\Movies';
   String syncServer = 'syncplay.pl:8997';
@@ -120,6 +125,8 @@ class AppController extends ChangeNotifier {
     // "Continue watching" describes the active app session only.
     // A previous application run must not make the button say Continue.
     activeMovieSessionStarted = false;
+    // Restore the user-selected folder's sandbox grant before the first scan.
+    libraryPath = await _libraryAccess.restore(_prefs!, libraryPath);
   }
 
   Future<void> _setString(String key, String value) async {
@@ -162,6 +169,12 @@ class AppController extends ChangeNotifier {
     libraryPath = value;
     _setString('libraryPath', value);
     notifyListeners();
+  }
+
+  Future<void> setSelectedLibraryPath(String value) async {
+    setLibraryPath(value);
+    final prefs = _prefs;
+    if (prefs != null) await _libraryAccess.remember(prefs, value);
   }
 
   void setSkipSeconds(int value) {
