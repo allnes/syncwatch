@@ -1,0 +1,51 @@
+[
+  {
+    "file": "win.jsonl",
+    "streams": {
+      "send_video": [
+        {
+          "seconds": 59.02,
+          "counterDelta": 885,
+          "averageFps": 14.99,
+          "implementation": "OpenH264"
+        }
+      ],
+      "receive_video": [
+        {
+          "seconds": 59.02,
+          "counterDelta": 885,
+          "averageFps": 14.99,
+          "implementation": "FFmpeg"
+        }
+      ],
+      "send_audio": [
+        {
+          "seconds": 59.02,
+          "counterDelta": 0.003293246610943833
+        }
+      ],
+      "receive_audio": [
+        {
+          "seconds": 59.02,
+          "counterDelta": 2.116300514539908
+        }
+      ]
+    },
+    "actions": {
+      "seek": [
+        90
+      ]
+    },
+    "syncCommands": [
+      "STATE"
+    ],
+    "movie": {
+      "hardwareDecoders": [
+        "d3d11va-copy"
+      ],
+      "maxObservedDecoderDropCount": 0,
+      "maxObservedOutputDropCount": 582
+    },
+    "failures": []
+  }
+]

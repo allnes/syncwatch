@@ -1,0 +1,26 @@
+[
+  {
+    "file": "preview-100.png",
+    "bytes": 155915,
+    "equal": true,
+    "sha256": "6c6ff953c837c95f104817ab47f25b6db4430596bcfe910ad452885ff83188b6"
+  },
+  {
+    "file": "preview-150.png",
+    "bytes": 155381,
+    "equal": true,
+    "sha256": "3259c19266b637917e480f01c428d0b3476e7beae30e579d8fe80adf232afe27"
+  },
+  {
+    "file": "preview-200.png",
+    "bytes": 144286,
+    "equal": true,
+    "sha256": "eb4c4080cf093885abe226cc1e15ffee9b8c16c1067d033496f47de4bc338deb"
+  },
+  {
+    "file": "preview-50.png",
+    "bytes": 144286,
+    "equal": true,
+    "sha256": "eb4c4080cf093885abe226cc1e15ffee9b8c16c1067d033496f47de4bc338deb"
+  }
+]

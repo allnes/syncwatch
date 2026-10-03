@@ -1,0 +1,31 @@
+{
+  "applicationCommit": "a5779c1",
+  "analysis": {
+    "macOS": "pass",
+    "windows": "pass"
+  },
+  "nativeAndUnitTests": {
+    "macOS": 29,
+    "windows": 29
+  },
+  "normalReleaseBuild": {
+    "macOS": "pass",
+    "windows": "pass"
+  },
+  "helperIpcCycles": {
+    "macOS": 3,
+    "windows": 3
+  },
+  "normalMacLibraryStartup": "pass; not a full layout audit",
+  "normalMacSandbox": true,
+  "normalMacTemporaryFilesystemExceptions": 0,
+  "windowsApplicationCrashEventsSinceFinalPairStart": 0,
+  "macSyncwatchCrashFilesSinceFinalPairStart": 0,
+  "cleanup": {
+    "restoredBlockRules": 2,
+    "temporaryListeners": 0,
+    "temporaryTasks": 0,
+    "normalClientExited": true
+  },
+  "rdpRestored": true
+}

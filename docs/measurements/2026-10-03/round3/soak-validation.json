@@ -1,0 +1,169 @@
+[
+  {
+    "file": "win.jsonl",
+    "streams": {
+      "send_video": [
+        {
+          "seconds": 174.0,
+          "counterDelta": 2610,
+          "averageFps": 15.0,
+          "implementation": "OpenH264"
+        },
+        {
+          "seconds": 47.0,
+          "counterDelta": 705,
+          "averageFps": 15.0,
+          "implementation": "OpenH264"
+        },
+        {
+          "seconds": 72.02,
+          "counterDelta": 1080,
+          "averageFps": 15.0,
+          "implementation": "OpenH264"
+        }
+      ],
+      "receive_video": [
+        {
+          "seconds": 299.02,
+          "counterDelta": 4485,
+          "averageFps": 15.0,
+          "implementation": "FFmpeg"
+        }
+      ],
+      "send_audio": [
+        {
+          "seconds": 174.01,
+          "counterDelta": 0.012407511934910126
+        },
+        {
+          "seconds": 47.0,
+          "counterDelta": 0.008187877491630174
+        },
+        {
+          "seconds": 72.02,
+          "counterDelta": 0.007717101052606041
+        }
+      ],
+      "receive_audio": [
+        {
+          "seconds": 299.02,
+          "counterDelta": 9.580740490283903
+        }
+      ]
+    },
+    "actions": {
+      "seek": [
+        95
+      ],
+      "preview": [
+        259,
+        239,
+        270,
+        248,
+        238,
+        253,
+        234,
+        234,
+        253,
+        233,
+        253,
+        234,
+        225,
+        241,
+        240,
+        246,
+        250,
+        233,
+        230,
+        242,
+        260,
+        243,
+        238,
+        238,
+        239,
+        247,
+        240,
+        219,
+        226,
+        270
+      ],
+      "resize": [
+        12,
+        22,
+        33,
+        23,
+        120,
+        14,
+        108,
+        19,
+        20,
+        29,
+        7,
+        28,
+        27,
+        14,
+        30,
+        10,
+        20,
+        116,
+        29,
+        28,
+        9,
+        12,
+        27,
+        8,
+        14,
+        13,
+        26,
+        39,
+        18,
+        23,
+        14,
+        121,
+        32,
+        8,
+        27,
+        20,
+        24,
+        107,
+        24,
+        41,
+        7,
+        19,
+        27,
+        15,
+        31,
+        18,
+        29,
+        19,
+        22,
+        20,
+        11,
+        18,
+        22,
+        117,
+        14,
+        15,
+        15,
+        120,
+        22,
+        20
+      ],
+      "restartMedia": [
+        2827,
+        2882
+      ]
+    },
+    "syncCommands": [
+      "STATE"
+    ],
+    "movie": {
+      "hardwareDecoders": [
+        "d3d11va-copy"
+      ],
+      "maxObservedDecoderDropCount": 0,
+      "maxObservedOutputDropCount": 4476
+    },
+    "failures": []
+  }
+]

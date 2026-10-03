@@ -91,6 +91,16 @@ def check(path, require_restart=False, expected_actions=None):
     if not positions or max(positions) - min(positions) < 20000:
         failures.append('movie did not advance at least 20 seconds')
     result['syncCommands'] = sorted({row['command']['type'] for row in rows if row['type'] == 'sync'})
+    movie = [row for row in rows if row['type'] == 'mpv']
+    # mpv resets these counters on seeks. Maxima are observed snapshots, not
+    # cumulative losses; zero decoder drops does not imply smooth video output.
+    result['movie'] = {
+        'hardwareDecoders': sorted({row.get('hwdec-current', '') for row in movie}),
+        'maxObservedDecoderDropCount': max(
+            (int(row.get('decoder-frame-drop-count') or 0) for row in movie), default=None),
+        'maxObservedOutputDropCount': max(
+            (int(row.get('frame-drop-count') or 0) for row in movie), default=None),
+    }
     result['failures'] = failures
     return result
 

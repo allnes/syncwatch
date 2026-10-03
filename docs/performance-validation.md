@@ -1,6 +1,11 @@
 # Media resource validation
 
-Latest: [4K60 camera/call resize and preview comparison](measurements/2026-10-03/round2/README.md)
+Latest: [surface-free preview comparison and output-drop audit](measurements/2026-10-03/round3/README.md)
+records faster previews, lower transient memory, and a 93-action camera/call
+stress run. Decoder drops remain zero, but Windows video-output drops and
+restart/resize stalls are still unresolved; both counters are now reported.
+
+Previous: [4K60 camera/call resize and preview comparison](measurements/2026-10-03/round2/README.md)
 records the native GPU-surface leak fix, asynchronous mpv health reads, and raw
 preview capture, including a five-minute run with 75 actions and explicit limits.
 
