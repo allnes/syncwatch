@@ -1,0 +1,106 @@
+--- a/common/cpp/include/flutter_peerconnection.h
++++ b/common/cpp/include/flutter_peerconnection.h
+@@ -1,5 +1,7 @@
+ #ifndef FLUTTER_WEBRTC_RTC_PEER_CONNECTION_HXX
+ #define FLUTTER_WEBRTC_RTC_PEER_CONNECTION_HXX
++
++#include <mutex>
+ 
+ #include "flutter_common.h"
+ #include "flutter_webrtc_base.h"
+@@ -47,6 +49,8 @@
+   // resolve receiver tracks. Entries are dropped in OnRemoveTrack and, at the
+   // latest, when this observer is destroyed with the peer connection.
+   std::map<std::string, scoped_refptr<RTCMediaTrack>> remote_tracks_;
++  // Signaling callbacks and platform-channel lookups access these caches.
++  std::mutex remote_media_mutex_;
+   FlutterWebRTCBase* base_;
+   std::string id_;
+ };
+--- a/common/cpp/src/flutter_peerconnection.cc
++++ b/common/cpp/src/flutter_peerconnection.cc
+@@ -1330,7 +1330,10 @@
+ 
+     videoTracks.push_back(EncodableValue(videoTrack));
+   }
+-  remote_streams_[streamId] = scoped_refptr<RTCMediaStream>(stream);
++  {
++    std::lock_guard<std::mutex> lock(remote_media_mutex_);
++    remote_streams_[streamId] = stream;
++  }
+   params[EncodableValue("videoTracks")] = EncodableValue(videoTracks);
+ 
+   event_channel_->Success(EncodableValue(params));
+@@ -1350,7 +1353,9 @@
+     scoped_refptr<RTCRtpReceiver> receiver) {
+   auto track = receiver->track();
+   if (track.get()) {
+-    remote_tracks_[track->id().std_string()] = track;
++    const auto trackId = track->id().std_string();
++    std::lock_guard<std::mutex> lock(remote_media_mutex_);
++    remote_tracks_[trackId] = track;
+   }
+ 
+   std::vector<scoped_refptr<RTCMediaStream>> mediaStreams;
+@@ -1383,7 +1388,9 @@
+   auto receiver = transceiver->receiver();
+   auto track = receiver->track();
+   if (track.get()) {
+-    remote_tracks_[track->id().std_string()] = track;
++    const auto trackId = track->id().std_string();
++    std::lock_guard<std::mutex> lock(remote_media_mutex_);
++    remote_tracks_[trackId] = track;
+   }
+   EncodableMap params;
+   EncodableList streams_info;
+@@ -1407,7 +1414,9 @@
+     scoped_refptr<RTCRtpReceiver> receiver) {
+   auto track = receiver->track();
+   if (track.get()) {
+-    remote_tracks_.erase(track->id().std_string());
++    const auto trackId = track->id().std_string();
++    std::lock_guard<std::mutex> lock(remote_media_mutex_);
++    remote_tracks_.erase(trackId);
+   }
+ 
+   EncodableMap params;
+@@ -1475,6 +1484,7 @@
+ 
+ scoped_refptr<RTCMediaStream> FlutterPeerConnectionObserver::MediaStreamForId(
+     const std::string& id) {
++  std::lock_guard<std::mutex> lock(remote_media_mutex_);
+   auto it = remote_streams_.find(id);
+   if (it != remote_streams_.end())
+     return (*it).second;
+@@ -1483,11 +1493,18 @@
+ 
+ scoped_refptr<RTCMediaTrack> FlutterPeerConnectionObserver::MediaTrackForId(
+     const std::string& id) {
+-  auto known = remote_tracks_.find(id);
+-  if (known != remote_tracks_.end())
+-    return (*known).second;
+-
+-  for (auto it = remote_streams_.begin(); it != remote_streams_.end(); it++) {
++  std::map<std::string, scoped_refptr<RTCMediaStream>> streams;
++  {
++    std::lock_guard<std::mutex> lock(remote_media_mutex_);
++    auto known = remote_tracks_.find(id);
++    if (known != remote_tracks_.end())
++      return (*known).second;
++    streams = remote_streams_;
++  }
++
++  // Native stream calls may wait for the signaling thread. Never hold the
++  // cache mutex across them, because OnTrack runs on that same thread.
++  for (auto it = streams.begin(); it != streams.end(); it++) {
+     auto remoteStream = (*it).second;
+     auto audio_tracks = remoteStream->audio_tracks();
+     for (auto track : audio_tracks.std_vector()) {
+@@ -1506,6 +1523,7 @@
+ }
+ 
+ void FlutterPeerConnectionObserver::RemoveStreamForId(const std::string& id) {
++  std::lock_guard<std::mutex> lock(remote_media_mutex_);
+   auto it = remote_streams_.find(id);
+   if (it != remote_streams_.end())
+     remote_streams_.erase(it);

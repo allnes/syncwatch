@@ -3,12 +3,24 @@ import FlutterMacOS
 import multiview_desktop
 
 class MainFlutterWindow: NSWindow {
+  static var usesMultiView: Bool {
+    let arguments = ProcessInfo.processInfo.arguments
+    return !arguments.contains("--call-process-diagnostic") &&
+      !arguments.contains("--livekit-test-peer")
+  }
+
   private var pluginRegistry: MainWindowPluginRegistry?
 
   override func awakeFromNib() {
-    let engine = FlutterEngine(name: "main_flutter_engine", project: nil, allowHeadlessExecution: true)
-    MultiviewDesktopPlugin.prepareEngine(engine, window: self)
-    let controller = FlutterViewController(engine: engine, nibName: nil, bundle: nil)
+    let controller: FlutterViewController
+    if Self.usesMultiView {
+      let engine = FlutterEngine(name: "main_flutter_engine", project: nil, allowHeadlessExecution: true)
+      MultiviewDesktopPlugin.prepareEngine(engine, window: self)
+      controller = FlutterViewController(engine: engine, nibName: nil, bundle: nil)
+    } else {
+      // The call helper and test peer use runApp and need an implicit view.
+      controller = FlutterViewController()
+    }
     let windowFrame = frame
     contentViewController = controller
     setFrame(windowFrame, display: false)

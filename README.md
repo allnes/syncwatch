@@ -46,6 +46,11 @@ For normal development:
 run_dev.bat
 ```
 
+For direct Flutter builds, follow the dependency preparation steps in
+[patches/README.md](patches/README.md#remote-track-lifetime-in-flutter_webrtc)
+before configuring the Windows runner. The launcher and CI prepare the native
+WebRTC fix automatically in an isolated dependency copy.
+
 ## Architecture
 
 ```
