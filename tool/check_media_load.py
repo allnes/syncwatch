@@ -53,8 +53,13 @@ def check(path, require_restart=False, expected_actions=None):
     result = {'file': path.name, 'streams': streams}
     started = [r['action'] for r in rows if r['type'] == 'actionBegin']
     completed = [r for r in rows if r['type'] == 'actionDone']
-    if started != [r['action'] for r in completed]:
-        failures.append('scripted actions did not complete in order')
+    action_key = lambda action: json.dumps(action, sort_keys=True)
+    if sorted(map(action_key, started)) != sorted(action_key(r['action']) for r in completed):
+        failures.append('scripted actions did not all complete')
+    sequential = [a for a in started if not a.get('concurrent')]
+    sequential_done = [r['action'] for r in completed if not r['action'].get('concurrent')]
+    if sequential != sequential_done:
+        failures.append('sequential actions completed out of order')
     if expected_actions is not None and len(completed) != expected_actions:
         failures.append(f'expected {expected_actions} actions, completed {len(completed)}')
     result['actions'] = {}

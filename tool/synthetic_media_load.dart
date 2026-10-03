@@ -72,6 +72,7 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad>
   MpvStatsReader? mpvStats;
   late final PlayerDiagnostics diagnostics;
   final actionTimers = <Timer>[];
+  final concurrentActions = <Future<void>>{};
   Future<void> actionQueue = Future<void>.value();
   int lastMpvSampleMs = -5000;
   bool sampling = false;
@@ -111,9 +112,7 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad>
                 '${directory.path}/preview-$bucket.png',
               ).writeAsBytes(frame);
             },
-      previewProperties: Map<String, String>.from(
-        widget.config['previewProperties'] as Map? ?? const {},
-      ),
+      legacyPreviewCapture: widget.config['legacyPreviewCapture'] == true,
     );
     output = File(widget.config['statsPath'] as String).openWrite();
     WidgetsBinding.instance.addObserver(this);
@@ -223,7 +222,15 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad>
         final item = Map<String, dynamic>.from(action as Map);
         actionTimers.add(
           Timer(Duration(seconds: item['atSeconds'] as int), () {
-            actionQueue = actionQueue.then((_) => runAction(item));
+            if (item['concurrent'] == true) {
+              final pending = runAction(item);
+              concurrentActions.add(pending);
+              unawaited(
+                pending.whenComplete(() => concurrentActions.remove(pending)),
+              );
+            } else {
+              actionQueue = actionQueue.then((_) => runAction(item));
+            }
           }),
         );
       }
@@ -436,6 +443,7 @@ class _SyntheticMediaLoadState extends State<SyntheticMediaLoad>
       timer.cancel();
     }
     await actionQueue;
+    await Future.wait(concurrentActions.toList());
     cycleTimer?.cancel();
     await mediaCycle;
     timer?.cancel();

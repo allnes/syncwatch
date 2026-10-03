@@ -15,7 +15,7 @@ import '../core/app_theme.dart';
 import '../models/movie_item.dart';
 import '../services/sync_engine.dart';
 import '../services/preview_frame_cache.dart';
-import '../services/preview_thumbnail.dart';
+import '../services/native_preview_frame.dart';
 import '../services/video_output_size.dart';
 import '../services/player_diagnostics.dart';
 import '../services/mpv_stats_reader.dart';
@@ -579,6 +579,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         'videoSync=${values[8]} autosync=${values[9]} '
         'avsync=${values[10]} totalAvsyncChange=${values[11]}',
       );
+    } catch (error) {
+      _playbackLog('MPV_HEALTH unavailable error=$error');
     } finally {
       _mpvHealthLogInFlight = false;
     }
@@ -1659,19 +1661,6 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         await preview.setVolume(0);
         // A thumbnail needs no audio decoder or audio output device.
         await preview.setAudioTrack(AudioTrack.no());
-        final nativePreview = preview.platform;
-        if (nativePreview is NativePlayer) {
-          for (final entry
-              in widget.diagnostics?.previewProperties.entries ??
-                  const <MapEntry<String, String>>[]) {
-            await nativePreview.setProperty(
-              entry.key,
-              entry.value
-                  .replaceAll('{width}', '$thumbnailWidth')
-                  .replaceAll('{height}', '$thumbnailHeight'),
-            );
-          }
-        }
         // Clear the controller's size cache when changing media. media_kit_video
         // 2.0.1 resets the native output to source size on metadata arrival.
         await _previewVideoController!.setSize();
@@ -1694,6 +1683,9 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         }
       }
 
+      _playbackLog(
+        'PREVIEW_METADATA elapsed=${previewClock.elapsedMilliseconds}ms',
+      );
       if (!isCurrent()) return;
       // Opening/metadata can finish before mpv has a decoded frame. Seeking
       // during that gap can leave screenshot() returning the opening frame.
@@ -1728,14 +1720,25 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         height: thumbnailHeight,
       );
 
-      Uint8List? frame = await preview.screenshot(format: 'image/jpeg');
+      final captureClock = Stopwatch()..start();
+      Uint8List? frame = await capturePreviewThumbnail(
+        preview,
+        width: thumbnailWidth,
+        height: thumbnailHeight,
+        useNativePixels: !(widget.diagnostics?.legacyPreviewCapture ?? false),
+      );
 
       // Some codecs need one extra decode cycle after seeking.
       if (frame == null || frame.isEmpty) {
         await preview.play();
         await Future<void>.delayed(const Duration(milliseconds: 80));
         await preview.pause();
-        frame = await preview.screenshot(format: 'image/jpeg');
+        frame = await capturePreviewThumbnail(
+          preview,
+          width: thumbnailWidth,
+          height: thumbnailHeight,
+          useNativePixels: !(widget.diagnostics?.legacyPreviewCapture ?? false),
+        );
       }
 
       if (!isCurrent()) return;
@@ -1746,19 +1749,14 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         return;
       }
 
-      frame = await resizePreviewThumbnail(
-        frame,
-        width: thumbnailWidth,
-        height: thumbnailHeight,
-      );
-      if (!isCurrent()) return;
       _previewCache[bucket] = frame;
       await widget.diagnostics?.onPreviewReady?.call(bucket, frame);
       if (!isCurrent()) return;
       _playbackLog(
         'PREVIEW_READY request=$request bucket=$bucket '
         'elapsed=${previewClock.elapsedMilliseconds}ms '
-        'bytes=${frame.length} cache=${_previewCache.length}',
+        'bytes=${frame.length} cache=${_previewCache.length} '
+        'captureMs=${captureClock.elapsedMilliseconds}',
       );
 
       if (_timelineHovering && _previewRequestedBucket == bucket) {

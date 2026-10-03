@@ -4,12 +4,12 @@ import 'dart:typed_data';
 /// The ordinary application does not create one.
 class PlayerDiagnostics {
   PlayerDiagnostics({
-    this.previewProperties = const {},
+    this.legacyPreviewCapture = false,
     this.synchronousStats = false,
     this.onPreviewReady,
   });
 
-  final Map<String, String> previewProperties;
+  final bool legacyPreviewCapture;
   final bool synchronousStats;
   final Future<void> Function(int bucket, Uint8List frame)? onPreviewReady;
   Future<void> Function(double seconds)? requestPreview;
