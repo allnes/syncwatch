@@ -73,7 +73,7 @@ class _CallProcessDiagnosticAppState extends State<CallProcessDiagnosticApp>
       unawaited(stdout.done.catchError((Object _) => _closeWindow()));
     } else {
       // Retain file commands for the standalone diagnostic launcher.
-      final logs = '${Directory.current.path}${Platform.pathSeparator}logs';
+      final logs = File(widget.logFilePath).parent.path;
       _commandFile = File('$logs${Platform.pathSeparator}call_window.command');
       _actionFile = File('$logs${Platform.pathSeparator}call_window.action');
       _stateFile = File('$logs${Platform.pathSeparator}call_window.state');

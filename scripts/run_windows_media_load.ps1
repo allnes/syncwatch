@@ -13,12 +13,16 @@ param(
 # Follow patches/README.md to prepare the native plugin and Windows runner.
 # flutter build windows --release -t tool/synthetic_media_load.dart
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'artifact_paths.ps1')
+$OutputDirectory = Get-SyncWatchExternalArtifactPath $OutputDirectory
 $Executable = (Resolve-Path $Executable).Path
 $MediaPath = (Resolve-Path $MediaPath).Path
 New-Item $OutputDirectory -ItemType Directory -Force | Out-Null
 $OutputDirectory = (Resolve-Path $OutputDirectory).Path
 if ($RestartCallAfterSeconds -ge $Seconds) { throw 'Restart must occur before the run ends' }
 $clients = @()
+$previousLogDirectory = $env:SYNCWATCH_LOG_DIRECTORY
+$env:SYNCWATCH_LOG_DIRECTORY = Join-Path $OutputDirectory 'runtime'
 try {
   foreach ($index in 1..2) {
     $identity = "synthetic-$index"
@@ -28,6 +32,7 @@ try {
       backendUrl = $BackendUrl; room = $Room; identity = $identity
       mediaPath = $MediaPath; statsPath = (Join-Path $OutputDirectory "$identity.jsonl")
       audioInput = $AudioInput; seconds = $Seconds
+      repositoryRoot = (Split-Path -Parent $PSScriptRoot)
       windowX = (20 + ($index - 1) * 720); windowY = 40
     }
     if ($RestartCallAfterSeconds -gt 0) { $config.restartCallAfterSeconds = $RestartCallAfterSeconds }
@@ -58,6 +63,7 @@ try {
   }
   Write-Output 'Both clients exited successfully. Validate RTP and playback logs before accepting measurements.'
 } finally {
+  $env:SYNCWATCH_LOG_DIRECTORY = $previousLogDirectory
   foreach ($client in $clients) {
     if (!$client.HasExited) { Stop-Process -Id $client.Id }
   }

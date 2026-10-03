@@ -18,14 +18,24 @@ import 'package:syncwatch/services/livekit_connection.dart';
 import 'package:syncwatch/services/sync_engine.dart';
 import 'package:syncwatch/services/player_diagnostics.dart';
 import 'package:syncwatch/services/mpv_stats_reader.dart';
+import 'package:syncwatch/services/artifact_paths.dart';
 
 Future<void> main(List<String> args) async {
-  WidgetsFlutterBinding.ensureInitialized();
-  MediaKit.ensureInitialized();
   if (args.length != 1) throw ArgumentError('Pass a JSON configuration file');
   final config =
       jsonDecode(await File(args.single).readAsString())
           as Map<String, dynamic>;
+  for (final key in ['statsPath', 'previewOutputDirectory']) {
+    if (config[key] case final String path) {
+      config[key] = externalArtifactPath(
+        path,
+        repositoryRoot: config['repositoryRoot'] as String?,
+      );
+    }
+  }
+  await File(config['statsPath'] as String).parent.create(recursive: true);
+  WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
   await windowManager.ensureInitialized();
   await windowManager.setSize(const Size(960, 640));
   await windowManager.setPosition(

@@ -30,9 +30,15 @@ function Start-SyncWatchShell {
 
 Set-Location $root
 
-$logDir = Join-Path $root "logs"
+. (Join-Path $PSScriptRoot 'artifact_paths.ps1')
+$logDir = if ($env:SYNCWATCH_LOG_DIRECTORY) {
+  Get-SyncWatchExternalArtifactPath $env:SYNCWATCH_LOG_DIRECTORY
+} else {
+  Get-SyncWatchExternalArtifactPath (Join-Path (Split-Path -Parent $root) `
+    ('artifacts\syncwatch-performance\runtime\' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff')))
+}
+$env:SYNCWATCH_LOG_DIRECTORY = $logDir
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
-Remove-Item (Join-Path $logDir "*.log") -Force -ErrorAction SilentlyContinue
 
 Write-Host "Renderer: $(if ($DisableImpeller) { 'Skia (Impeller disabled)' } else { 'default Flutter renderer' })"
 Write-Host "Runtime logs will be written to:"

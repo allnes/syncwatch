@@ -132,3 +132,8 @@ test/widget_test.dart
 server/.env
 server/.env.*
 !server/.env.example
+
+# Generated performance artifacts belong outside this checkout.
+/artifacts/
+/logs/
+/docs/measurements/

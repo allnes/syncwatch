@@ -7,6 +7,18 @@ plays a local 1080p film through libmpv. It does not load user preferences or
 change the normal application UI. The existing `--livekit-test-peer` is only a
 data peer and is **not** sufficient for this test.
 
+## Artifact storage
+
+Keep configuration, generated movies, reports and logs outside the checkout.
+Use a fresh sibling directory such as `../artifacts/syncwatch-performance/runs/`.
+The launchers reject output paths inside the source tree. See
+[validation rules](performance-validation.md).
+
+For two physical hosts, run one configured client per host with the same local
+fixture and a shared test room. Use the real cameras/microphones and distinct
+identities. The two-process launcher below is an additional same-host synthetic
+scenario; it does not replace normal UI or Mac-to-Windows acceptance.
+
 ## Prepare the isolated Windows desktop
 
 - Run a local LiveKit server and this repository's token backend. Use distinct
@@ -26,9 +38,9 @@ data peer and is **not** sufficient for this test.
 - Generate a 180-second movie using FFmpeg:
 
 ```powershell
-ffmpeg -f lavfi -i testsrc2=size=1920x1080:rate=30 -f lavfi -i sine=frequency=523:sample_rate=48000 -t 180 -c:v libx264 -preset ultrafast -crf 20 -pix_fmt yuv420p -c:a aac -b:a 128k synthetic-1080p.mp4
+ffmpeg -f lavfi -i testsrc2=size=1920x1080:rate=30 -f lavfi -i sine=frequency=523:sample_rate=48000 -t 180 -c:v libx264 -preset ultrafast -crf 20 -pix_fmt yuv420p -c:a aac -b:a 128k C:\Temp\synthetic-1080p.mp4
 flutter build windows --release -t tool/synthetic_media_load.dart
-.\scripts\run_windows_media_load.ps1 -Executable build\windows\x64\runner\Release\syncwatch.exe -MediaPath synthetic-1080p.mp4 -OutputDirectory C:\Temp\syncwatch-load-01
+.\scripts\run_windows_media_load.ps1 -Executable build\windows\x64\runner\Release\syncwatch.exe -MediaPath C:\Temp\synthetic-1080p.mp4 -OutputDirectory C:\Temp\syncwatch-load-01
 ```
 
 For a restart stress test, pass `-Seconds 70 -RestartCallAfterSeconds 35`.

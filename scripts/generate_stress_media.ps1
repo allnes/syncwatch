@@ -8,6 +8,8 @@ param(
 # Generate a reusable 30-second segment, then remux it into a longer fixture.
 # Requires FFmpeg with Intel Quick Sync; generation must finish before profiling.
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'artifact_paths.ps1')
+$OutputDirectory = Get-SyncWatchExternalArtifactPath $OutputDirectory
 New-Item $OutputDirectory -ItemType Directory -Force | Out-Null
 $size = if ($Profile -eq '4k60') { '3840x2160' } else { '7680x4320' }
 $fps = if ($Profile -eq '4k60') { 60 } else { 30 }

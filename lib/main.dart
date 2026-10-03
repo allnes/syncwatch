@@ -8,13 +8,14 @@ import 'package:window_manager/window_manager.dart';
 import 'app.dart';
 import 'livekit_test_peer_app.dart';
 import 'call_process_app.dart';
+import 'services/artifact_paths.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
 
   if (args.contains('--call-process-diagnostic')) {
     final logFile = File(
-      '${Directory.current.path}${Platform.pathSeparator}logs'
+      '${runtimeLogDirectory.path}'
       '${Platform.pathSeparator}call_process.log',
     );
     await logFile.parent.create(recursive: true);
@@ -58,7 +59,7 @@ Future<void> main(List<String> args) async {
   }
 
   final startupLog = File(
-    '${Directory.current.path}${Platform.pathSeparator}logs'
+    '${runtimeLogDirectory.path}'
     '${Platform.pathSeparator}main_startup.log',
   );
   void startup(String message) {

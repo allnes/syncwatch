@@ -7,6 +7,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'artifact_paths.ps1')
+$OutputPath = Get-SyncWatchExternalArtifactPath $OutputPath
+New-Item ([IO.Path]::GetDirectoryName($OutputPath)) -ItemType Directory -Force | Out-Null
 if ($IncludeGpu -and $SampleIntervalMilliseconds -ne 1000) {
   throw 'GPU rate counters use one-second intervals. Run a separate CPU/RAM sampler for shorter peaks.'
 }
