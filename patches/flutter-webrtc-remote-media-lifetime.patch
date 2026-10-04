@@ -1,0 +1,167 @@
+--- a/common/cpp/include/flutter_peerconnection.h
++++ b/common/cpp/include/flutter_peerconnection.h
+@@ -2,6 +2,7 @@
+ #define FLUTTER_WEBRTC_RTC_PEER_CONNECTION_HXX
+ 
+ #include "flutter_common.h"
++#include "syncwatch_remote_media_cache.h"
+ #include "flutter_webrtc_base.h"
+ 
+ namespace flutter_webrtc_plugin {
+@@ -41,12 +42,12 @@
+  private:
+   std::unique_ptr<EventChannelProxy> event_channel_;
+   scoped_refptr<RTCPeerConnection> peerconnection_;
+-  std::map<std::string, scoped_refptr<RTCMediaStream>> remote_streams_;
++  RemoteMediaCache<std::string, scoped_refptr<RTCMediaStream>> remote_streams_;
+   // Remote tracks indexed by id. `remote_streams_` is only populated by
+   // OnAddStream, which never fires under Unified Plan, so it cannot be used to
+   // resolve receiver tracks. Entries are dropped in OnRemoveTrack and, at the
+   // latest, when this observer is destroyed with the peer connection.
+-  std::map<std::string, scoped_refptr<RTCMediaTrack>> remote_tracks_;
++  RemoteMediaCache<std::string, scoped_refptr<RTCMediaTrack>> remote_tracks_;
+   FlutterWebRTCBase* base_;
+   std::string id_;
+ };
+--- a/common/cpp/src/flutter_peerconnection.cc
++++ b/common/cpp/src/flutter_peerconnection.cc
+@@ -1330,7 +1330,7 @@
+ 
+     videoTracks.push_back(EncodableValue(videoTrack));
+   }
+-  remote_streams_[streamId] = scoped_refptr<RTCMediaStream>(stream);
++  remote_streams_.Set(streamId, stream);
+   params[EncodableValue("videoTracks")] = EncodableValue(videoTracks);
+ 
+   event_channel_->Success(EncodableValue(params));
+@@ -1350,7 +1350,7 @@
+     scoped_refptr<RTCRtpReceiver> receiver) {
+   auto track = receiver->track();
+   if (track.get()) {
+-    remote_tracks_[track->id().std_string()] = track;
++    remote_tracks_.Set(track->id().std_string(), track);
+   }
+ 
+   std::vector<scoped_refptr<RTCMediaStream>> mediaStreams;
+@@ -1383,7 +1383,7 @@
+   auto receiver = transceiver->receiver();
+   auto track = receiver->track();
+   if (track.get()) {
+-    remote_tracks_[track->id().std_string()] = track;
++    remote_tracks_.Set(track->id().std_string(), track);
+   }
+   EncodableMap params;
+   EncodableList streams_info;
+@@ -1407,7 +1407,7 @@
+     scoped_refptr<RTCRtpReceiver> receiver) {
+   auto track = receiver->track();
+   if (track.get()) {
+-    remote_tracks_.erase(track->id().std_string());
++    remote_tracks_.Erase(track->id().std_string());
+   }
+ 
+   EncodableMap params;
+@@ -1475,19 +1475,18 @@
+ 
+ scoped_refptr<RTCMediaStream> FlutterPeerConnectionObserver::MediaStreamForId(
+     const std::string& id) {
+-  auto it = remote_streams_.find(id);
+-  if (it != remote_streams_.end())
+-    return (*it).second;
+-  return nullptr;
++  return remote_streams_.Get(id);
+ }
+ 
+ scoped_refptr<RTCMediaTrack> FlutterPeerConnectionObserver::MediaTrackForId(
+     const std::string& id) {
+-  auto known = remote_tracks_.find(id);
+-  if (known != remote_tracks_.end())
+-    return (*known).second;
+-
+-  for (auto it = remote_streams_.begin(); it != remote_streams_.end(); it++) {
++  auto known = remote_tracks_.Get(id);
++  if (known.get()) return known;
++
++  // Native calls may wait for signaling callbacks; use owning snapshots
++  // without holding a cache lock across those calls.
++  auto streams = remote_streams_.Snapshot();
++  for (auto it = streams.begin(); it != streams.end(); it++) {
+     auto remoteStream = (*it).second;
+     auto audio_tracks = remoteStream->audio_tracks();
+     for (auto track : audio_tracks.std_vector()) {
+@@ -1506,9 +1505,7 @@
+ }
+ 
+ void FlutterPeerConnectionObserver::RemoveStreamForId(const std::string& id) {
+-  auto it = remote_streams_.find(id);
+-  if (it != remote_streams_.end())
+-    remote_streams_.erase(it);
++  remote_streams_.Erase(id);
+ }
+ 
+ }  // namespace flutter_webrtc_plugin
+--- a/common/cpp/src/flutter_webrtc.cc
++++ b/common/cpp/src/flutter_webrtc.cc
+@@ -439,7 +439,7 @@
+         GetValue<EncodableMap>(*method_call.arguments());
+     const std::string track_id = findString(params, "trackId");
+     const EncodableValue enable = findEncodableValue(params, "enabled");
+-    RTCMediaTrack* track = MediaTrackForId(track_id);
++    auto track = MediaTrackForId(track_id);
+     if (track != nullptr) {
+       track->set_enabled(GetValue<bool>(enable));
+     }
+@@ -559,7 +559,7 @@
+       return;
+     }
+ 
+-    RTCMediaTrack* track = MediaTrackForId(trackId);
++    auto track = MediaTrackForId(trackId);
+     if (nullptr == track) {
+       result->Error("setVolume", "setVolume() Unable to find provided track");
+       return;
+@@ -572,7 +572,7 @@
+       return;
+     }
+ 
+-    auto audioTrack = static_cast<RTCAudioTrack*>(track);
++    auto audioTrack = static_cast<RTCAudioTrack*>(track.get());
+     audioTrack->SetVolume(volume.value());
+ 
+     result->Success();
+@@ -811,7 +811,7 @@
+     }
+ 
+     const std::string trackId = findString(params, "trackId");
+-    RTCMediaTrack* track = MediaTrackForId(trackId);
++    auto track = MediaTrackForId(trackId);
+ 
+     const std::string rtpSenderId = findString(params, "rtpSenderId");
+     if (rtpSenderId.empty()) {
+@@ -871,7 +871,7 @@
+     }
+ 
+     const std::string trackId = findString(params, "trackId");
+-    RTCMediaTrack* track = MediaTrackForId(trackId);
++    auto track = MediaTrackForId(trackId);
+ 
+     const std::string rtpSenderId = findString(params, "rtpSenderId");
+     if (rtpSenderId.empty()) {
+@@ -1033,7 +1033,7 @@
+     }
+ 
+     const std::string trackId = findString(params, "trackId");
+-    RTCMediaTrack* track = MediaTrackForId(trackId);
++    auto track = MediaTrackForId(trackId);
+     if (nullptr == track) {
+       result->Error("captureFrame", "captureFrame() track is null");
+       return;
+@@ -1043,7 +1043,7 @@
+       result->Error("captureFrame", "captureFrame() track not is video track");
+       return;
+     }
+-    CaptureFrame(reinterpret_cast<RTCVideoTrack*>(track), path,
++    CaptureFrame(static_cast<RTCVideoTrack*>(track.get()), path,
+                  std::move(result));
+ 
+   } else if (method_call.method_name().compare("createLocalMediaStream") == 0) {

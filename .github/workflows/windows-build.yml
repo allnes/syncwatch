@@ -36,6 +36,12 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Prepare isolated WebRTC lifetime fix
+        shell: pwsh
+        run: |
+          .\scripts\prepare_webrtc_plugin.ps1
+          flutter pub get
+
       - name: Configure SyncWatch Windows multi-view runner
         shell: pwsh
         run: .\scripts\enable_multiview_windows.ps1
@@ -45,6 +51,17 @@ jobs:
 
       - name: Build Windows debug
         run: flutter build windows --debug
+
+      - name: Check native remote media ownership and concurrency
+        shell: pwsh
+        run: |
+          $nativeBuild = Join-Path $env:RUNNER_TEMP 'syncwatch-remote-media-check'
+          $webrtcInclude = Join-Path $pwd '.dart_tool/syncwatch_plugins/flutter_webrtc/third_party/libwebrtc/include'
+          cmake -S tools/webrtc -B $nativeBuild "-DWEBRTC_INCLUDE_DIR=$webrtcInclude"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build $nativeBuild --config Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir $nativeBuild -C Release --output-on-failure
 
       - name: Verify executable
         shell: pwsh

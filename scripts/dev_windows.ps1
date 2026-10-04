@@ -44,6 +44,9 @@ Get-Process syncwatch -ErrorAction SilentlyContinue | Stop-Process -Force
 Write-Host "Resolving Flutter dependencies..."
 flutter pub get
 if ($LASTEXITCODE -ne 0) { throw "flutter pub get failed." }
+& (Join-Path $PSScriptRoot "prepare_webrtc_plugin.ps1")
+flutter pub get
+if ($LASTEXITCODE -ne 0) { throw "flutter pub get failed after preparing WebRTC." }
 
 Write-Host "Configuring Windows multi-view runner..."
 $previousDisableImpeller = $env:SYNCWATCH_DISABLE_IMPELLER
