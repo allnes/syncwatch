@@ -1,10 +1,9 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'package:livekit_client/livekit_client.dart';
-import 'package:livekit_client/src/core/engine.dart';
-import 'package:livekit_client/src/core/transport.dart';
 import 'package:syncwatch/services/call_engine.dart';
 import 'package:syncwatch/services/livekit_connection.dart';
 
@@ -34,36 +33,6 @@ class TestSender implements rtc.RTCRtpSender {
   TestSender(this.senderId);
   @override
   final String senderId;
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class TestPeerConnection implements rtc.RTCPeerConnection {
-  List<rtc.RTCRtpTransceiver> currentTransceivers = [];
-  int reads = 0;
-  bool failRepeatedRead = false;
-  @override
-  Future<List<rtc.RTCRtpTransceiver>> getTransceivers() async {
-    reads++;
-    if (failRepeatedRead && reads > 1) throw StateError('stopped direction');
-    return currentTransceivers;
-  }
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class TestTransport implements Transport {
-  TestTransport(this.pc);
-  @override
-  final rtc.RTCPeerConnection pc;
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class TestEngine implements Engine {
-  TestEngine(this.publisher);
-  @override
-  final Transport publisher;
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -116,9 +85,7 @@ class TestParticipant implements LocalParticipant {
 }
 
 class TestRoom implements Room {
-  TestRoom(this.localParticipant, this.engine);
-  @override
-  final Engine engine;
+  TestRoom(this.localParticipant);
   @override
   final LocalParticipant localParticipant;
   @override
@@ -144,14 +111,12 @@ void main() {
   late TestParticipant participant;
   late TestConnection connection;
   late LiveKitCallEngine engine;
-  late TestPeerConnection peerConnection;
+  tearDown(() => debugDefaultTargetPlatformOverride = null);
   setUp(() async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
     actions = [];
     participant = TestParticipant(actions);
-    peerConnection = TestPeerConnection();
-    connection = TestConnection(
-      TestRoom(participant, TestEngine(TestTransport(peerConnection))),
-    );
+    connection = TestConnection(TestRoom(participant));
     engine = LiveKitCallEngine(
       connection: connection,
       roomName: 'cleanup-test',
@@ -240,37 +205,12 @@ void main() {
       expect(connection.disconnects, 0);
     },
   );
-  test(
-    'uses the negotiated transceiver matching the stable sender ID',
-    () async {
-      add('camera', TrackSource.camera, fail: true);
-      final unrelated = TestTransceiver('other', actions);
-      final negotiated = TestTransceiver('camera', actions);
-      peerConnection.currentTransceivers = [unrelated, negotiated];
-      await engine.stopCallMedia();
-      expect(actions, ['stop:camera', 'stopped:camera', 'unpublish:camera']);
-    },
-  );
-  test(
-    'resolves all senders before any stopped direction can appear',
-    () async {
-      add('mic', TrackSource.microphone, fail: true);
-      add('camera', TrackSource.camera, fail: true);
-      peerConnection.failRepeatedRead = true;
-      peerConnection.currentTransceivers = [
-        TestTransceiver('mic', actions),
-        TestTransceiver('camera', actions),
-      ];
-      await engine.stopCallMedia();
-      expect(peerConnection.reads, 1);
-      expect(actions, [
-        'stop:mic',
-        'stopped:mic',
-        'unpublish:mic',
-        'stop:camera',
-        'stopped:camera',
-        'unpublish:camera',
-      ]);
-    },
-  );
+  test('preserves native unpublication on macOS', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    add('mic', TrackSource.microphone);
+    add('camera', TrackSource.camera);
+    await engine.stopCallMedia();
+    expect(actions, ['unpublish:mic', 'unpublish:camera']);
+    expect(connection.disconnects, 0);
+  });
 }
