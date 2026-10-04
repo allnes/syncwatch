@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate/apply the external-texture fix to the pinned Flutter engine checkout."""
+"""Validate/apply the reviewed fixes to the pinned Flutter engine checkout."""
 
 import argparse
 from pathlib import Path
@@ -8,7 +8,10 @@ import subprocess
 
 ENGINE_REVISION = "692136cb6582dbfc5af3fb33c2515a069f2f66d0"
 SOURCE_ROOT = Path(__file__).resolve().parents[1]
-PATCH = SOURCE_ROOT / "patches/flutter-macos-external-texture-cache.patch"
+PATCHES = [
+    SOURCE_ROOT / "patches/flutter-macos-external-texture-cache.patch",
+    SOURCE_ROOT / "patches/flutter-macos-keyboard-redispatch.patch",
+]
 
 
 def git(checkout, *args):
@@ -31,21 +34,28 @@ def main():
     revision = git(checkout, "rev-parse", "HEAD")
     if revision.returncode or revision.stdout.strip() != ENGINE_REVISION:
         parser.error(f"The patch requires exactly Flutter engine {ENGINE_REVISION}.")
-    applied = git(checkout, "apply", "--reverse", "--check", str(PATCH))
-    if applied.returncode == 0:
-        print("Pinned engine patch already applied; no files changed.")
+    pending = []
+    for patch in PATCHES:
+        applied = git(checkout, "apply", "--reverse", "--check", str(patch))
+        if applied.returncode == 0:
+            continue
+        compatible = git(checkout, "apply", "--check", str(patch))
+        if compatible.returncode:
+            parser.error("Engine source differs from the reviewed patch; preserving it.\n"
+                         + compatible.stderr)
+        pending.append(str(patch))
+    if not pending:
+        print("Pinned engine patches already applied; no files changed.")
         return
-    compatible = git(checkout, "apply", "--check", str(PATCH))
-    if compatible.returncode:
-        parser.error("Engine source differs from the reviewed patch; preserving it.\n"
-                     + compatible.stderr)
     if not args.apply:
         print("Pinned engine is compatible. Use --apply to prepare it.")
         return
-    result = git(checkout, "apply", str(PATCH))
+    # Apply together only after all patches validate. A rejected patch must
+    # not leave another fix partially installed in the engine source.
+    result = git(checkout, "apply", *pending)
     if result.returncode:
         parser.error(result.stderr)
-    print("Prepared pinned engine. Build the framework and run its texture tests.")
+    print("Prepared pinned engine. Build the framework and run texture/input tests.")
 
 
 if __name__ == "__main__":

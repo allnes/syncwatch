@@ -1,0 +1,83 @@
+--- a/engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterKeyboardManager.mm
++++ b/engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterKeyboardManager.mm
+@@ -218,7 +218,19 @@
+ }
+ 
+ - (BOOL)isDispatchingKeyEvent:(NSEvent*)event {
+-  return _eventBeingDispatched == event;
++  if (_eventBeingDispatched == event) {
++    return YES;
++  }
++  // AppKit's cancel-key fallback can create a new Escape event with a zero
++  // timestamp while synchronously redispatching an unhandled Escape. Object
++  // identity alone then sends the clone through Flutter indefinitely. Keep
++  // that synthetic key equivalent in the native responder chain, just like
++  // the original event. Unrelated and newly delivered key events are unchanged.
++  constexpr uint16_t kEscapeKeyCode = 0x35;
++  return _eventBeingDispatched != nil && event.type == NSEventTypeKeyDown &&
++         _eventBeingDispatched.type == NSEventTypeKeyDown && event.timestamp == 0 &&
++         event.keyCode == kEscapeKeyCode && _eventBeingDispatched.keyCode == kEscapeKeyCode &&
++         event.modifierFlags == _eventBeingDispatched.modifierFlags;
+ }
+ 
+ #pragma mark - Private
+--- a/engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterKeyboardManagerTest.mm
++++ b/engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterKeyboardManagerTest.mm
+@@ -474,6 +474,57 @@
+   ASSERT_TRUE([[FlutterKeyboardManagerUnittestsObjC alloc] shouldNotHoldStrongReferenceToDelegate]);
+ }
+ 
++TEST(FlutterKeyboardManagerUnittests, RedispatchedEscapeCloneDoesNotReenterFlutter) {
++  KeyboardTester* tester = [[KeyboardTester alloc] init];
++  auto makeEvent = [](NSEventType type, unsigned short code, NSTimeInterval timestamp,
++                      NSEventModifierFlags flags) {
++    return [NSEvent keyEventWithType:type
++                           location:NSZeroPoint
++                      modifierFlags:flags
++                          timestamp:timestamp
++                       windowNumber:0
++                            context:nil
++                         characters:@"\x1b"
++        charactersIgnoringModifiers:@"\x1b"
++                          isARepeat:NO
++                            keyCode:code];
++  };
++  NSEvent* original = makeEvent(NSEventTypeKeyDown, kVK_Escape, 42, 0);
++  NSEvent* clone = makeEvent(NSEventTypeKeyDown, kVK_Escape, 0, 0);
++  NSEvent* subsequent = makeEvent(NSEventTypeKeyDown, kVK_Escape, 43, 0);
++  NSEvent* otherKey = makeEvent(NSEventTypeKeyDown, kVK_ANSI_A, 0, 0);
++  NSEvent* keyUp = makeEvent(NSEventTypeKeyUp, kVK_Escape, 0, 0);
++  NSEvent* modified = makeEvent(NSEventTypeKeyDown, kVK_Escape, 0, NSEventModifierFlagShift);
++  NSMutableArray<NSNumber*>* calls = [NSMutableArray<NSNumber*> array];
++  [tester recordCallTypesTo:calls forTypes:kChannelCall];
++  __block int redispatchCount = 0;
++  OCMStub([tester.nextResponder keyDown:[OCMArg any]]).andDo(^(NSInvocation* invocation) {
++    ++redispatchCount;
++    if (redispatchCount == 1) {
++      EXPECT_TRUE([tester.manager isDispatchingKeyEvent:original]);
++      EXPECT_TRUE([tester.manager isDispatchingKeyEvent:clone]);
++      EXPECT_FALSE([tester.manager isDispatchingKeyEvent:subsequent]);
++      EXPECT_FALSE([tester.manager isDispatchingKeyEvent:otherKey]);
++      EXPECT_FALSE([tester.manager isDispatchingKeyEvent:keyUp]);
++      EXPECT_FALSE([tester.manager isDispatchingKeyEvent:modified]);
++      if (![tester.manager isDispatchingKeyEvent:clone]) {
++        // Simulate AppKit's copied Escape returning through performKeyEquivalent.
++        // Reenter once so the baseline fails without hanging the test process.
++        [tester.manager handleEvent:clone withContext:tester.eventContextMock];
++      }
++    }
++  });
++  EXPECT_FALSE([tester.manager isDispatchingKeyEvent:clone]);
++  [tester.manager handleEvent:original withContext:tester.eventContextMock];
++  EXPECT_EQ(redispatchCount, 1);
++  EXPECT_EQ(calls.count, 1u);
++  EXPECT_FALSE([tester.manager isDispatchingKeyEvent:clone]);
++  // A new Escape outside native redispatch still reaches Flutter normally.
++  [tester.manager handleEvent:subsequent withContext:tester.eventContextMock];
++  EXPECT_EQ(redispatchCount, 2);
++  EXPECT_EQ(calls.count, 2u);
++}
++
+ }  // namespace flutter::testing
+ 
+ @implementation FlutterKeyboardManagerUnittestsObjC

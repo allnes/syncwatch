@@ -195,3 +195,20 @@ JPEG/PNG/raw captures, commands on another player during encoding, disposal
 past native destruction, and worker failures before/after acknowledgement.
 Repeat ordinary camera/call/movie/preview checks on Mac and Windows. This patch
 does not change formats, quality, dimensions, screenshot flags or decoder policy.
+
+## macOS Escape redispatch
+
+`flutter-macos-keyboard-redispatch.patch` targets the same pinned Flutter engine
+as the external-texture patch. AppKit can copy an unhandled Escape during native
+redispatch, assigning the copy a zero timestamp. Flutter's object-identity check
+then misses the copy and repeatedly queues it, consuming one CPU core even in
+the idle library. The guard recognizes this same-modifier Escape only during
+synchronous redispatch; new key events continue through the existing handlers.
+
+Use `scripts/prepare_macos_flutter_engine.py` to validate both engine patches
+before applying them. Run `flutter_desktop_darwin_unittests` with
+`--gtest_filter='*Key*:*TextInput*:*ViewController*'`, then verify ordinary text
+input, shortcuts, fullscreen/Escape, call windows and shutdown on macOS. The
+regression test exercises a copied Escape returning through the responder chain
+and verifies that a later Escape still reaches Flutter. Keep engine sources,
+frameworks and measurement output outside this repository.
