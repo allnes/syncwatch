@@ -81,6 +81,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Timer? partnerResyncTimer;
   final List<String> roomDiagnostics = <String>[];
   final List<({String text, DateTime time})> roomActivity = [];
+  final ValueNotifier<int> _roomLogRevision = ValueNotifier<int>(0);
   int selectedAudioIndex = 0;
   int selectedSubtitleIndex = 0;
   String? expandedTrackMenu;
@@ -124,6 +125,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     roomSyncEngine?.dispose();
     mv.MultiViewDesktop.allWindowIdsNotifier.removeListener(_callWindowsChanged);
     unawaited(_endCall().whenComplete(callEngine.leave));
+    _roomLogRevision.dispose();
     super.dispose();
   }
 
@@ -134,7 +136,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (roomDiagnostics.length > 40) roomDiagnostics.removeLast();
     roomActivity.insert(0, (text: message, time: DateTime.now()));
     if (roomActivity.length > 8) roomActivity.removeLast();
-    if (mounted) setState(() {});
+    // Refresh log consumers without rebuilding the library and player.
+    if (mounted) _roomLogRevision.value++;
   }
 
   Future<void> _showRoomDiagnostics() async {
@@ -1277,12 +1280,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
             ),
             const SizedBox(height: 14),
             Expanded(
-              child: Row(
-                children: [
-                  Expanded(child: _roomCard()),
-                  const SizedBox(width: 14),
-                  Expanded(child: _activityCard()),
-                ],
+              child: ListenableBuilder(
+                listenable: _roomLogRevision,
+                builder: (context, _) => Row(
+                  children: [
+                    Expanded(child: _roomCard()),
+                    const SizedBox(width: 14),
+                    Expanded(child: _activityCard()),
+                  ],
+                ),
               ),
             ),
           ],
