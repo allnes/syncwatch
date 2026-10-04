@@ -55,9 +55,9 @@ It does not alter playback quality, decoder selection or interpolation.
 
 `prepare_webrtc_plugin.ps1` also prepares this patch in an isolated video-plugin
 copy. It accepts its previous WebRTC-only generated override and upgrades it
-to include both dependencies. Custom overrides remain untouched; with
-`-UseResolvedPlugin`, both resolved plugins must be inside this checkout's
-`.dart_tool` directory. Review both patches when upgrading dependencies.
+to include the video plugin and media package. Custom overrides remain untouched;
+with `-UseResolvedPlugin`, all three resolved dependencies must be inside this
+checkout's `.dart_tool` directory. Review the patches when upgrading dependencies.
 
 After a Windows release build, run `scripts/check_video_surface_lifetime.ps1`
 with `-BuildDirectory build/windows/x64/runner/Release` and an external
@@ -124,3 +124,25 @@ Normal SDK builds do not automatically include this engine patch.
 This remains a candidate until the ordinary-app comparisons, quality checks
 and sustained combined-media runs in `docs/performance-validation.md` pass.
 Keep measurements, engine binaries and build logs in the external artifact area.
+
+## Screenshot command argument buffer
+
+`media-kit-screenshot-arguments.patch` targets `media_kit 1.2.6`. The native
+`screenshot-raw` command requires a NULL-terminated array of pointers. The
+original allocation used the argument text length as a byte count: 19 bytes
+for `screenshot-raw video`, although three 64-bit pointers require 24 bytes.
+The patch allocates the pointer count plus its zero-initialized terminator.
+Screenshot dimensions, format, conversion, JPEG settings and timing are unchanged.
+
+The macOS and Windows preparation helpers above also prepare this fix.
+For a standalone isolated copy, run `flutter pub get`,
+`dart scripts/prepare_media_kit.dart`, then `flutter pub get` again.
+Custom overrides are preserved: use `--prepare-only`, manually merge the
+`media_kit` path `.dart_tool/syncwatch_plugins/media_kit` into the existing
+override, and resolve dependencies again. `--use-resolved-package` patches
+only a dependency already isolated inside this checkout's `.dart_tool`.
+The helper checks the version, applies idempotently and leaves the shared
+pub cache untouched. Keep the hosted dependency in the committed lockfile.
+
+Validate screenshot creation and repeated player disposal on both desktop
+platforms. This allocation fix does not address preview seek readiness.

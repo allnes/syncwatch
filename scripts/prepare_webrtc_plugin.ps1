@@ -21,8 +21,9 @@ if ($UseResolvedPlugin) {
 } elseif (Test-Path $overridePath) {
   $expected = $marker + "`n" + "dependency_overrides:`n  flutter_webrtc:`n    path: .dart_tool/syncwatch_plugins/flutter_webrtc`n"
   $withVideo = $expected + "  media_kit_video:`n    path: .dart_tool/syncwatch_plugins/media_kit_video`n"
+  $withMedia = $withVideo + "  media_kit:`n    path: .dart_tool/syncwatch_plugins/media_kit`n"
   $existing = (Get-Content $overridePath -Raw).Replace("`r`n", "`n")
-  if ($existing -ne $expected -and $existing -ne $withVideo) {
+  if ($existing -ne $expected -and $existing -ne $withVideo -and $existing -ne $withMedia) {
     throw 'Preserving existing pubspec_overrides.yaml. Select an isolated .dart_tool dependency and use -UseResolvedPlugin, or merge its override manually.'
   }
 }
@@ -96,8 +97,13 @@ try {
   $ErrorActionPreference = $previousPreference
   Pop-Location
 }
+# Prepare the screenshot argument fix without replacing this helper's override.
+$mediaArguments = @((Join-Path $root 'scripts\prepare_media_kit.dart'), '--prepare-only')
+if ($UseResolvedPlugin) { $mediaArguments += '--use-resolved-package' }
+& dart @mediaArguments
+if ($LASTEXITCODE -ne 0) { throw 'Preparing media_kit failed.' }
 if (!$UseResolvedPlugin) {
-  $text = $marker + "`n" + "dependency_overrides:`n  flutter_webrtc:`n    path: .dart_tool/syncwatch_plugins/flutter_webrtc`n  media_kit_video:`n    path: .dart_tool/syncwatch_plugins/media_kit_video`n"
+  $text = $marker + "`n" + "dependency_overrides:`n  flutter_webrtc:`n    path: .dart_tool/syncwatch_plugins/flutter_webrtc`n  media_kit_video:`n    path: .dart_tool/syncwatch_plugins/media_kit_video`n  media_kit:`n    path: .dart_tool/syncwatch_plugins/media_kit`n"
   [IO.File]::WriteAllText($overridePath, $text, [Text.UTF8Encoding]::new($false))
 }
 Write-Host 'Prepared isolated WebRTC and video plugins. Run flutter pub get before building.'
