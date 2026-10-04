@@ -1,0 +1,23 @@
+--- a/macos/Classes/plugin/TextureHW.swift
++++ b/macos/Classes/plugin/TextureHW.swift
+@@ -9,7 +9,7 @@
+   private let updateCallback: UpdateCallback
+   private let pixelFormat: CGLPixelFormatObj
+   private let context: CGLContextObj
+-  private let textureCache: CVOpenGLTextureCache
++  private var textureCache: CVOpenGLTextureCache
+   private var renderContext: OpaquePointer?
+   private var textureContexts = SwappableObjectManager<TextureGLContext>(
+     objects: [],
+@@ -124,6 +124,11 @@
+   private func createPixelBuffer(_ size: CGSize) {
+     disposePixelBuffer()
+ 
++    // The cache retains retired CVOpenGLTextures (and their IOSurfaces) even
++    // after glDeleteTextures and an explicit cache flush. Release that cache
++    // once the old GL wrappers are gone; retained CVPixelBuffers stay valid.
++    textureCache = OpenGLHelpers.createTextureCache(context, pixelFormat)
++
+     textureContexts.reinit(
+       objects: [
+         TextureGLContext(

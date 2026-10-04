@@ -66,3 +66,27 @@ leak in a separate source copy. The native check uses the actual ANGLE DLLs,
 two rendering contexts, repeated 4K/1080p surfaces, independent D3D pixel
 readback and resource counters. Ordinary playback, preview, resize/fullscreen,
 call and shutdown checks are still required by `docs/performance-validation.md`.
+
+## macOS video texture cache lifetime
+
+`media-kit-video-macos-texture-cache.patch` targets `media_kit_video 2.0.1`.
+Core Video's OpenGL cache retains retired textures and their IOSurfaces across
+resizes; flushing the cache alone does not release them. After retiring the old
+GL wrappers, replace their cache before allocating the next three buffers.
+Pixel buffers already retained by Flutter remain valid. Buffer count, dimensions,
+format, decoder choice, rendering and synchronization remain unchanged.
+
+Before macOS builds, run `flutter pub get`,
+`dart run scripts/prepare_macos_video_plugin.dart`, then `flutter pub get` again.
+The script patches an isolated `.dart_tool` copy, preserves custom overrides and
+leaves the shared pub cache untouched. Use `--use-resolved-plugin` only with an
+already isolated `.dart_tool` dependency. Review the patch on version upgrades.
+
+After a release build, run `bash scripts/check_macos_texture_cache.sh` with the
+plugin directory, the app's `Contents/Frameworks`, the parent directory of the
+unstripped `FlutterMacOS.framework` (normally `build/macos/Build/Products/Release`),
+and an external output directory. It compiles the selected plugin's actual
+`TextureHW`, uses the app's mpv, cycles 4K/1080p buffers, checks dimensions and
+pixels including a retained old frame, and verifies bounded physical memory.
+For the original hosted package, add `--expect-growth` to verify reproduction.
+This native check supplements the ordinary-app checks required above.
