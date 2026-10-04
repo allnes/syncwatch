@@ -157,7 +157,7 @@ ordinary synchronous API and playback/camera configuration stay unchanged.
 Missing properties retain the empty-string result. Reply strings are copied
 before mpv releases their event; disposal settles pending requests.
 
-`prepare_media_kit.dart` applies both media patches to the isolated dependency.
+`prepare_media_kit.dart` applies the media patches to the isolated dependency.
 Run it before client analysis/builds, then run `flutter analyze lib test tool`,
 `flutter test`, and `dart run tool/check_mpv_properties.dart <app-libmpv-path>`.
 The native check compares string values, unavailable properties, concurrent
@@ -165,3 +165,18 @@ requests and disposal against the actual library. Never await this API inside
 mpv property-observer callbacks, which run in the same reply dispatcher.
 Acceptance also requires ordinary combined-load frame timing comparisons;
 adding a diagnostic API alone is not evidence of improved playback.
+
+## Preview seek completion
+
+`media-kit-seek-completion.patch` adds `NativePlayer.seekAndWaitForFrame`.
+mpv can acknowledge a queued seek while `seeking` still reports `no` for the
+previous frame. Preview capture now waits for `MPV_EVENT_SEEK` followed by
+`MPV_EVENT_PLAYBACK_RESTART`, with the shared command lock released during
+decoding. Other playback commands retain their existing completion behavior.
+Disposal cancels pending waits; a stalled decoder times out after 30 seconds.
+This replaces the premature three-second failure under heavy load without
+adding a delay to successfully decoded frames or changing media settings.
+
+Preparation uses the same isolated `media_kit 1.2.6` copy. Verify sequential
+paused seeks against delayed reference screenshots, timeout recovery and
+disposal on both desktop platforms, then repeat ordinary combined-media tests.

@@ -1,0 +1,73 @@
+--- a/lib/src/player/native/player/real.dart
++++ b/lib/src/player/native/player/real.dart
+@@ -103,6 +103,12 @@
+         request.completeError(StateError('[Player] has been disposed'));
+       }
+       _getPropertyRequests.clear();
++      for (final request in _frameSeekRequests.keys) {
++        if (!request.isCompleted) {
++          request.completeError(StateError('[Player] has been disposed'));
++        }
++      }
++      _frameSeekRequests.clear();
+ 
+       await super.dispose();
+ 
+@@ -736,6 +742,30 @@
+     }
+   }
+ 
++  /// Seeks and waits for a new decoded frame, including a queued seek.
++  /// Unlike the command reply, MPV_EVENT_PLAYBACK_RESTART follows decoding.
++  /// The shared command lock is released while the decoder is working.
++  Future<void> seekAndWaitForFrame(
++    Duration position, {
++    Duration timeout = const Duration(seconds: 30),
++  }) async {
++    final ready = Completer<void>();
++    // Disposal may fail this future while the command is still completing.
++    ready.future.ignore();
++    try {
++      await lock.synchronized(() async {
++        if (disposed) throw StateError('[Player] has been disposed');
++        await waitForPlayerInitialization;
++        await waitForVideoControllerInitializationIfAttached;
++        _frameSeekRequests[ready] = false;
++        await seek(position, synchronized: false);
++      });
++      await ready.future.timeout(timeout);
++    } finally {
++      _frameSeekRequests.remove(ready);
++    }
++  }
++
+   /// Sets playlist mode.
+   @override
+   Future<void> setPlaylistMode(PlaylistMode playlistMode,
+@@ -1415,6 +1445,17 @@
+   }
+ 
+   Future<void> _handler(Pointer<generated.mpv_event> event) async {
++    if (event.ref.event_id == generated.mpv_event_id.MPV_EVENT_SEEK) {
++      for (final request in _frameSeekRequests.keys) {
++        _frameSeekRequests[request] = true;
++      }
++    } else if (event.ref.event_id ==
++        generated.mpv_event_id.MPV_EVENT_PLAYBACK_RESTART) {
++      for (final request in _frameSeekRequests.entries) {
++        if (request.value && !request.key.isCompleted) request.key.complete();
++      }
++    }
++
+     if (event.ref.event_id ==
+         generated.mpv_event_id.MPV_EVENT_GET_PROPERTY_REPLY) {
+       final request = _getPropertyRequests.remove(event.ref.reply_userdata);
+@@ -2763,6 +2804,8 @@
+   /// The methods which must execute synchronously before playback of a source can end.
+   final List<Future<void> Function()> onUnloadHooks = [];
+ 
++  final _frameSeekRequests = <Completer<void>, bool>{};
++
+   /// Synchronization & mutual exclusion between methods of this class.
+   static final Lock lock = Lock();
+ 
