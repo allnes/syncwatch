@@ -13,6 +13,7 @@ import 'package:window_manager/window_manager.dart';
 import '../app.dart';
 import '../core/app_theme.dart';
 import '../models/movie_item.dart';
+import '../services/preview_seek.dart';
 import '../services/sync_engine.dart';
 import 'player_settings_screen.dart';
 import 'settings_screen.dart';
@@ -1570,10 +1571,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         }
       }
 
-      await preview.seek(Duration(seconds: bucket));
-
-      // Give mpv time to decode the target frame after an exact seek.
-      await Future<void>.delayed(const Duration(milliseconds: 90));
+      await seekPreviewFrame(preview, Duration(seconds: bucket));
 
       Uint8List? frame = await preview.screenshot(
         format: 'image/jpeg',
