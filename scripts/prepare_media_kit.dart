@@ -82,6 +82,7 @@ Future<void> main(List<String> arguments) async {
     'media-kit-screenshot-arguments.patch',
     'media-kit-async-property-query.patch',
     'media-kit-seek-completion.patch',
+    'media-kit-screenshot-lock.patch',
   ]) {
     await _applyPatch(destination, '${root.path}/patches/$name');
   }
