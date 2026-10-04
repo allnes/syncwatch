@@ -90,3 +90,37 @@ and an external output directory. It compiles the selected plugin's actual
 pixels including a retained old frame, and verifies bounded physical memory.
 For the original hosted package, add `--expect-growth` to verify reproduction.
 This native check supplements the ordinary-app checks required above.
+## macOS external Metal texture cache (candidate)
+
+`flutter-macos-external-texture-cache.patch` targets exactly Flutter engine
+`692136cb6582dbfc5af3fb33c2515a069f2f66d0`. Each external texture owns a Metal
+cache that is replaced when its pixel-buffer dimensions or format change.
+This releases retired IOSurfaces while already submitted Metal images keep
+their references. Allocation failure retains the previous mapping path.
+Pixel formats, color-space conversion, frame cadence and renderer selection
+are unchanged. Use this together with the macOS video-plugin cache fix above.
+
+Keep the engine checkout and its build outputs outside this repository. After
+checking out the pinned engine and resolving its official dependencies:
+
+```sh
+python3 scripts/prepare_macos_flutter_engine.py /path/to/engine-checkout
+python3 scripts/prepare_macos_flutter_engine.py --apply /path/to/engine-checkout
+```
+
+The helper refuses other revisions or incompatible edits and is idempotent.
+Build the engine with its documented macOS toolchain (`host_release_arm64` for
+Apple Silicon), then run `flutter_desktop_darwin_unittests` with
+`--gtest_filter='FlutterEmbedderExternalTextureTest.*:FlutterSurfaceManager.*'`.
+The patch includes a regression that checks released pools, dimensions, pixel
+values and an old Metal frame retained across cache destruction.
+
+Build SyncWatch using the matching Flutter SDK and local engine options:
+`--local-engine-src-path=/path/to/engine-checkout/engine/src`
+`--local-engine=host_release_arm64`. The engine and SDK revisions must match;
+do not replace SDK cache binaries globally. Preserve macOS sandbox entitlements.
+Normal SDK builds do not automatically include this engine patch.
+
+This remains a candidate until the ordinary-app comparisons, quality checks
+and sustained combined-media runs in `docs/performance-validation.md` pass.
+Keep measurements, engine binaries and build logs in the external artifact area.

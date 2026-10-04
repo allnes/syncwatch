@@ -1,0 +1,155 @@
+diff --git a/engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterEmbedderExternalTextureTest.mm b/engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterEmbedderExternalTextureTest.mm
+index 4159e966..7341d0cc 100644
+--- a/engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterEmbedderExternalTextureTest.mm
++++ b/engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterEmbedderExternalTextureTest.mm
+@@ -88,11 +88,71 @@ - (CVPixelBufferRef)pixelBuffer {
+
+ @end
+
++// Keeps ownership in the test while following FlutterTexture's copy contract.
++@interface PoolTestExternalTexture : NSObject <FlutterTexture>
++@property(nonatomic, assign) CVPixelBufferRef pixelBuffer;
++@end
++@implementation PoolTestExternalTexture
++- (CVPixelBufferRef)copyPixelBuffer {
++  return _pixelBuffer ? CVPixelBufferRetain(_pixelBuffer) : nullptr;
++}
++@end
++
+ namespace flutter::testing {
+
+ // Test-specific name for AutoreleasePoolTest fixture.
+ using FlutterEmbedderExternalTextureTest = AutoreleasePoolTest;
+
++TEST_F(FlutterEmbedderExternalTextureTest, TestRetiredTexturePoolsAreReleased) {
++  FlutterDarwinContextMetalSkia* metal =
++      [[FlutterDarwinContextMetalSkia alloc] initWithDefaultMTLDevice];
++  PoolTestExternalTexture* producer = [[PoolTestExternalTexture alloc] init];
++  FlutterExternalTexture* holder =
++      [[FlutterExternalTexture alloc] initWithFlutterTexture:producer darwinMetalContext:metal];
++  const NSUInteger start = metal.device.currentAllocatedSize;
++  id<MTLTexture> retained = nil;
++  for (int cycle = 0; cycle < 40; ++cycle) {
++    @autoreleasepool {
++      const size_t width = cycle % 2 ? 512 : 1024;
++      const size_t height = cycle % 2 ? 256 : 512;
++      for (int buffer = 0; buffer < 3; ++buffer) {
++        CVPixelBufferRef pixels = nullptr;
++        NSDictionary* options = @{(NSString*)kCVPixelBufferMetalCompatibilityKey : @YES};
++        ASSERT_EQ(CVPixelBufferCreate(kCFAllocatorDefault, width, height,
++                                     kCVPixelFormatType_32BGRA,
++                                     (__bridge CFDictionaryRef)options, &pixels), kCVReturnSuccess);
++        CVPixelBufferLockBaseAddress(pixels, 0);
++        memset(CVPixelBufferGetBaseAddress(pixels), 41 + cycle,
++               CVPixelBufferGetBytesPerRow(pixels) * height);
++        CVPixelBufferUnlockBaseAddress(pixels, 0);
++        producer.pixelBuffer = pixels;
++        FlutterMetalExternalTexture mapped = {};
++        ASSERT_TRUE([holder populateTexture:&mapped]);
++        ASSERT_EQ(mapped.width, width);
++        ASSERT_EQ(mapped.height, height);
++        ASSERT_EQ(mapped.num_textures, 1u);
++        id<MTLTexture> texture = (__bridge id<MTLTexture>)mapped.textures[0];
++        unsigned char sample[4] = {};
++        [texture getBytes:sample bytesPerRow:4
++               fromRegion:MTLRegionMake2D(width - 1, height - 1, 1, 1) mipmapLevel:0];
++        for (auto channel : sample) EXPECT_EQ(channel, 41 + cycle);
++        if (!retained) retained = texture;
++        producer.pixelBuffer = nullptr;
++        CVPixelBufferRelease(pixels);
++      }
++    }
++  }
++  // Live frame references survive replacement and destruction of their cache.
++  holder = nil;
++  unsigned char sample[4] = {};
++  [retained getBytes:sample bytesPerRow:4 fromRegion:MTLRegionMake2D(0, 0, 1, 1)
++           mipmapLevel:0];
++  for (auto channel : sample) EXPECT_EQ(channel, 41);
++  const NSUInteger end = metal.device.currentAllocatedSize;
++  EXPECT_LT(end, start + 32 * 1024 * 1024)
++      << "Retired video pools remain allocated: start=" << start << " end=" << end;
++}
++
+ TEST_F(FlutterEmbedderExternalTextureTest, TestTextureResolution) {
+   // Constants.
+   const size_t width = 100;
+diff --git a/engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterExternalTexture.mm b/engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterExternalTexture.mm
+index e15cd4e1..1b7e7f71 100644
+--- a/engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterExternalTexture.mm
++++ b/engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterExternalTexture.mm
+@@ -10,6 +10,10 @@ @implementation FlutterExternalTexture {
+   FlutterDarwinContextMetalSkia* _darwinMetalContext;
+
+   int64_t _textureID;
++  fml::CFRef<CVMetalTextureCacheRef> _textureCache;
++  size_t _cacheWidth;
++  size_t _cacheHeight;
++  OSType _cacheFormat;
+
+   id<FlutterTexture> _texture;
+
+@@ -23,6 +27,7 @@ - (instancetype)initWithFlutterTexture:(id<FlutterTexture>)texture
+     _texture = texture;
+     _textureID = reinterpret_cast<int64_t>(_texture);
+     _darwinMetalContext = context;
++    _textureCache.Retain(context.textureCache);
+   }
+   return self;
+ }
+@@ -39,7 +44,28 @@ - (BOOL)populateTexture:(FlutterMetalExternalTexture*)textureOut {
+     return NO;
+   }
+
++  const size_t width = CVPixelBufferGetWidth(pixelBuffer);
++  const size_t height = CVPixelBufferGetHeight(pixelBuffer);
+   OSType pixel_format = CVPixelBufferGetPixelFormatType(pixelBuffer);
++  // A cache can retain retired IOSurfaces even after explicit flushing.
++  // Rotate it with this texture's pixel-buffer pool; in-flight Metal images
++  // keep their own references to the surfaces they still use.
++  if (!_textureCache || width != _cacheWidth || height != _cacheHeight ||
++      pixel_format != _cacheFormat) {
++    CVMetalTextureCacheRef nextCache = nullptr;
++    CVReturn status = CVMetalTextureCacheCreate(kCFAllocatorDefault, nullptr,
++                                                _darwinMetalContext.device, nullptr, &nextCache);
++    if (status == kCVReturnSuccess) {
++      _textureCache.Reset(nextCache);
++      _cacheWidth = width;
++      _cacheHeight = height;
++      _cacheFormat = pixel_format;
++    } else {
++      // Preserve the existing mapping path if a replacement cannot be allocated.
++      NSLog(@"Could not create Metal texture cache: CVReturn %d", status);
++    }
++  }
++
+   if (pixel_format == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange ||
+       pixel_format == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange) {
+     return [self populateTextureFromYUVAPixelBuffer:pixelBuffer textureOut:textureOut];
+@@ -60,7 +86,7 @@ - (BOOL)populateTextureFromYUVAPixelBuffer:(nonnull CVPixelBufferRef)pixelBuffer
+
+   CVReturn yCVReturn = CVMetalTextureCacheCreateTextureFromImage(
+       /*allocator=*/kCFAllocatorDefault,
+-      /*textureCache=*/_darwinMetalContext.textureCache,
++      /*textureCache=*/_textureCache.Get(),
+       /*sourceImage=*/pixelBuffer,
+       /*textureAttributes=*/nullptr,
+       /*pixelFormat=*/MTLPixelFormatR8Unorm,
+@@ -76,7 +102,7 @@ - (BOOL)populateTextureFromYUVAPixelBuffer:(nonnull CVPixelBufferRef)pixelBuffer
+
+   CVReturn uvCVReturn = CVMetalTextureCacheCreateTextureFromImage(
+       /*allocator=*/kCFAllocatorDefault,
+-      /*textureCache=*/_darwinMetalContext.textureCache,
++      /*textureCache=*/_textureCache.Get(),
+       /*sourceImage=*/pixelBuffer,
+       /*textureAttributes=*/nullptr,
+       /*pixelFormat=*/MTLPixelFormatRG8Unorm,
+@@ -117,7 +143,7 @@ - (BOOL)populateTextureFromRGBAPixelBuffer:(nonnull CVPixelBufferRef)pixelBuffer
+   CVMetalTextureRef cvMetalTexture = nullptr;
+   CVReturn cvReturn =
+       CVMetalTextureCacheCreateTextureFromImage(/*allocator=*/kCFAllocatorDefault,
+-                                                /*textureCache=*/_darwinMetalContext.textureCache,
++                                                /*textureCache=*/_textureCache.Get(),
+                                                 /*sourceImage=*/pixelBuffer,
+                                                 /*textureAttributes=*/nullptr,
+                                                 /*pixelFormat=*/MTLPixelFormatBGRA8Unorm,
