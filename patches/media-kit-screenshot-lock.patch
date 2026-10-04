@@ -1,0 +1,93 @@
+--- a/lib/src/player/native/player/real.dart
++++ b/lib/src/player/native/player/real.dart
+@@ -7,6 +7,7 @@
+ import 'dart:collection';
+ import 'dart:ffi';
+ import 'dart:io';
++import 'dart:isolate' show ReceivePort, SendPort;
+ import 'dart:typed_data';
+ import 'package:image/image.dart';
+ import 'package:meta/meta.dart';
+@@ -1166,7 +1167,8 @@
+       {String? format = 'image/jpeg',
+       bool synchronized = true,
+       bool includeLibassSubtitles = false}) async {
+-    Future<Uint8List?> function() async {
++    late Future<Uint8List?> encoding;
++    Future<void> function() async {
+       if (![
+         'image/jpeg',
+         'image/png',
+@@ -1185,22 +1187,37 @@
+       await waitForPlayerInitialization;
+       await waitForVideoControllerInitializationIfAttached;
+ 
+-      return compute(
+-        _screenshot,
+-        _ScreenshotData(
+-          ctx.address,
+-          NativeLibrary.path,
+-          format,
+-          includeLibassSubtitles,
+-        ),
+-      );
++      final captured = ReceivePort();
++      try {
++        encoding = compute(
++          _screenshot,
++          _ScreenshotData(
++            ctx.address,
++            NativeLibrary.path,
++            format,
++            includeLibassSubtitles,
++            captured.sendPort,
++          ),
++        );
++        // The returned mpv node owns its image. Once the command finishes,
++        // encoding no longer accesses ctx and must not block other players.
++        // Also release the lock if the worker fails before notifying us.
++        await Future.any<Object?>([
++          captured.first,
++          encoding.then<Object?>((_) => null,
++              onError: (Object error, StackTrace stackTrace) => null),
++        ]);
++      } finally {
++        captured.close();
++      }
+     }
+ 
+     if (synchronized) {
+-      return lock.synchronized(function);
++      await lock.synchronized(function);
+     } else {
+-      return function();
+-    }
++      await function();
++    }
++    return encoding;
+   }
+ 
+   /// Internal platform specific identifier for this [Player] instance.
+@@ -2721,12 +2738,14 @@
+   final String lib;
+   final String? format;
+   final bool includeLibassSubtitles;
++  final SendPort captured;
+ 
+   const _ScreenshotData(
+     this.ctx,
+     this.lib,
+     this.format,
+     this.includeLibassSubtitles,
++    this.captured,
+   );
+ }
+ 
+@@ -2761,6 +2780,7 @@
+     arr.cast(),
+     result.cast(),
+   );
++  data.captured.send(null);
+ 
+   Uint8List? image;
+ 

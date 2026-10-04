@@ -157,7 +157,7 @@ ordinary synchronous API and playback/camera configuration stay unchanged.
 Missing properties retain the empty-string result. Reply strings are copied
 before mpv releases their event; disposal settles pending requests.
 
-`prepare_media_kit.dart` applies both media patches to the isolated dependency.
+`prepare_media_kit.dart` applies the media patches to the isolated dependency.
 Run it before client analysis/builds, then run `flutter analyze lib test tool`,
 `flutter test`, and `dart run tool/check_mpv_properties.dart <app-libmpv-path>`.
 The native check compares string values, unavailable properties, concurrent
@@ -165,3 +165,19 @@ requests and disposal against the actual library. Never await this API inside
 mpv property-observer callbacks, which run in the same reply dispatcher.
 Acceptance also requires ordinary combined-load frame timing comparisons;
 adding a diagnostic API alone is not evidence of improved playback.
+
+### Release the screenshot lock after capture
+
+`media-kit-screenshot-lock.patch` targets `media_kit 1.2.6`. Its global player
+lock covers the native capture, then releases when the worker acknowledges the
+completed `mpv_command_ret`. JPEG/PNG encoding continues on the worker's owned
+result node; its bytes and errors still complete the original screenshot future.
+An early worker failure also releases the lock. The worker never accesses the
+player context after acknowledgement, and frees the result after encoding.
+
+Keep the application preview request gate through idle disposal: early player
+cleanup must not start concurrent preview captures. Validate byte-identical
+JPEG/PNG/raw captures, commands on another player during encoding, disposal
+past native destruction, and worker failures before/after acknowledgement.
+Repeat ordinary camera/call/movie/preview checks on Mac and Windows. This patch
+does not change formats, quality, dimensions, screenshot flags or decoder policy.
