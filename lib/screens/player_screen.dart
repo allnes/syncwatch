@@ -1497,7 +1497,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
       _previewPlayer = null;
       _previewVideoController = null;
       _previewMediaPath = null;
-      _previewLoadInFlight = false;
+      // The active request owns this gate until its finally block, even if
+      // its player is disposed while a native capture is still finishing.
       if (preview != null) {
         unawaited(preview.dispose());
         _playbackLog('PREVIEW_PLAYER_DISPOSED idle');
@@ -1557,6 +1558,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
           Media(Uri.file(currentMovie.fullPath).toString()),
           play: false,
         );
+        if (!identical(preview, _previewPlayer)) return;
         _previewMediaPath = currentMovie.fullPath;
         _playbackLog(
           'PREVIEW_MEDIA_OPEN elapsed=${previewClock.elapsedMilliseconds}ms '
