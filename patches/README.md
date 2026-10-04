@@ -43,3 +43,26 @@ isolation requirement above still applies. Run the native lifetime/concurrency
 check using `tools/webrtc/CMakeLists.txt`, supplying `WEBRTC_INCLUDE_DIR` for
 the resolved plugin's `third_party/libwebrtc/include`, then `ctest` in that
 external build directory. On Clang, `-DENABLE_TSAN=ON` enables ThreadSanitizer.
+
+## Windows video surface lifetime
+
+`media-kit-video-surface-lifetime.patch` targets `media_kit_video 2.0.1`.
+Its ANGLE renderer bound each new pbuffer to an unused GL texture whose name
+was discarded. Those bindings retained old surface storage through subsequent
+resizes. The patch removes the unused binding; the default-framebuffer rendering,
+D3D shared-texture copy, synchronization, formats and dimensions stay unchanged.
+It does not alter playback quality, decoder selection or interpolation.
+
+`prepare_webrtc_plugin.ps1` also prepares this patch in an isolated video-plugin
+copy. It accepts its previous WebRTC-only generated override and upgrades it
+to include both dependencies. Custom overrides remain untouched; with
+`-UseResolvedPlugin`, both resolved plugins must be inside this checkout's
+`.dart_tool` directory. Review both patches when upgrading dependencies.
+
+After a Windows release build, run `scripts/check_video_surface_lifetime.ps1`
+with `-BuildDirectory build/windows/x64/runner/Release` and an external
+`-OutputDirectory`. Add `-VerifyBaselineFailure` to reproduce the original
+leak in a separate source copy. The native check uses the actual ANGLE DLLs,
+two rendering contexts, repeated 4K/1080p surfaces, independent D3D pixel
+readback and resource counters. Ordinary playback, preview, resize/fullscreen,
+call and shutdown checks are still required by `docs/performance-validation.md`.

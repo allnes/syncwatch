@@ -1,0 +1,27 @@
+--- a/windows/angle_surface_manager.cc
++++ b/windows/angle_surface_manager.cc
+@@ -100,9 +100,6 @@
+ 
+ void ANGLESurfaceManager::CleanUp(bool release_context) {
+   if (release_context) {
+-    if (display_ != EGL_NO_DISPLAY && surface_ != EGL_NO_SURFACE) {
+-      eglReleaseTexImage(display_, surface_, EGL_BACK_BUFFER);
+-    }
+     if (display_ != EGL_NO_DISPLAY && context_ != EGL_NO_CONTEXT) {
+       eglDestroyContext(display_, context_);
+       context_ = EGL_NO_CONTEXT;
+@@ -297,11 +294,8 @@
+   if (surface_ == EGL_NO_SURFACE) {
+     FAIL("eglCreatePbufferFromClientBuffer");
+   }
+-  GLuint t;
+-  glGenTextures(1, &t);
+-  glBindTexture(GL_TEXTURE_2D, t);
+-  eglBindTexImage(display_, surface_, EGL_BACK_BUFFER);
+-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
++  // mpv renders into this pbuffer's default framebuffer; Read() exports it
++  // through the D3D shared texture. No GL texture samples the pbuffer, so
++  // binding it with eglBindTexImage would retain its storage across resizes.
+   return true;
+ }

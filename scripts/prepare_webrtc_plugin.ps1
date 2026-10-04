@@ -20,7 +20,9 @@ if ($UseResolvedPlugin) {
   $destination = $source
 } elseif (Test-Path $overridePath) {
   $expected = $marker + "`n" + "dependency_overrides:`n  flutter_webrtc:`n    path: .dart_tool/syncwatch_plugins/flutter_webrtc`n"
-  if ((Get-Content $overridePath -Raw).Replace("`r`n", "`n") -ne $expected) {
+  $withVideo = $expected + "  media_kit_video:`n    path: .dart_tool/syncwatch_plugins/media_kit_video`n"
+  $existing = (Get-Content $overridePath -Raw).Replace("`r`n", "`n")
+  if ($existing -ne $expected -and $existing -ne $withVideo) {
     throw 'Preserving existing pubspec_overrides.yaml. Select an isolated .dart_tool dependency and use -UseResolvedPlugin, or merge its override manually.'
   }
 }
@@ -55,8 +57,47 @@ try {
   $ErrorActionPreference = $previousPreference
   Pop-Location
 }
+# Prepare the video renderer in the same isolated dependency area. The native
+# patch removes an unused GL binding that otherwise retains resized pbuffers.
+$videoDependency = $packages | Where-Object name -eq 'media_kit_video'
+if (!$videoDependency) { throw 'media_kit_video is absent from package_config.json.' }
+$videoSource = ([Uri]::new([Uri]::new($configPath), $videoDependency.rootUri)).LocalPath
+$videoDestination = Join-Path $root '.dart_tool\syncwatch_plugins\media_kit_video'
+if ($UseResolvedPlugin) {
+  if (![IO.Path]::GetFullPath($videoSource).StartsWith($isolatedRoot, [StringComparison]::OrdinalIgnoreCase)) {
+    throw '-UseResolvedPlugin requires media_kit_video inside this checkout''s .dart_tool directory.'
+  }
+  $videoDestination = $videoSource
+}
+if (!(Test-Path $videoDestination)) {
+  $staging = $videoDestination + '.preparing-' + [Guid]::NewGuid().ToString('N')
+  & robocopy $videoSource $staging /E /R:1 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
+  if ($LASTEXITCODE -ge 8) { throw "Dependency copy failed; inspect $staging" }
+  Move-Item $staging $videoDestination
+}
+if (!(Select-String -Path (Join-Path $videoDestination 'pubspec.yaml') -Pattern '^version: 2\.0\.1\s*$' -Quiet)) {
+  throw 'Review the surface-lifetime patch before using a different media_kit_video version.'
+}
+$videoPatch = Join-Path $root 'patches\media-kit-video-surface-lifetime.patch'
+Push-Location $videoDestination
+try {
+  $previousPreference = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  & git apply --reverse --check $videoPatch 2>$null
+  $alreadyApplied = $LASTEXITCODE -eq 0
+  $ErrorActionPreference = $previousPreference
+  if (!$alreadyApplied) {
+    & git apply --check $videoPatch
+    if ($LASTEXITCODE -ne 0) { throw 'Video source changed; review patch compatibility.' }
+    & git apply $videoPatch
+    if ($LASTEXITCODE -ne 0) { throw 'Applying the surface-lifetime patch failed.' }
+  }
+} finally {
+  $ErrorActionPreference = $previousPreference
+  Pop-Location
+}
 if (!$UseResolvedPlugin) {
-  $text = $marker + "`n" + "dependency_overrides:`n  flutter_webrtc:`n    path: .dart_tool/syncwatch_plugins/flutter_webrtc`n"
+  $text = $marker + "`n" + "dependency_overrides:`n  flutter_webrtc:`n    path: .dart_tool/syncwatch_plugins/flutter_webrtc`n  media_kit_video:`n    path: .dart_tool/syncwatch_plugins/media_kit_video`n"
   [IO.File]::WriteAllText($overridePath, $text, [Text.UTF8Encoding]::new($false))
 }
-Write-Host 'Prepared isolated WebRTC plugin. Run flutter pub get before building.'
+Write-Host 'Prepared isolated WebRTC and video plugins. Run flutter pub get before building.'
