@@ -519,6 +519,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         }
       }
 
+      final queryClock = Stopwatch()..start();
       final values = await Future.wait(<Future<String>>[
         property('video-codec'),
         property('video-format'),
@@ -539,7 +540,8 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
         'estimatedFps=${values[4]} displayFps=${values[5]} '
         'frameDrops=${values[6]} decoderDrops=${values[7]} '
         'videoSync=${values[8]} autosync=${values[9]} '
-        'avsync=${values[10]} totalAvsyncChange=${values[11]}',
+        'avsync=${values[10]} totalAvsyncChange=${values[11]} '
+        'queryMs=${(queryClock.elapsedMicroseconds / 1000).toStringAsFixed(2)}',
       );
     } finally {
       _mpvHealthLogInFlight = false;

@@ -191,7 +191,34 @@ class LiveKitCallEngine implements CallEngine {
         if (_room == null || !_cameraEnabled || track.isDisposed) return;
         try {
           final stats = await track.getSenderStats();
-          _log('CAMERA sender stats t+3s count=${stats.length} stats=$stats');
+          _log(
+            'CAMERA sender stats t+3s count=${stats.length} '
+            'stats=${stats.map((value) => {
+              'encoder': value.encoderImplementation,
+              'width': value.frameWidth,
+              'height': value.frameHeight,
+              'fps': value.framesPerSecond,
+              'framesSent': value.framesSent,
+              'bytesSent': value.bytesSent,
+              'qualityLimitation': value.qualityLimitationReason,
+            }).toList()}',
+          );
+          // Reuse LiveKit's existing samples; do not add a polling timer or
+          // another getStats request for the remote cameras.
+          for (final remote in
+              _room?.remoteParticipants.values ?? const <RemoteParticipant>[]) {
+            for (final publication in remote.videoTrackPublications) {
+              final received = publication.track?.prevStats;
+              _log(
+                'CAMERA receiver stats t+3s '
+                'decoder=${received?.decoderImplementation} '
+                'width=${received?.frameWidth} height=${received?.frameHeight} '
+                'fps=${received?.framesPerSecond} '
+                'framesDecoded=${received?.framesDecoded} '
+                'framesDropped=${received?.framesDropped}',
+              );
+            }
+          }
         } catch (error) {
           _log('CAMERA sender stats t+3s failed error=$error');
         }
