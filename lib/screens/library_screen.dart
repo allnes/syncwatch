@@ -10,6 +10,7 @@ import '../app.dart';
 import '../core/app_theme.dart';
 import '../models/movie_item.dart';
 import '../services/call_engine.dart';
+import '../services/library_file_index.dart';
 import '../services/livekit_connection.dart';
 import '../services/sync_engine.dart';
 import '../widgets/call_window_view.dart';
@@ -575,49 +576,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
     await _scanLibrary(forceEmpty: true);
   }
 
-  String _normalizedDir(String path) {
-    var normalized = Directory(path).absolute.path.replaceAll('\\', '/');
-    while (normalized.endsWith('/')) {
-      normalized = normalized.substring(0, normalized.length - 1);
-    }
-    return normalized.toLowerCase();
-  }
-
-  bool _isDirectlyInside(String filePath, String directoryPath) {
-    return _normalizedDir(File(filePath).parent.path) == directoryPath;
-  }
-
-  bool _isInsideOneChildFolder(String filePath, String directoryPath) {
-    final parent = File(filePath).parent;
-    final parentPath = _normalizedDir(parent.path);
-    if (parentPath == directoryPath) return false;
-    return _normalizedDir(parent.parent.path) == directoryPath;
-  }
-
-  bool _looksLikeMovieBundle({
-    required File videoFile,
-    required List<File> allVideos,
-    required List<File> subtitleFiles,
-    required List<File> audioFiles,
-  }) {
-    final movieDir = _normalizedDir(videoFile.parent.path);
-
-    final videosInSameFolder = allVideos.where(
-      (candidate) => _isDirectlyInside(candidate.path, movieDir),
-    );
-
-    if (videosInSameFolder.length != 1) {
-      return false;
-    }
-
-    bool isRelatedExtra(File extra) {
-      return _isDirectlyInside(extra.path, movieDir) ||
-          _isInsideOneChildFolder(extra.path, movieDir);
-    }
-
-    return subtitleFiles.any(isRelatedExtra) || audioFiles.any(isRelatedExtra);
-  }
-
   Future<void> _scanLibrary({bool forceEmpty = false}) async {
     final directory = Directory(widget.controller.libraryPath);
     if (!await directory.exists()) {
@@ -663,26 +621,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
       final previousByPath = <String, MovieItem>{
         for (final item in movies) item.fullPath: item,
       };
+      final fileIndex = LibraryFileIndex(
+        videos: videoFiles,
+        subtitles: subtitleFiles,
+        audio: externalAudioFiles,
+      );
 
       final scanned = videoFiles.map((file) {
         final fileName = _fileName(file.path);
-        final base = _baseName(fileName).toLowerCase();
-
-        final matchingSubs = subtitleFiles
-            .where((subtitle) {
-              final subName = _fileName(subtitle.path).toLowerCase();
-              return subName.startsWith('$base.');
-            })
-            .map((subtitle) => _fileName(subtitle.path))
-            .toList()
-          ..sort();
-
-        final isFolderMovie = _looksLikeMovieBundle(
-          videoFile: file,
-          allVideos: videoFiles,
-          subtitleFiles: subtitleFiles,
-          audioFiles: externalAudioFiles,
-        );
+        final matchingSubs = fileIndex.subtitleNamesFor(file);
+        final isFolderMovie = fileIndex.isFolderMovie(file);
 
         final previous = previousByPath[file.path];
         if (previous != null &&
@@ -2039,11 +1987,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String _fileName(String path) {
     final normalized = path.replaceAll('\\', '/');
     return normalized.substring(normalized.lastIndexOf('/') + 1);
-  }
-
-  String _baseName(String fileName) {
-    final dot = fileName.lastIndexOf('.');
-    return dot < 0 ? fileName : fileName.substring(0, dot);
   }
 
   String _inferResolution(String fileName) {
