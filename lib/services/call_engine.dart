@@ -235,6 +235,18 @@ class LiveKitCallEngine implements CallEngine {
     final participant = _room?.localParticipant;
     if (participant == null) return;
 
+    final publications = participant.trackPublications.values
+        .where((publication) =>
+            publication.source == TrackSource.microphone ||
+            publication.source == TrackSource.camera)
+        .toList();
+    // Snapshot all senders before stopping any of them: native SDK versions
+    // may not deserialize a transceiver whose direction is already stopped.
+    final transceivers = {
+      for (final publication in publications)
+        publication.sid: publication.track?.transceiver,
+    };
+
     // Dispose the manually-owned camera track first; removePublishedTrack alone
     // does not guarantee that the capture source is released.
     final ownedTrack = _ownedCameraTrack;
@@ -249,12 +261,35 @@ class LiveKitCallEngine implements CallEngine {
       }
     }
 
-    final publications = participant.trackPublications.values
-        .where((publication) =>
-            publication.source == TrackSource.microphone ||
-            publication.source == TrackSource.camera)
-        .toList();
+    if (publications.isEmpty) return;
+    try {
+      // Darwin's pre-negotiation object has an empty MID. Resolve the current
+      // transceiver by stable sender ID before asking native code to stop it.
+      // LiveKit 2.13 exposes this connection only through its engine.
+      // ignore: invalid_use_of_internal_member
+      final current = await _room?.engine.publisher?.pc.getTransceivers();
+      for (final publication in publications) {
+        final senderId = transceivers[publication.sid]?.sender.senderId;
+        if (senderId == null) continue;
+        for (final candidate in current ?? []) {
+          if (candidate.sender.senderId == senderId) {
+            transceivers[publication.sid] = candidate;
+            break;
+          }
+        }
+      }
+    } catch (error) {
+      _log('MEDIA transceiver lookup failed error=$error');
+    }
     for (final publication in publications) {
+      // Removing a track alone retains its encoder queues in a connected room.
+      // Retire the sender before the SDK negotiates its unpublication.
+      try {
+        await transceivers[publication.sid]?.stop();
+      } catch (error) {
+        // A lost connection must not prevent the remaining media cleanup.
+        _log('MEDIA transceiver stop failed sid=${publication.sid} error=$error');
+      }
       try {
         await participant.removePublishedTrack(publication.sid);
         _log(
