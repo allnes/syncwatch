@@ -1,0 +1,22 @@
+--- a/lib/src/formats/jpeg_encoder.dart
++++ b/lib/src/formats/jpeg_encoder.dart
+@@ -510,7 +510,7 @@
+   }
+ 
+   // DCT & quantization core
+-  List<int?> _fDCTQuant(List<double> data, List<double> fdtbl) {
++  List<int?> _fDCTQuant(Float32List data, Float32List fdtbl) {
+     // Pass 1: process rows.
+     var dataOff = 0;
+     for (var i = 0; i < 8; ++i) {
+@@ -784,8 +784,8 @@
+ 
+   int _processDU(
+     OutputBuffer out,
+-    List<double> cdu,
+-    List<double> fdtbl,
++    Float32List cdu,
++    Float32List fdtbl,
+     int dc,
+     List<List<int>?>? htdc,
+     List<List<int>?> htac,

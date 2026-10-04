@@ -29,6 +29,8 @@ dependencies:
       ref: f18498fe5257ab6e8291d86cbbbce2a2139b4fb7
 
 dev_dependencies:
+  crypto: ^3.0.7
+  image: 4.10.1
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0

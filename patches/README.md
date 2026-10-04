@@ -212,3 +212,22 @@ input, shortcuts, fullscreen/Escape, call windows and shutdown on macOS. The
 regression test exercises a copied Escape returning through the responder chain
 and verifies that a later Escape still reaches Flutter. Keep engine sources,
 frameworks and measurement output outside this repository.
+
+## JPEG typed buffers
+
+`image-jpeg-typed-dct.patch` targets image 4.10.1. Four private parameter types
+retain the callers' existing `Float32List` type through DCT and quantization,
+allowing native Dart compilation to avoid generic list access. The buffers,
+arithmetic, rounding, quality, chroma sampling and emitted JPEG bytes are unchanged.
+
+The Mac and Windows dependency preparation helpers also prepare this patch.
+For an existing custom override, use `dart run scripts/prepare_image.dart
+--prepare-only` and merge the isolated image path into that override before
+running `flutter pub get`. Never patch the shared package cache.
+
+Run `dart run tool/check_jpeg_output.dart` before and after preparation, saving
+stdout outside the checkout. Compare every hash for odd dimensions, channel
+counts, alpha, palettes, high-depth inputs, quality limits and encoder reuse.
+Also compare release 4K screenshot timings and exact JPEG bytes on both desktop
+platforms, including ordinary previews during a camera call and after idle
+cleanup. Do not infer an application-wide CPU improvement from encoder timing.

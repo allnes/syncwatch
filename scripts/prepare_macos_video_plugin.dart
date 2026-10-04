@@ -7,9 +7,12 @@ dependency_overrides:
   media_kit_video:
     path: .dart_tool/syncwatch_plugins/media_kit_video
 ''';
-const _override =
+const _mediaOverride =
     '$_previousOverride  media_kit:\n'
     '    path: .dart_tool/syncwatch_plugins/media_kit\n';
+const _override =
+    '$_mediaOverride  image:\n'
+    '    path: .dart_tool/syncwatch_plugins/image\n';
 
 Future<void> main(List<String> arguments) async {
   if (!Platform.isMacOS ||
@@ -43,7 +46,9 @@ Future<void> main(List<String> arguments) async {
       '\r\n',
       '\n',
     );
-    if (existing != _override && existing != _previousOverride) {
+    if (existing != _override &&
+        existing != _mediaOverride &&
+        existing != _previousOverride) {
       throw StateError(
         'Preserving existing pubspec_overrides.yaml. Select an isolated '
         '.dart_tool dependency and use --use-resolved-plugin, or merge '
@@ -106,6 +111,14 @@ Future<void> main(List<String> arguments) async {
   ]);
   if (mediaResult.exitCode != 0) {
     throw StateError('Preparing media_kit failed. ${mediaResult.stderr}');
+  }
+  final imageResult = await Process.run(Platform.resolvedExecutable, [
+    '${root.path}/scripts/prepare_image.dart',
+    '--prepare-only',
+    if (useResolved) '--use-resolved-package',
+  ]);
+  if (imageResult.exitCode != 0) {
+    throw StateError('Preparing image failed. ${imageResult.stderr}');
   }
   if (!useResolved) await overrideFile.writeAsString(_override);
   stdout.writeln('Prepared isolated video plugin. Run flutter pub get next.');
