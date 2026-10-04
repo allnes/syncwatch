@@ -231,3 +231,14 @@ counts, alpha, palettes, high-depth inputs, quality limits and encoder reuse.
 Also compare release 4K screenshot timings and exact JPEG bytes on both desktop
 platforms, including ordinary previews during a camera call and after idle
 cleanup. Do not infer an application-wide CPU improvement from encoder timing.
+
+## JPEG byte packing
+
+`image-jpeg-bitwriter.patch` writes the available bits of each JPEG byte in one
+operation instead of iterating over single bits. It preserves MSB order, partial
+bytes, padding and 0xff stuffing. It follows the typed-buffer patch;
+`scripts/prepare_image.dart` verifies the full patch stack in a temporary copy
+before replacing the isolated encoder source.
+
+Use the same exact-output and ordinary-preview checks above, including encoder
+reuse and both chroma modes. Keep timings and generated output outside Git.

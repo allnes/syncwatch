@@ -1,0 +1,34 @@
+--- a/lib/src/formats/jpeg_encoder.dart
++++ b/lib/src/formats/jpeg_encoder.dart
+@@ -849,21 +849,17 @@
+ 
+   void _writeBits(OutputBuffer out, List<int> bits) {
+     final value = bits[0];
+-    var posval = bits[1] - 1;
+-    while (posval >= 0) {
+-      if ((value & (1 << posval)) != 0) {
+-        _byteNew |= 1 << _bytePos;
+-      }
+-      posval--;
+-      _bytePos--;
++    var remaining = bits[1];
++    while (remaining > 0) {
++      final available = _bytePos + 1;
++      final count = remaining < available ? remaining : available;
++      remaining -= count;
++      _byteNew |= ((value >> remaining) & ((1 << count) - 1))
++          << (available - count);
++      _bytePos -= count;
+       if (_bytePos < 0) {
+-        if (_byteNew == 0xff) {
+-          out
+-            ..writeByte(0xff)
+-            ..writeByte(0);
+-        } else {
+-          out.writeByte(_byteNew);
+-        }
++        out.writeByte(_byteNew);
++        if (_byteNew == 0xff) out.writeByte(0);
+         _bytePos = 7;
+         _byteNew = 0;
+       }

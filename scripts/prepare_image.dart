@@ -78,14 +78,55 @@ Future<void> main(List<String> arguments) async {
   if (!RegExp(r'^version: 4\.10\.1\s*$', multiLine: true).hasMatch(pubspec)) {
     throw StateError('Review the image patches for this package version.');
   }
-  await _applyPatch(
-    destination,
-    '${root.path}/patches/image-jpeg-typed-dct.patch',
-  );
+  final patches = [
+    'image-jpeg-typed-dct.patch',
+    'image-jpeg-bitwriter.patch',
+  ].map((name) => '${root.path}/patches/$name').toList();
+  await _applyPatches(destination, patches);
   if (!useResolved && !prepareOnly) {
     await overrideFile.writeAsString(_override);
   }
   stdout.writeln('Prepared isolated image package. Run flutter pub get next.');
+}
+
+Future<void> _applyPatches(Directory destination, List<String> patches) async {
+  // All image patches target this file. Later patches can change the context
+  // of earlier ones, so verify the stack in reverse order in a temporary copy.
+  const relativePath = 'lib/src/formats/jpeg_encoder.dart';
+  final source = File('${destination.path}/$relativePath');
+  final staging = await destination.parent.createTemp('image.patching-');
+  try {
+    final staged = File('${staging.path}/$relativePath');
+    await staged.parent.create(recursive: true);
+    await source.copy(staged.path);
+    for (final patch in patches.reversed) {
+      final check = await Process.run('git', [
+        'apply',
+        '--reverse',
+        '--check',
+        patch,
+      ], workingDirectory: staging.path);
+      if (check.exitCode == 0) {
+        final result = await Process.run('git', [
+          'apply',
+          '--reverse',
+          patch,
+        ], workingDirectory: staging.path);
+        if (result.exitCode != 0) {
+          throw StateError(
+            'Checking image patch $patch failed. ${result.stderr}',
+          );
+        }
+      }
+    }
+    for (final patch in patches) {
+      await _applyPatch(staging, patch);
+    }
+    // Do not modify the resolved dependency until the entire stack passes.
+    await staged.copy(source.path);
+  } finally {
+    await staging.delete(recursive: true);
+  }
 }
 
 Future<void> _applyPatch(Directory destination, String patch) async {
