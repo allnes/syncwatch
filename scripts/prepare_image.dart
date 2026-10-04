@@ -81,6 +81,7 @@ Future<void> main(List<String> arguments) async {
   final patches = [
     'image-jpeg-typed-dct.patch',
     'image-jpeg-bitwriter.patch',
+    'image-jpeg-rgb-read.patch',
   ].map((name) => '${root.path}/patches/$name').toList();
   await _applyPatches(destination, patches);
   if (!useResolved && !prepareOnly) {

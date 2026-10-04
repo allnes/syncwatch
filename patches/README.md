@@ -242,3 +242,13 @@ before replacing the isolated encoder source.
 
 Use the same exact-output and ordinary-preview checks above, including encoder
 reuse and both chroma modes. Keep timings and generated output outside Git.
+
+## JPEG packed RGB access
+
+`image-jpeg-rgb-read.patch` reads packed, non-paletted three-channel uint8 RGB
+bytes directly during JPEG YUV block preparation. It preserves edge extension
+and the same integer conversion tables. Other channel counts, palettes and
+component formats retain the original path. No quality, chroma or size setting
+changes. Run `dart run tool/check_jpeg_output.dart` before and after preparation
+and compare all hashes. The image helper applies this after the typed-DCT and
+bit-writer patches in its temporary validation copy.

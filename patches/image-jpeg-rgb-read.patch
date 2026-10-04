@@ -1,0 +1,36 @@
+--- a/lib/src/formats/jpeg_encoder.dart
++++ b/lib/src/formats/jpeg_encoder.dart
+@@ -6,6 +6,7 @@
+ import '../exif/exif_data.dart';
+ import '../image/icc_profile.dart';
+ import '../image/image.dart';
++import '../image/image_data_uint8.dart';
+ import '../util/output_buffer.dart';
+ import 'encoder.dart';
+ import 'jpeg/jpeg_marker.dart';
+@@ -191,6 +192,25 @@
+     Float32List vdu,
+     Color backgroundColor,
+   ) {
++    final data = image.data;
++    if (data is ImageDataUint8 && data.numChannels == 3 && !data.hasPalette) {
++      final bytes = data.data;
++      for (var pos = 0; pos < 64; pos++) {
++        final yy = y + (pos >> 3) < height ? y + (pos >> 3) : height - 1;
++        final xx = x + (pos & 7) < width ? x + (pos & 7) : width - 1;
++        final offset = (yy * width + xx) * 3;
++        final r = bytes[offset];
++        final g = bytes[offset + 1];
++        final b = bytes[offset + 2];
++        ydu[pos] = ((_rgbYuvTable[r] + _rgbYuvTable[g + 256] +
++          _rgbYuvTable[b + 512]) >> 16) - 128.0;
++        udu[pos] = ((_rgbYuvTable[r + 768] + _rgbYuvTable[g + 1024] +
++          _rgbYuvTable[b + 1280]) >> 16) - 128.0;
++        vdu[pos] = ((_rgbYuvTable[r + 1280] + _rgbYuvTable[g + 1536] +
++          _rgbYuvTable[b + 1792]) >> 16) - 128.0;
++      }
++      return;
++    }
+     for (var pos = 0; pos < 64; pos++) {
+       final row = pos >> 3; // / 8
+       final col = pos & 7; // % 8
