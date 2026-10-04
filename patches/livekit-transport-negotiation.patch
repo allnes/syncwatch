@@ -1,0 +1,52 @@
+--- a/lib/src/core/transport.dart
++++ b/lib/src/core/transport.dart
+@@ -23,6 +23,7 @@
+ import '../logger.dart';
+ import '../options.dart';
+ import '../support/disposable.dart';
++import '../support/serial_runner.dart';
+ import '../support/platform.dart';
+ import '../types/other.dart';
+ import '../utils.dart';
+@@ -65,6 +66,9 @@
+   final List<TrackBitrateInfo> _bitrateTrackers = [];
+   bool restartingIce = false;
+   bool renegotiate = false;
++  // Reading signaling state and applying its answer must be one ordered
++  // operation; otherwise a pending publication can miss the answer callback.
++  final _negotiationRunner = SerialRunner<void>();
+   TransportOnOffer? onOffer;
+   Function? _cancelDebounce;
+   ConnectOptions connectOptions;
+@@ -121,7 +125,10 @@
+     wait: connectOptions.timeouts.debounce,
+   );
+ 
+-  Future<void> setRemoteDescription(rtc.RTCSessionDescription sd) async {
++  Future<void> setRemoteDescription(rtc.RTCSessionDescription sd) =>
++      _negotiationRunner.run(() => _setRemoteDescription(sd));
++
++  Future<void> _setRemoteDescription(rtc.RTCSessionDescription sd) async {
+     if (isDisposed) {
+       logger.warning('[$objectId] setRemoteDescription() already disposed');
+       return;
+@@ -142,11 +149,14 @@
+ 
+     if (renegotiate) {
+       renegotiate = false;
+-      await createAndSendOffer(); // await or un-awaited ?
+-    }
+-  }
+-
+-  Future<void> createAndSendOffer([RTCOfferOptions? options]) async {
++      await _createAndSendOffer();
++    }
++  }
++
++  Future<void> createAndSendOffer([RTCOfferOptions? options]) =>
++      _negotiationRunner.run(() => _createAndSendOffer(options));
++
++  Future<void> _createAndSendOffer([RTCOfferOptions? options]) async {
+     if (isDisposed) {
+       logger.warning('[$objectId] createAndSendOffer() already disposed');
+       return;

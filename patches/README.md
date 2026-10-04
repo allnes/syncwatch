@@ -1,5 +1,29 @@
 # SyncWatch Windows libwebrtc patch
 
+## LiveKit negotiation ordering
+
+`livekit-transport-negotiation.patch` targets `livekit_client 2.13.0`.
+A publication can arrive while a previous offer is awaiting its answer. If the
+answer completes during the new request's asynchronous state read, the SDK can
+set its pending flag too late and never negotiate the new track. Concurrent
+requests can also start two native offers at once.
+
+The patch serializes offer creation and remote-description application with
+the SDK's existing `SerialRunner`. Deferred negotiation runs within the same
+operation to avoid recursively waiting on its own queue. SDP processing,
+codecs, media settings, debounce timing and ICE restart options stay unchanged.
+
+The Windows and macOS dependency preparation helpers include this patch.
+`dart run scripts/prepare_livekit.dart --prepare-only` prepares an isolated
+copy for a custom override; add `.dart_tool/syncwatch_plugins/livekit_client`
+to the ignored override and run `flutter pub get`. `--use-resolved-package`
+requires an already isolated dependency under this checkout's `.dart_tool`.
+
+Run `flutter test test/livekit_negotiation_test.dart` after preparation. The
+tests cover interleaved answers, concurrent publications, native errors, ICE
+restart and queued work during disposal. Also repeat ordinary camera/call/movie
+cycles on both platforms; mocked signaling checks do not prove media delivery.
+
 SyncWatch must never change the volume of unrelated Windows applications.
 
 Stock WebRTC marks its Windows Core Audio stream as `AudioCategory_Communications`.

@@ -10,9 +10,12 @@ dependency_overrides:
 const _mediaOverride =
     '$_previousOverride  media_kit:\n'
     '    path: .dart_tool/syncwatch_plugins/media_kit\n';
-const _override =
+const _imageOverride =
     '$_mediaOverride  image:\n'
     '    path: .dart_tool/syncwatch_plugins/image\n';
+const _override =
+    '$_imageOverride  livekit_client:\n'
+    '    path: .dart_tool/syncwatch_plugins/livekit_client\n';
 
 Future<void> main(List<String> arguments) async {
   if (!Platform.isMacOS ||
@@ -47,6 +50,7 @@ Future<void> main(List<String> arguments) async {
       '\n',
     );
     if (existing != _override &&
+        existing != _imageOverride &&
         existing != _mediaOverride &&
         existing != _previousOverride) {
       throw StateError(
@@ -119,6 +123,14 @@ Future<void> main(List<String> arguments) async {
   ]);
   if (imageResult.exitCode != 0) {
     throw StateError('Preparing image failed. ${imageResult.stderr}');
+  }
+  final livekitResult = await Process.run(Platform.resolvedExecutable, [
+    '${root.path}/scripts/prepare_livekit.dart',
+    '--prepare-only',
+    if (useResolved) '--use-resolved-package',
+  ]);
+  if (livekitResult.exitCode != 0) {
+    throw StateError('Preparing LiveKit failed. ${livekitResult.stderr}');
   }
   if (!useResolved) await overrideFile.writeAsString(_override);
   stdout.writeln('Prepared isolated video plugin. Run flutter pub get next.');

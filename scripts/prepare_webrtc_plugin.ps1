@@ -23,8 +23,9 @@ if ($UseResolvedPlugin) {
   $withVideo = $expected + "  media_kit_video:`n    path: .dart_tool/syncwatch_plugins/media_kit_video`n"
   $withMedia = $withVideo + "  media_kit:`n    path: .dart_tool/syncwatch_plugins/media_kit`n"
   $withImage = $withMedia + "  image:`n    path: .dart_tool/syncwatch_plugins/image`n"
+  $withLiveKit = $withImage + "  livekit_client:`n    path: .dart_tool/syncwatch_plugins/livekit_client`n"
   $existing = (Get-Content $overridePath -Raw).Replace("`r`n", "`n")
-  if ($existing -ne $expected -and $existing -ne $withVideo -and $existing -ne $withMedia -and $existing -ne $withImage) {
+  if ($existing -ne $expected -and $existing -ne $withVideo -and $existing -ne $withMedia -and $existing -ne $withImage -and $existing -ne $withLiveKit) {
     throw 'Preserving existing pubspec_overrides.yaml. Select an isolated .dart_tool dependency and use -UseResolvedPlugin, or merge its override manually.'
   }
 }
@@ -107,9 +108,14 @@ $imageArguments = @((Join-Path $root 'scripts\prepare_image.dart'), '--prepare-o
 if ($UseResolvedPlugin) { $imageArguments += '--use-resolved-package' }
 & dart @imageArguments
 if ($LASTEXITCODE -ne 0) { throw 'Preparing image failed.' }
+$livekitArguments = @((Join-Path $root 'scripts\prepare_livekit.dart'), '--prepare-only')
+if ($UseResolvedPlugin) { $livekitArguments += '--use-resolved-package' }
+& dart @livekitArguments
+if ($LASTEXITCODE -ne 0) { throw 'Preparing LiveKit failed.' }
 if (!$UseResolvedPlugin) {
   $text = $marker + "`n" + "dependency_overrides:`n  flutter_webrtc:`n    path: .dart_tool/syncwatch_plugins/flutter_webrtc`n  media_kit_video:`n    path: .dart_tool/syncwatch_plugins/media_kit_video`n  media_kit:`n    path: .dart_tool/syncwatch_plugins/media_kit`n"
   $text += "  image:`n    path: .dart_tool/syncwatch_plugins/image`n"
+  $text += "  livekit_client:`n    path: .dart_tool/syncwatch_plugins/livekit_client`n"
   [IO.File]::WriteAllText($overridePath, $text, [Text.UTF8Encoding]::new($false))
 }
 Write-Host 'Prepared isolated WebRTC and video plugins. Run flutter pub get before building.'
