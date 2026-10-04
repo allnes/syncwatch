@@ -31,6 +31,14 @@ Report measured resource usage and latency with their verification limits;
 separate short samples from sustained memory-growth checks and RDP from the
 physical Windows console. Hardware flags alone do not prove GPU execution.
 
+Do not infer GPU resource leaks from Windows per-process memory counters alone.
+Correlate repeated lifecycle samples with resource ownership, DXGI process
+usage and whole-adapter memory. Preserve conflicting raw measurements and
+investigate the discrepancy before changing cleanup behavior. Diagnostic
+resource opens can affect lifetime; use a live-resource positive control and
+repeat measurements without that probe. Remove diagnostic instrumentation
+from the final ordinary release.
+
 Keep plans, reports, logs, samples, screenshots, dumps and generated media
 outside the source checkout, including copies without Git metadata. Use a
 sibling artifact directory and launch test clients with an external working
