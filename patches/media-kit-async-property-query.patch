@@ -1,0 +1,91 @@
+--- a/lib/src/player/native/player/real.dart
++++ b/lib/src/player/native/player/real.dart
+@@ -98,6 +98,11 @@
+       await stop(notify: false, synchronized: false);
+ 
+       disposed = true;
++
++      for (final request in _getPropertyRequests.values) {
++        request.completeError(StateError('[Player] has been disposed'));
++      }
++      _getPropertyRequests.clear();
+ 
+       await super.dispose();
+ 
+@@ -1278,6 +1283,43 @@
+     return "";
+   }
+ 
++  /// Retrieves a string property through mpv's asynchronous reply queue.
++  /// Do not await this from a property observer: observers run in the same
++  /// event handler that must deliver the reply.
++  Future<String> getPropertyAsync(String property) async {
++    if (disposed) {
++      throw StateError('[Player] has been disposed');
++    }
++    await waitForPlayerInitialization;
++    await waitForVideoControllerInitializationIfAttached;
++    if (disposed) {
++      throw StateError('[Player] has been disposed');
++    }
++
++    final requestNumber = _asyncRequestNumber++;
++    final result = Completer<String>();
++    _getPropertyRequests[requestNumber] = result;
++    final name = property.toNativeUtf8();
++    try {
++      final immediate = mpv.mpv_get_property_async(
++        ctx,
++        requestNumber,
++        name.cast(),
++        generated.mpv_format.MPV_FORMAT_STRING,
++      );
++      if (immediate < 0) {
++        _getPropertyRequests.remove(requestNumber);
++        return '';
++      }
++    } catch (_) {
++      _getPropertyRequests.remove(requestNumber);
++      rethrow;
++    } finally {
++      calloc.free(name);
++    }
++    return result.future;
++  }
++
+   /// Observes property for the internal libmpv instance of this [Player].
+   /// Please use this method only if you know what you are doing, existing methods in [Player] implementation are suited for the most use cases.
+   ///
+@@ -1373,6 +1415,24 @@
+   }
+ 
+   Future<void> _handler(Pointer<generated.mpv_event> event) async {
++    if (event.ref.event_id ==
++        generated.mpv_event_id.MPV_EVENT_GET_PROPERTY_REPLY) {
++      final request = _getPropertyRequests.remove(event.ref.reply_userdata);
++      if (request != null) {
++        var value = '';
++        if (event.ref.error >= 0 && event.ref.data != nullptr) {
++          final property = event.ref.data.cast<generated.mpv_event_property>();
++          if (property.ref.format == generated.mpv_format.MPV_FORMAT_STRING &&
++              property.ref.data != nullptr) {
++            final text = property.ref.data.cast<Pointer<Utf8>>().value;
++            if (text != nullptr) value = text.toDartString();
++          }
++        }
++        // Copy the event-owned string before mpv_wait_event can free it.
++        request.complete(value);
++      }
++      return;
++    }
+     if (event.ref.event_id ==
+         generated.mpv_event_id.MPV_EVENT_PROPERTY_CHANGE) {
+       final prop = event.ref.data.cast<generated.mpv_event_property>();
+@@ -2533,6 +2593,7 @@
+   }
+ 
+   int _asyncRequestNumber = 0;
++  final Map<int, Completer<String>> _getPropertyRequests = {};
+   final Map<int, Completer<int>> _setPropertyRequests = {};
+   final Map<int, Completer<int>> _commandRequests = {};
+ 

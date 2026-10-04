@@ -76,11 +76,21 @@ Future<void> main(List<String> arguments) async {
   }
   final pubspec = await File('${destination.path}/pubspec.yaml').readAsString();
   if (!RegExp(r'^version: 1\.2\.6\s*$', multiLine: true).hasMatch(pubspec)) {
-    throw StateError(
-      'Review the screenshot argument patch for this package version.',
-    );
+    throw StateError('Review the media patches for this package version.');
   }
-  final patch = '${root.path}/patches/media-kit-screenshot-arguments.patch';
+  for (final name in [
+    'media-kit-screenshot-arguments.patch',
+    'media-kit-async-property-query.patch',
+  ]) {
+    await _applyPatch(destination, '${root.path}/patches/$name');
+  }
+  if (!useResolved && !prepareOnly) {
+    await overrideFile.writeAsString(_override);
+  }
+  stdout.writeln('Prepared isolated media package. Run flutter pub get next.');
+}
+
+Future<void> _applyPatch(Directory destination, String patch) async {
   Future<ProcessResult> git(List<String> arguments) => Process.run('git', [
     'apply',
     ...arguments,
@@ -96,15 +106,9 @@ Future<void> main(List<String> arguments) async {
     }
     final result = await git([]);
     if (result.exitCode != 0) {
-      throw StateError(
-        'Applying the screenshot argument patch failed. ${result.stderr}',
-      );
+      throw StateError('Applying media patch $patch failed. ${result.stderr}');
     }
   }
-  if (!useResolved && !prepareOnly) {
-    await overrideFile.writeAsString(_override);
-  }
-  stdout.writeln('Prepared isolated media package. Run flutter pub get next.');
 }
 
 Future<void> _copy(Directory source, Directory destination) async {

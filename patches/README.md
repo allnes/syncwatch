@@ -146,3 +146,22 @@ pub cache untouched. Keep the hosted dependency in the committed lockfile.
 
 Validate screenshot creation and repeated player disposal on both desktop
 platforms. This allocation fix does not address preview seek readiness.
+
+## Nonblocking playback health properties (candidate)
+
+`media-kit-async-property-query.patch` targets `media_kit 1.2.6`. It adds an
+explicit `getPropertyAsync` API backed by `mpv_get_property_async` and the
+existing event dispatcher. Playback health diagnostics use this API at the
+same frequency, with the same property names and string representation. The
+ordinary synchronous API and playback/camera configuration stay unchanged.
+Missing properties retain the empty-string result. Reply strings are copied
+before mpv releases their event; disposal settles pending requests.
+
+`prepare_media_kit.dart` applies both media patches to the isolated dependency.
+Run it before client analysis/builds, then run `flutter analyze lib test tool`,
+`flutter test`, and `dart run tool/check_mpv_properties.dart <app-libmpv-path>`.
+The native check compares string values, unavailable properties, concurrent
+requests and disposal against the actual library. Never await this API inside
+mpv property-observer callbacks, which run in the same reply dispatcher.
+Acceptance also requires ordinary combined-load frame timing comparisons;
+adding a diagnostic API alone is not evidence of improved playback.

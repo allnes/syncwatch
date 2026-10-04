@@ -513,7 +513,7 @@ class _PlayerScreenState extends State<PlayerScreen> with WindowListener {
     try {
       Future<String> property(String name) async {
         try {
-          return await native.getProperty(name);
+          return await native.getPropertyAsync(name);
         } catch (_) {
           return 'n/a';
         }
